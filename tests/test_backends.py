@@ -249,6 +249,55 @@ check("compile/warmup failure falls back", be.name, "eager")
 check_true("compile/warmup failure restores stock", untouched(cuda_agent.model))
 check("compile/warmup failure warns once", len(w), 1)
 
+# ------------------------------------------------------------------ inductor cache directory
+# `configure_inductor_cache` is the only reader of `LAYA_INDUCTOR_CACHE_DIR`, so what it resolves is
+# what an operator's environment has to say for the documented directory to be the one in use.
+# Nothing below needs a GPU, a checkpoint or a compiler: the function only reads the environment and
+# returns inductor's own normalisation of it.
+from laya.backends.compile import CACHE_DIR_ENV, DEFAULT_CACHE_DIR, configure_inductor_cache  # noqa: E402
+
+EXPANDED_DEFAULT = os.path.expanduser(DEFAULT_CACHE_DIR)
+ABS_DIR = os.path.join(os.sep, "tmp", "laya-inductor-cache")
+
+
+def resolved_cache_dir(laya_value, torchinductor_value=None):
+    """The directory `configure_inductor_cache` resolves to for one pair of variables.
+
+    `patch.dict` restores every key the function writes with `setdefault`, not just the ones it was
+    handed. And by this point the suite has already installed a compile backend above, which put a
+    `TORCHINDUCTOR_CACHE_DIR` in the environment -- it has to go first, or `setdefault` keeps that
+    value for every case below and each case measures the same directory.
+    """
+    given = {} if laya_value is None else {CACHE_DIR_ENV: laya_value}
+    if torchinductor_value is not None:
+        given["TORCHINDUCTOR_CACHE_DIR"] = torchinductor_value
+    with patch.dict(os.environ, given, clear=False):
+        if torchinductor_value is None:
+            os.environ.pop("TORCHINDUCTOR_CACHE_DIR", None)
+        return configure_inductor_cache()
+
+
+check("inductor cache/unset uses the documented default", resolved_cache_dir(None), EXPANDED_DEFAULT)
+for blank in ("", " ", "\t", "  \n "):
+    check("inductor cache/blank %r reads as unset" % blank, resolved_cache_dir(blank), EXPANDED_DEFAULT)
+check("inductor cache/absolute path kept", resolved_cache_dir(ABS_DIR), ABS_DIR)
+check("inductor cache/padded absolute path", resolved_cache_dir(" %s " % ABS_DIR), ABS_DIR)
+check("inductor cache/tilde expanded", resolved_cache_dir("~/laya-inductor-cache"),
+      os.path.expanduser("~/laya-inductor-cache"))
+check("inductor cache/padded tilde expanded", resolved_cache_dir("  ~/laya-inductor-cache  "),
+      os.path.expanduser("~/laya-inductor-cache"))
+# A relative value is the one case the fix must not "help": it stays relative, padding and all.
+relative = os.path.join("laya", "inductor-relative")
+resolved_relative = resolved_cache_dir(" %s " % relative)
+check_true("inductor cache/padded relative path resolves under the cwd",
+           os.path.abspath(resolved_relative) == os.path.join(os.getcwd(), relative),
+           "resolved %r" % (resolved_relative,))
+# The documented precedence: a `TORCHINDUCTOR_*` export belongs to the operator, not to this knob.
+check("inductor cache/operator TORCHINDUCT_CACHE_DIR wins",
+      resolved_cache_dir(ABS_DIR, ABS_DIR + "-operator"), ABS_DIR + "-operator")
+check("inductor cache/operator wins over a blank LAYA value",
+      resolved_cache_dir("", ABS_DIR + "-operator"), ABS_DIR + "-operator")
+
 # ------------------------------------------------------------------ forwarding and legacy Agent substitutes
 from laya.router import Router  # noqa: E402
 

@@ -1,0 +1,2481 @@
+{
+  "temp_min": 0.5,
+  "temp_max": 5.0,
+  "cases": [
+    {
+      "label": "no table",
+      "typed": true,
+      "pairs": null,
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {},
+      "warnings": []
+    },
+    {
+      "label": "empty table",
+      "typed": true,
+      "pairs": [],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {},
+      "warnings": []
+    },
+    {
+      "label": "own temperature",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "own temperature and buckets",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ],
+            "temperature_by_options": {
+              "choice:3-5": 2.5,
+              "noul:2": 0.7
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {
+            "choice:3-5": 2.5,
+            "noul:2": 0.7
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "region tag",
+      "typed": true,
+      "pairs": [
+        [
+          "de-AT",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "uppercase key",
+      "typed": true,
+      "pairs": [
+        [
+          "DE",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "mixed case region",
+      "typed": true,
+      "pairs": [
+        [
+          "Pt-BR",
+          {
+            "temperature": [
+              1.2,
+              1.3,
+              1.4
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "pt": {
+          "temperature": [
+            1.2,
+            1.3,
+            1.4
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "underscore is not a separator",
+      "typed": true,
+      "pairs": [
+        [
+          "de_DE",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de_de": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "only the first dash splits",
+      "typed": true,
+      "pairs": [
+        [
+          "zh-Hant-TW",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "zh": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "empty key",
+      "typed": true,
+      "pairs": [
+        [
+          "",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "dash only",
+      "typed": true,
+      "pairs": [
+        [
+          "-",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "leading dash",
+      "typed": true,
+      "pairs": [
+        [
+          "-de",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "full lowercase of a capital I with dot",
+      "typed": true,
+      "pairs": [
+        [
+          "İ",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "i̇": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "final sigma",
+      "typed": true,
+      "pairs": [
+        [
+          "ΣΣ",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "σς": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "last duplicate wins",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ],
+        [
+          "DE-at",
+          {
+            "temperature": [
+              4.0,
+              4.5,
+              3.5
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            4.0,
+            4.5,
+            3.5
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "last duplicate wins over a null entry",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ],
+        [
+          "de-CH",
+          null
+        ]
+      ],
+      "base": [
+        1.6,
+        1.25,
+        1.98
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.6,
+            1.25,
+            1.98
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "two languages",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ],
+        [
+          "fr",
+          {
+            "temperature_by_options": {
+              "score:3-5": 2.0
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.6,
+        1.25,
+        1.98
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {}
+        },
+        "fr": {
+          "temperature": [
+            1.6,
+            1.25,
+            1.98
+          ],
+          "temperature_by_options": {
+            "score:3-5": 2.0
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "null entry inherits",
+      "typed": true,
+      "pairs": [
+        [
+          "fr",
+          null
+        ]
+      ],
+      "base": [
+        1.6,
+        1.25,
+        1.98
+      ],
+      "result": {
+        "fr": {
+          "temperature": [
+            1.6,
+            1.25,
+            1.98
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "empty entry inherits",
+      "typed": true,
+      "pairs": [
+        [
+          "fr",
+          {}
+        ]
+      ],
+      "base": [
+        1.6,
+        1.25,
+        1.98
+      ],
+      "result": {
+        "fr": {
+          "temperature": [
+            1.6,
+            1.25,
+            1.98
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "null temperature inherits",
+      "typed": true,
+      "pairs": [
+        [
+          "fr",
+          {
+            "temperature": null
+          }
+        ]
+      ],
+      "base": [
+        1.6,
+        1.25,
+        1.98
+      ],
+      "result": {
+        "fr": {
+          "temperature": [
+            1.6,
+            1.25,
+            1.98
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "null temperature keeps own buckets",
+      "typed": true,
+      "pairs": [
+        [
+          "fr",
+          {
+            "temperature": null,
+            "temperature_by_options": {
+              "choice:2": 2.0
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.6,
+        1.25,
+        1.98
+      ],
+      "result": {
+        "fr": {
+          "temperature": [
+            1.6,
+            1.25,
+            1.98
+          ],
+          "temperature_by_options": {
+            "choice:2": 2.0
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "only buckets inherits temperature",
+      "typed": true,
+      "pairs": [
+        [
+          "fr",
+          {
+            "temperature_by_options": {
+              "noul:2": 0.7
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.6,
+        1.25,
+        1.98
+      ],
+      "result": {
+        "fr": {
+          "temperature": [
+            1.6,
+            1.25,
+            1.98
+          ],
+          "temperature_by_options": {
+            "noul:2": 0.7
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "empty buckets",
+      "typed": true,
+      "pairs": [
+        [
+          "fr",
+          {
+            "temperature": [
+              1.0,
+              2.0,
+              3.0
+            ],
+            "temperature_by_options": {}
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "fr": {
+          "temperature": [
+            1.0,
+            2.0,
+            3.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "null buckets",
+      "typed": true,
+      "pairs": [
+        [
+          "fr",
+          {
+            "temperature": [
+              1.0,
+              2.0,
+              3.0
+            ],
+            "temperature_by_options": null
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "fr": {
+          "temperature": [
+            1.0,
+            2.0,
+            3.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "inherited out-of-range values are clamped without a warning of their own",
+      "typed": true,
+      "pairs": [
+        [
+          "fr",
+          null
+        ]
+      ],
+      "base": [
+        0.3,
+        6.0,
+        1.0
+      ],
+      "result": {
+        "fr": {
+          "temperature": [
+            0.5,
+            5.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "bucket names are not validated",
+      "typed": true,
+      "pairs": [
+        [
+          "fr",
+          {
+            "temperature_by_options": {
+              "bogus": 2.0,
+              "": 3.0
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "fr": {
+          "temperature": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {
+            "bogus": 2.0,
+            "": 3.0
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "clamp high and low",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              9.0,
+              0.1,
+              5.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            5.0,
+            0.5,
+            5.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=9.0 -> 5, temperature[1]=0.1 -> 0.5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "clamp boundaries are accepted",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              0.5,
+              5.0,
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            0.5,
+            5.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "clamp a bucket",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature_by_options": {
+              "choice:3-5": 99.0,
+              "noul:2": 0.01,
+              "score:3-5": 2.0
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {
+            "choice:3-5": 5.0,
+            "noul:2": 0.5,
+            "score:3-5": 2.0
+          }
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using choice:3-5=99.0 -> 5, noul:2=0.01 -> 0.5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "clamp temperature and buckets in one warning",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              9.0,
+              1.0,
+              0.0
+            ],
+            "temperature_by_options": {
+              "choice:2": -1.0
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            5.0,
+            1.0,
+            0.5
+          ],
+          "temperature_by_options": {
+            "choice:2": 0.5
+          }
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=9.0 -> 5, temperature[2]=0.0 -> 0.5, choice:2=-1.0 -> 0.5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "non-finite values",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              "nan",
+              1.0,
+              "inf"
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=nan -> 1, temperature[2]=inf -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "negative infinity",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              "-inf",
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=-inf -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "negative zero",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              -0.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            0.5,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=-0.0 -> 0.5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a warning per language",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              9.0,
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        [
+          "fr",
+          {
+            "temperature": [
+              1.0,
+              0.1,
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            5.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        },
+        "fr": {
+          "temperature": [
+            1.0,
+            0.5,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=9.0 -> 5. Treat confidence from the affected entries as uncalibrated."
+        },
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'fr' ships invalid temperatures or values outside [0.5, 5]; using temperature[1]=0.1 -> 0.5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a key's own spelling is named in the warning",
+      "typed": true,
+      "pairs": [
+        [
+          "DE-at",
+          {
+            "temperature": [
+              9.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            5.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'DE-at' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=9.0 -> 5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a quote in the key",
+      "typed": true,
+      "pairs": [
+        [
+          "it's",
+          {
+            "temperature": [
+              9.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "it's": {
+          "temperature": [
+            5.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override \"it's\" ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=9.0 -> 5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a non-ASCII key",
+      "typed": true,
+      "pairs": [
+        [
+          "dé",
+          {
+            "temperature": [
+              9.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "dé": {
+          "temperature": [
+            5.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'dé' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=9.0 -> 5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a warning for the replaced entry of a later duplicate",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              9.0,
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        [
+          "DE",
+          {
+            "temperature": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=9.0 -> 5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "two values",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              1.0,
+              2.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got [1.0, 2.0]",
+      "warnings": []
+    },
+    {
+      "label": "four values",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              1.0,
+              2.0,
+              3.0,
+              4.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got [1.0, 2.0, 3.0, 4.0]",
+      "warnings": []
+    },
+    {
+      "label": "no values",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": []
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got []",
+      "warnings": []
+    },
+    {
+      "label": "two values with a buckets map",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              1.0,
+              2.0
+            ],
+            "temperature_by_options": {
+              "noul:2": 2.0
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got [1.0, 2.0]",
+      "warnings": []
+    },
+    {
+      "label": "non-finite values in a refused list",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              "nan",
+              "inf"
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got [nan, inf]",
+      "warnings": []
+    },
+    {
+      "label": "an inherited list of two values",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          null
+        ]
+      ],
+      "base": [
+        1.0,
+        2.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got [1.0, 2.0]",
+      "warnings": []
+    },
+    {
+      "label": "an inherited list of four values",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature_by_options": {
+              "noul:2": 2.0
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        2.0,
+        3.0,
+        4.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got [1.0, 2.0, 3.0, 4.0]",
+      "warnings": []
+    },
+    {
+      "label": "an inherited empty list",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {}
+        ]
+      ],
+      "base": [],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got []",
+      "warnings": []
+    },
+    {
+      "label": "an inherited list holding a string",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          null
+        ]
+      ],
+      "base": [
+        1.0,
+        "x",
+        2.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.0,
+            2.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "an inherited string",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          null
+        ]
+      ],
+      "base": "1.5",
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got '1.5'",
+      "warnings": []
+    },
+    {
+      "label": "an inherited object",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          null
+        ]
+      ],
+      "base": {
+        "a": 1.0
+      },
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got {'a': 1.0}",
+      "warnings": []
+    },
+    {
+      "label": "an own list needs no valid base",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              2.0,
+              3.0,
+              1.5
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.5
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "a refusal after a warning",
+      "typed": true,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              9.0,
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        [
+          "fr",
+          {
+            "temperature": [
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'fr' temperature must be a list of 3 floats, got [1.0]",
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=9.0 -> 5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a refusal before a later entry",
+      "typed": true,
+      "pairs": [
+        [
+          "fr",
+          {
+            "temperature": [
+              1.0
+            ]
+          }
+        ],
+        [
+          "de",
+          {
+            "temperature": [
+              9.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'fr' temperature must be a list of 3 floats, got [1.0]",
+      "warnings": []
+    },
+    {
+      "label": "the refused language is named as spelled",
+      "typed": true,
+      "pairs": [
+        [
+          "DE-at",
+          {
+            "temperature": [
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'DE-at' temperature must be a list of 3 floats, got [1.0]",
+      "warnings": []
+    },
+    {
+      "label": "a quote in a refused key",
+      "typed": true,
+      "pairs": [
+        [
+          "it's",
+          {
+            "temperature": [
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override \"it's\" temperature must be a list of 3 floats, got [1.0]",
+      "warnings": []
+    },
+    {
+      "label": "integers",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              2,
+              3,
+              1
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            2.0,
+            3.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "integers that the clamp moves",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              99,
+              0.01,
+              1
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            5.0,
+            0.5,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=99 -> 5, temperature[1]=0.01 -> 0.5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a bool in the list",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              true,
+              1.5,
+              2.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.5,
+            2.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=True -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "false in the list",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              false,
+              1.5,
+              2.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.5,
+            2.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=False -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a numeric string",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              "2.5",
+              1.5,
+              2.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            2.5,
+            1.5,
+            2.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "a string that is no number",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              "abc",
+              1.5,
+              2.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.5,
+            2.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]='abc' -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a null in the list",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              null,
+              1.5,
+              2.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.5,
+            2.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=None -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a nested list in the list",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": [
+              [
+                1.0
+              ],
+              1.5,
+              2.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.5,
+            2.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using temperature[0]=[1.0] -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a bucket value that is a bool",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature_by_options": {
+              "choice:2": true
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.0
+          }
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using choice:2=True -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a bucket value that is null",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature_by_options": {
+              "choice:2": null
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {
+            "choice:2": 1.0
+          }
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using choice:2=None -> 1. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a bucket value that is a string",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature_by_options": {
+              "choice:2": "2.5"
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {
+            "choice:2": 2.5
+          }
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "a bucket value that is an integer",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature_by_options": {
+              "choice:2": 7
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {
+            "choice:2": 5.0
+          }
+        }
+      },
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: language override 'de' ships invalid temperatures or values outside [0.5, 5]; using choice:2=7 -> 5. Treat confidence from the affected entries as uncalibrated."
+        }
+      ]
+    },
+    {
+      "label": "a temperature that is a number",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": 2
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got 2",
+      "warnings": []
+    },
+    {
+      "label": "a temperature that is a string",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": "abc"
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got 'abc'",
+      "warnings": []
+    },
+    {
+      "label": "a temperature that is an object",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": {
+              "a": 1.0
+            }
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got {'a': 1.0}",
+      "warnings": []
+    },
+    {
+      "label": "a temperature that is false",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature": false
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got False",
+      "warnings": []
+    },
+    {
+      "label": "an entry that is a list",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          [
+            1.0,
+            2.0,
+            3.0
+          ]
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' must be a mapping, got list",
+      "warnings": []
+    },
+    {
+      "label": "an entry that is a string",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          "x"
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' must be a mapping, got str",
+      "warnings": []
+    },
+    {
+      "label": "an entry that is a number",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          2.0
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' must be a mapping, got float",
+      "warnings": []
+    },
+    {
+      "label": "an entry that is false",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          false
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' must be a mapping, got bool",
+      "warnings": []
+    },
+    {
+      "label": "buckets that are a list",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature_by_options": [
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature_by_options must be a mapping of bucket -> float, got list",
+      "warnings": []
+    },
+    {
+      "label": "buckets that are a string",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature_by_options": "x"
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature_by_options must be a mapping of bucket -> float, got str",
+      "warnings": []
+    },
+    {
+      "label": "buckets that are a number",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature_by_options": 3
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature_by_options must be a mapping of bucket -> float, got int",
+      "warnings": []
+    },
+    {
+      "label": "buckets that are an empty list",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature_by_options": []
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "buckets that are zero",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature_by_options": 0
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "buckets that are an empty string",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          {
+            "temperature_by_options": ""
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "result": {
+        "de": {
+          "temperature": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "temperature_by_options": {}
+        }
+      },
+      "warnings": []
+    },
+    {
+      "label": "a key that is a number",
+      "typed": false,
+      "pairs": [
+        [
+          1,
+          {
+            "temperature": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override keys must be strings, got 1",
+      "warnings": []
+    },
+    {
+      "label": "a key that is null",
+      "typed": false,
+      "pairs": [
+        [
+          null,
+          {
+            "temperature": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      ],
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "error_type": "ValueError",
+      "error_message": "Language override keys must be strings, got None",
+      "warnings": []
+    },
+    {
+      "label": "a base that is a number",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          null
+        ]
+      ],
+      "base": 2.0,
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got 2.0",
+      "warnings": []
+    },
+    {
+      "label": "a base that is null",
+      "typed": false,
+      "pairs": [
+        [
+          "de",
+          null
+        ]
+      ],
+      "base": null,
+      "error_type": "ValueError",
+      "error_message": "Language override 'de' temperature must be a list of 3 floats, got None",
+      "warnings": []
+    }
+  ]
+}

@@ -86,6 +86,16 @@ The main controls are:
 - `--task NAME` forces the typed-decisions workflow instead of detecting it.
 - `--device cpu|cuda|...` passes a device choice to the Router.
 - `--json` emits machine-readable output.
+- `--image FILE`, `--audio FILE` or `--video FILE` answer the questions about a picture, a recording
+  or a clip instead of a text. These go to the Router's vega lane (`laya.Agent(vegaml=True)`, on by
+  default when vegaml is installed, which it is with laya 0.4.23 and newer), imply `--predict`, and
+  take the place of the text argument. A recording is transcribed locally; a clip is decided on its
+  speech if it has any, else on sampled frames.
+
+```bash
+laya --image invoice.png --preset triage
+laya --audio call.wav --questions questions.json --json
+```
 
 ### Use a built-in preset
 
@@ -120,8 +130,10 @@ writing a script.
 
 The CLI handles invalid values and common dependency, download, and runtime failures at the
 application boundary. It prints a diagnostic to stderr and returns exit code `2` instead of
-showing an unhandled traceback. If a first-use checkpoint download fails, check dependency
-installation, Hub access, and the selected device before retrying.
+showing an unhandled traceback. A handled failure ends the request, not the session: the prompt comes
+back for the next line, and the session exits `2` when it ends, so a piped session reports the
+code a failing request earned. If a first-use checkpoint download
+fails, check dependency installation, Hub access, and the selected device before retrying.
 
 ## 2. Built-in MCP stdio server
 
@@ -158,23 +170,68 @@ Laya does not open a network port.
 | Tool | What it does | Main inputs |
 |---|---|---|
 | `laya_status` | Reports the device per loaded checkpoint (`checkpoint_devices`), the configured or actual device, CUDA availability, loaded checkpoints, preload state, readiness, and package versions. | none |
-| `laya_route` | Selects a checkpoint and returns its model, repository, and reason without running a forward pass. | `state`, `questions`, optional `model`, `task`, `lang`, `lang_guess` |
+| `laya_route` | Selects a checkpoint and returns its model, repository, and reason without running a forward pass. Opt into language diagnostics with `explain`. | `state`, `questions`, optional `model`, `task`, `lang`, `lang_guess`, `explain` (default `false`) |
 | `laya_predict` | Runs typed questions and returns answers, routing metadata, latency, and the answering device when readable. | `state`, `questions`, optional `model` (`auto`, `english`, `multilingual`, or `typed-decisions`), `task`, `lang`, `lang_guess`, `max_len`, `head_max_len`, `min_confidence` |
 | `laya_shortlist` | Shortlists a many-option choice question, then answers it and returns the shortlist metadata. | `state`, `questions`, optional `model`, `k` (default `20`), `task`, `lang`, `lang_guess`, `max_len`, `head_max_len`, `min_confidence` |
+| `laya_tournament` | Narrows large choices in balanced rounds using the decision model, then answers the complete request. In-process only. | `state`, `questions`, optional `model`, `group_size` (default `16`), `task`, `lang`, `lang_guess`, `max_len`, `head_max_len`, `min_confidence` |
 | `laya_preset` | Runs a built-in workflow using its built-in question set. | `preset`, `state`, optional `task`, `lang`, `lang_guess`, `max_len`, `head_max_len`, `min_confidence` |
 | `laya_predict_batch` | Answers many requests in one call. Requests are routed first and grouped by checkpoint, so matching question schemas share forward passes; answers come back in input order. | `requests`, each `{state, questions, model?, task?, lang?, lang_guess?, max_len?, head_max_len?}`, optional `batch_size`, `hooks_timeout`, `min_confidence`, `sort_by_length` |
-| `laya_route_batch` | Decides which checkpoint would answer each request, with no forward pass and no checkpoint load. | `requests`, each `{state, questions, model?, task?, lang?, lang_guess?}`, optional `hooks_timeout` |
+| `laya_route_batch` | Decides which checkpoint would answer each request, with no forward pass and no checkpoint load. Opt into per-decision diagnostics with `explain`. | `requests`, each `{state, questions, model?, task?, lang?, lang_guess?}`, optional `hooks_timeout`, `explain` (default `false`, for the whole batch) |
 | `laya_decide` | Answers a JSON-schema-shaped decision in one forward pass and returns the decided values with per-field confidence, instead of an answer map to parse. Schema properties may be enum choices, booleans, or integers with a minimum and maximum; free strings, arrays, and nested objects are rejected by path. | `state`, `schema`, optional `model`, `min_confidence` |
+| `laya_predict_long` | Scans a state longer than the context window in overlapping windows, then answers with per-answer window attribution and the window count. | `state`, `questions`, optional `model`, `window`, `stride`, `task`, `lang` |
 
-On `laya_route`, `laya_predict`, `laya_shortlist`, and `laya_decide`, `model` may be omitted or set to `null`; either form resolves to `auto`.
+On `laya_route`, `laya_predict`, `laya_shortlist`, `laya_tournament`, and `laya_decide`, `model` may be omitted or set to `null`; either form resolves to `auto`.
+
+`laya_route` accepts `explain: true` to add a top-level `diagnostic` with the core detector's
+`stage`, `reason`, and `source`. When no source exists, `source` is `null`. When the final routing
+decision has no diagnostic (for example, an explicit model or language override, or a hook
+replacement), `diagnostic` is `null`. The diagnostic comes from that routing call; it does not
+run detection again after a hook. `laya_route_batch` takes the same flag once for the whole
+batch, adds `diagnostic` to each decision, and preserves input order and `model_counts`.
+Omitted or `false` keeps each existing three-field decision.
+Only booleans are accepted: strings such as `"false"`, numbers, and `null` are rejected with an
+error naming `explain`. Direct Python helper calls report `invalid_explain`; MCP rejects them
+during argument validation. An injected router that rejects the requested `explain` keyword
+reports `unsupported_explain`, with no retry without the flag. Errors inside a router retain
+the existing internal-error path.
+
+The built-in detector's diagnostic contains no caller **values** or `mixed_segment` text. Its bounded
+`source.path` can contain caller-chosen field names; the existing routing `reason` can already
+contain an input segment. This is not a promise that the whole response is free of caller text.
+Even with `LAYA_BASE_URL`, it describes routing performed by the MCP process, not the HTTP
+server's actual prediction on a potentially different version or configuration. Shared-server
+routing uses no HTTP request or model. Ordinary local startup keeps its configured preload policy.
+
+For a local check of the MCP helpers without starting a server or loading checkpoints:
+
+```python
+from laya import Router
+from laya.mcp.tools import laya_route, laya_route_batch
+
+router = Router()
+request = {
+    "state": {"message": "Turn lights off"},
+    "questions": {"category": {"type": "choice", "instructions": "Classify the message.",
+                               "criteria": {"A": "Support", "B": "Other"}}},
+}
+single = laya_route(**request, explain=True, router=router)
+print(single["diagnostic"])
+# {'stage': 'whole_state', 'reason': 'insufficient_words', 'source': None}
+
+batch = laya_route_batch([request, dict(request, lang="en")], explain=True, router=router)
+assert batch["decisions"][0] == single
+assert batch["decisions"][1]["diagnostic"] is None  # explicit language bypasses detection
+assert batch["model_counts"] == {"multilingual": 1, "english": 1}
+assert not router.loaded
+```
 
 The three batch and schema tools exist because the same operations are available on the SDK and
 `laya-serve`: handling many requests, or serving a caller that already knows the answer shape,
 does not require dropping to Python. For the schema-driven form in more depth, see
 [Schema-driven decisions](structured.md).
 
-The shared guardrail says not to send choice questions with more than 20 options without
-shortlisting. `laya_shortlist` keeps the `k` most likely labels before the forward pass; its
+The shared guardrail says to narrow choice questions with more than 20 options using
+`laya_shortlist` or `laya_tournament`. `laya_shortlist` keeps the `k` most likely labels before the forward pass; its
 default is `k=20`. It uses mean-pooled embeddings from the answering checkpoint's own encoder,
 so it does not download a second model, and returns the kept labels, cosine scores, `k`,
 option count, and whether the question passed through unshortlisted for each shortlisted
@@ -184,6 +241,58 @@ a caller-supplied `option_order`: the order covers every option while the answer
 kept labels only, and remapping it onto them would move options between slots, so the order
 is dropped and the question is named under `option_order_dropped` with its old and kept
 option counts.
+
+`laya_tournament` uses the decision model itself to narrow choices, without an embedding pass.
+With the default `group_size=16`, 40 labels form balanced groups of 13, 13 and 14. One forward
+pass answers all three groups; their winners meet in a final pass that also answers the rest
+of the request. Larger sets can take more elimination rounds. The checkpoint is selected from
+the original request and pinned for every round, keeping routing controls and detected-language
+calibration consistent. Token budgets and `min_confidence` reach every pass.
+A missing or out-of-group winner returns `internal_error` before another pass, so a broken
+round cannot silently advance a label the model did not select from that group.
+
+The result has the usual `answers`, `routing`, `latency_ms` and readable `device`, plus
+`tournament` metadata for each choice: `labels` are the finalists in criteria order, `n` is the
+original option count, and `rounds` counts elimination rounds before the final pass. A choice
+that fits `group_size` reports `rounds: 0`; non-choice questions have no tournament entry.
+Probabilities and confidence come from the final pass over the finalists only, so a threshold
+fitted on the full label set needs to be measured again. `latency_ms` covers routing and all
+passes. Narrowing reports a discarded `option_order` under `option_order_dropped` with `n` and
+`kept` counts, just as shortlisting does; passthrough questions keep their order.
+
+For a small example, call `laya_tournament` with these arguments. `group_size=2` forces one
+elimination round here; keep the default 16 for a larger catalog unless you have measured another size.
+
+```json
+{
+  "state": {"body": "Please refund the duplicate charge."},
+  "questions": {
+    "department": {
+      "type": "choice",
+      "instructions": "Which team should handle the `body`?",
+      "criteria": {
+        "billing": "payments, invoices, refunds",
+        "technical": "bugs, outages, integrations",
+        "account": "login, passwords, profile settings",
+        "sales": "pricing, upgrades, product enquiries"
+      }
+    }
+  },
+  "group_size": 2
+}
+```
+
+This makes two prediction calls and returns two finalists with `n: 4` and `rounds: 1`.
+`group_size` must be an integer of at least 2; invalid values return `invalid_group_size`.
+The tool is available only when the MCP server loads checkpoints in-process.
+
+When the state itself does not fit one window, `laya_predict` answers from its first window and
+never reads the rest. `laya_predict_long` tokenizes the state once, scores it in overlapping
+windows sized by `window` (default: the checkpoint budget) stepped by `stride` (default: half
+the window), and aggregates per question -- strongest window for `noul`, most-confident window
+for `choice`/`score`. Each answer names its deciding window, and the result counts the windows
+scored. There is no `min_confidence` here and no `max_len`/`head_max_len`: core's scan takes
+neither.
 
 `state` must be a non-empty JSON object. `questions` must be a non-empty object whose values use
 Laya's typed question schema. `laya_preset` accepts the same five presets the CLI does: `email`,
@@ -199,7 +308,7 @@ Every single-request tool takes the same per-call routing controls the batch req
 and `lang_guess` (a soft language hint that sits below `lang` and above the built-in detector, so a
 probable-but-uncertain code can nudge which checkpoint is chosen without forcing it the way `lang`
 does). `lang_guess` only participates in routing, so like `task` it is refused on a call that pins
-`model` -- a pinned checkpoint has nothing left to route. `laya_predict` and `laya_shortlist` also
+`model` -- a pinned checkpoint has nothing left to route. `laya_predict`, `laya_shortlist`, and `laya_tournament` also
 take `max_len`/`head_max_len` for the answering token budget and `min_confidence` for the abstention
 gate.
 
@@ -240,7 +349,7 @@ the server is ready.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `LAYA_DEVICE` | automatic | Device value passed to PyTorch, such as `cpu` or `cuda`. |
+| `LAYA_DEVICE` | automatic | The device checkpoints are asked to build on, such as `cpu` or `cuda`. Not the value verbatim: `laya.mcp.device.env_device` strips and lower-cases it, so `CUDA:0` works, and a string PyTorch cannot parse is refused with an error naming this variable. So is a string PyTorch parses into a *different* device: an index it cannot keep is read back as another one (`cuda:258` builds GPU 2), and the same refusal names both the value and what PyTorch would have used. Because there is no startup to refuse, that comes back as a `router construction failed` tool error. It is a preference, not a guarantee: a GPU that cannot be had falls back to CPU silently, and `laya_status` reports the loaded checkpoint's real device. |
 | `LAYA_PRELOAD` | `1` | Build the configured checkpoints at startup. Set to `0` for lazy loading. |
 | `LAYA_MODELS` | `english,multilingual` | Comma-separated checkpoints to preload. An empty value keeps the MCP default rather than preloading every checkpoint. |
 | `LAYA_THREADS` | PyTorch default | Caps Torch intra-op threads for CPU inference; keep it at or below the physical core count. |
@@ -248,6 +357,7 @@ the server is ready.
 | `LAYA_DEFAULT_MODEL` | `multilingual` | The checkpoint a state with no language evidence falls back to, same meaning as in `laya.serve`. Unlike `laya.serve`, an unresolvable name does not stop the server: it comes back as a `router construction failed` tool error on the next call, because a stdio server has no startup to refuse. |
 | `LAYA_BASE_URL` | unset | Send predictions to a `laya-serve` on your own hardware instead of loading checkpoints in each MCP process. A bare `host:port` is read as HTTP. |
 | `LAYA_REMOTE_TIMEOUT` | `300` | HTTP timeout in seconds when `LAYA_BASE_URL` is set, including the server's cold load. Invalid or non-positive values use the default. |
+| `LAYA_USER_AGENT` | `laya/<version>` | User-Agent for remote HTTP requests. Read when the remote Router is constructed; empty or space/tab-only values use the default. Invalid header values raise a configuration error. Ignored in local mode. |
 | `LAYA_API_KEY` | unset | Bearer token sent with every remote request when `LAYA_BASE_URL` is set. Required by a `laya-serve` that set its own `LAYA_API_KEY`; ignored in local mode. |
 
 ### Share one model server across MCP sessions
@@ -283,8 +393,27 @@ Set the same `LAYA_API_KEY` in both processes when the server requires a bearer 
 `LAYA_DEFAULT_MODEL` and `LAYA_AUTO_TASK` aligned so local routing previews match the server's
 actual routing. Device and preload settings belong to the HTTP server. The first call after an
 idle unload waits for a cold load; raise `LAYA_REMOTE_TIMEOUT` if that takes longer than 300 seconds.
-`laya_shortlist` and prediction hook overrides return `unsupported_remote`, since their code needs
-the model process. HTTP errors retain the server's detail text as MCP tool errors. With
+
+Remote requests identify the library as `laya/<laya.__version__>`. An operator can use that
+prefix in an allowlist, or set `LAYA_USER_AGENT` for a deployment-specific identity. This header
+does not replace bearer authentication or guarantee acceptance by a proxy's security policy.
+When embedding `RemoteRouter` directly, its keyword-only `user_agent` argument takes precedence
+over the environment. `None` reads the environment; an explicit empty or space/tab-only string
+selects the default. The selected value is checked before surrounding spaces/tabs are trimmed:
+CR/LF, other ASCII controls except tab, DEL, and non-Latin-1 characters raise an error naming
+`LAYA_USER_AGENT`. Unlike an invalid timeout, an invalid header is never silently replaced.
+Each Router keeps the value resolved at construction; environment changes require a new Router
+or a restarted MCP process. An explicit request header also takes precedence over a UA set on
+a custom urllib opener; use this setting instead of that workaround.
+
+`laya_shortlist`, `laya_tournament`, `laya_predict_long`, and prediction hook overrides return
+`unsupported_remote`, since these paths run in the model process. The HTTP server has no long-state
+scan, so for a state past one window run the MCP server without `LAYA_BASE_URL`; `laya_predict`
+over HTTP reads the first window only. For shared-server tournament selection, enable
+[`LAYA_TOURNAMENT_GROUP` on the HTTP server](http-api.md#large-choices-laya_tournament_group) and call
+`laya_predict`: HTTP keeps probabilities for every original label (zero for eliminated labels),
+reports `x_tournament`, and counts usage across rounds. The in-process `laya_tournament` returns
+finalist-only probabilities and core's `tournament` metadata. HTTP errors retain the server's detail text as MCP tool errors. With
 `LAYA_BASE_URL` unset, the MCP server keeps loading checkpoints in its own process.
 
 The stock `laya-mcp-server` launcher creates its Router without installing hooks. Install prediction

@@ -199,6 +199,19 @@ public sealed class LayaRouterTests
     }
 
     [Fact]
+    public void DefaultKeepsTwoCheckpointsLikePython()
+    {
+        // Python's Router(max_loaded=2) since #180: alternating two languages must not reload.
+        Assert.Equal(2, new LayaRouterOptions().MaxLoaded);
+        using var router = NewFakeRouter(new LayaRouterOptions());
+        router.Load("english");
+        router.Load("multilingual");
+        Assert.Equal(2, router.Loaded.Count);
+        Assert.Contains(LayaCheckpoint.English, router.Loaded);
+        Assert.Contains(LayaCheckpoint.Multilingual, router.Loaded);
+    }
+
+    [Fact]
     public void Cap2EvictsOldest()
     {
         using var router = NewFakeRouter(new LayaRouterOptions { MaxLoaded = 2 });
@@ -441,8 +454,11 @@ public sealed class LayaRouterTests
         var model = OptString(routeKwargs, "model");
         var task = OptString(routeKwargs, "task");
         var lang = OptString(routeKwargs, "lang");
+        var guess = OptString(routeKwargs, "lang_guess");
+        var langGuess = guess is null ? null : LangGuess.FromCode(guess);
 
-        var options = new LayaRouterOptions();
+        var installed = OptString(routerKwargs, "lang_guess");
+        var options = new LayaRouterOptions { LangGuess = installed is null ? null : LangGuess.FromCode(installed) };
         if (routerKwargs.TryGetProperty("auto_task_detection", out var atd)) options.AutoTaskDetection = atd.GetBoolean();
         if (routerKwargs.TryGetProperty("default", out var def)) options.Default = LayaRouter.NormaliseName(def.GetString()!);
         // "models" and "standalone_repos" affect only the repo string, which RouteDecision does
@@ -450,7 +466,7 @@ public sealed class LayaRouterTests
         // to the model selection under test here and are intentionally not applied.
 
         using var router = NewFakeRouter(options);
-        var decision = router.Route(state, questions, model, task, lang);
+        var decision = router.Route(state, questions, model, task, lang, langGuess);
 
         var want = e.GetProperty("decision");
         Assert.Equal(want.GetProperty("model").GetString(), CheckpointName(decision.Model));

@@ -22,8 +22,9 @@ import re
 import shutil
 import sys
 import tempfile
+import types
 import warnings
-from contextlib import redirect_stdout
+from contextlib import nullcontext, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -39,6 +40,7 @@ from tokenizers.pre_tokenizers import Whitespace  # noqa: E402
 from transformers import BertConfig, BertModel, PreTrainedTokenizerFast  # noqa: E402
 
 from laya import load  # noqa: E402
+from laya.agent import _amp_context  # noqa: E402
 from laya.common import DecisionModel  # noqa: E402
 from laya.router import Router  # noqa: E402
 
@@ -366,13 +368,20 @@ check_true("39/what it reports is the question, as the page says",
            "'q'" in SECTION.get(3, ""), SECTION.get(3, "")[:120])
 
 # case 4 quotes the guard as an expression, so the expression has to be the code's -- under any
-# name `render_options` is bound to, and any name its count is stored in.
-_assign = re.search(r"(\w+) = len\(render_options\((\w+)\)\)", AGENT_SRC)
+# name the option count is read from, and any name it is stored in. #1231 moved the right-hand
+# side from `len(render_options(q))` to the count `build_head` already returned, so the pattern
+# reads the assignment rather than naming one source.
+_assign = re.search(r"(\w+) = (stats\[.options.\]|len\(render_options\(\w+\)\))", AGENT_SRC)
 check_true("39/the guard it quotes is the guard the code compares",
            _assign is not None and "len(markers) != %s:" % _assign.group(1) in AGENT_SRC,
            AGENT_SRC[AGENT_SRC.find("len(markers)"):][:60] if "len(markers)" in AGENT_SRC else "")
+# Quote style is the example's to choose: it prints the expression inside a double-quoted
+# `print`, so `stats['options']` there is the same expression as `stats["options"]` here.
+_bare = lambda text: text.replace('"', "").replace("'", "")
 check_true("39/quoted rather than paraphrased",
-           "len(markers)" in PROSE and "render_options" in PROSE, "")
+           "len(markers)" in PROSE and _assign is not None
+           and _bare(_assign.group(2)) in _bare(PROSE),
+           PROSE[PROSE.find("len(markers)"):][:90] if "len(markers)" in PROSE else "")
 
 # the crash class, statically: `MODELS` values can be `(repo, subfolder)` (witnessed above), so no
 # filesystem call may take one, and the missing-path case must come from `LOCAL_MODELS`.
@@ -488,6 +497,96 @@ check_true("unprobed GPU/warns about the probe",
            any("capability" in str(w.message) for w in caught),
            str([str(w.message) for w in caught]))
 del _no_probe
+
+
+# ------------------------------------------- 10. LAYA_CUDA_AMP on a CUDA device (#443)
+# The override is read on every CUDA device, so a value it cannot parse fails the load whatever the
+# GPU, and `fp32` turns autocast off instead of entering `torch.autocast(dtype=float32)`. Below
+# compute capability 8 the two half-precision asks still run fp16. Loaded through the real
+# `Agent.__init__` on a faked device, the way section 9 does it, because the device policy is the
+# thing under test and CI has no GPU.
+def load_on_fake_gpu(amp, capability=(8, 6), device="cuda:0", **kw):
+    probe = {"side_effect": capability} if isinstance(capability, Exception) else {"return_value": capability}
+    with patch.dict(os.environ, {"LAYA_CUDA_AMP": amp}), \
+            patch("torch.cuda.is_available", return_value=True), \
+            patch("torch.cuda.device_count", return_value=1), \
+            patch("torch.cuda.get_device_capability", **probe), \
+            patch.object(torch.nn.Module, "to", lambda self, *a, **k: self):
+        return load(str(REPO), device=device, **kw)
+
+
+def amp_state(agent):
+    return agent.dtype, agent.amp_enabled, agent.dtype_for(1)
+
+
+def load_raises(amp, capability):
+    try:
+        load_on_fake_gpu(amp, capability)
+    except ValueError as exc:
+        return str(exc)
+    return None
+
+
+# The compose files forward `${LAYA_CUDA_AMP:-}`, so an unset variable reaches the load as "".
+check("cuda amp/an empty value keeps the checkpoint's choice",
+      amp_state(load_on_fake_gpu("")), (torch.float16, True, torch.float16))
+check("cuda amp/bf16 on cc 8.6 autocasts in bf16",
+      amp_state(load_on_fake_gpu("bf16")), (torch.bfloat16, True, torch.bfloat16))
+check("cuda amp/bf16 below cc 8 still runs fp16",
+      amp_state(load_on_fake_gpu("bf16", (7, 5))), (torch.float16, True, torch.float16))
+_fp32 = load_on_fake_gpu("fp32")
+check("cuda amp/fp32 turns autocast off", amp_state(_fp32), (torch.float32, False, torch.float32))
+check_true("cuda amp/fp32 forward enters no autocast",
+           isinstance(_amp_context(_fp32.device, _fp32.dtype, _fp32._amp_enabled_for(1)), nullcontext))
+check("cuda amp/float32 below cc 8 is full precision too",
+      amp_state(load_on_fake_gpu("float32", (7, 5))), (torch.float32, False, torch.float32))
+check("cuda amp/fp32 needs no capability probe",
+      amp_state(load_on_fake_gpu("fp32", RuntimeError("no driver"))), (torch.float32, False, torch.float32))
+for _cap in ((8, 6), (7, 5)):
+    _err = load_raises("int8", _cap)
+    check_true("cuda amp/an unparseable value fails the load on cc %d.%d" % _cap,
+               _err is not None and "'int8'" in _err and "LAYA_CUDA_AMP" in _err, repr(_err))
+# CPU never reads the variable: compose.yaml forwards it to the base service as well, so a stale
+# value on a CPU host must not stop that host from loading.
+with patch.dict(os.environ, {"LAYA_CUDA_AMP": "int8"}):
+    _cpu = load(str(REPO), device="cpu")
+check("cuda amp/cpu ignores the variable", amp_state(_cpu), (torch.float32, False, torch.float32))
+del _cpu
+
+# The fused fast path only runs in 16 bits and used to map every other dtype to bf16, so
+# `fast=True` with fp32 served bf16 without a word. A stub stands in for `laya.fast`, because
+# tilelang is not installed in CI; it records the dtype each build asked for.
+class _StubFast:
+    built = []
+
+    def __init__(self, model, max_len, use_graphs, dtype):
+        _StubFast.built.append(dtype)
+        self.max_len = max_len
+
+    def forward(self, *args, **kwargs):
+        raise AssertionError("the stub is never run")
+
+
+_stub = types.ModuleType("laya.fast")
+_stub.FastLaya = _StubFast
+with patch.dict(sys.modules, {"laya.fast": _stub}):
+    check("fast/bf16 builds the fused path in bf16",
+          (load_on_fake_gpu("bf16").accelerate(), _StubFast.built), (True, [torch.bfloat16]))
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _fast32 = load_on_fake_gpu("fp32", fast=True)
+    check("fast/fp32 keeps the stock forward", (_fast32._fast, _StubFast.built), (None, [torch.bfloat16]))
+    check_true("fast/fp32 says why",
+               any(issubclass(w.category, RuntimeWarning) and "float32" in str(w.message) for w in caught),
+               str([str(w.message) for w in caught]))
+    try:
+        _fast32.accelerate(strict=True)
+        _strict = None
+    except RuntimeError as exc:
+        _strict = str(exc)
+    check_true("fast/fp32 with strict=True raises", _strict is not None and "float32" in _strict, repr(_strict))
+    check("fast/strict refusal builds nothing", _StubFast.built, [torch.bfloat16])
+del _fp32, _fast32
 
 
 TMP.cleanup()

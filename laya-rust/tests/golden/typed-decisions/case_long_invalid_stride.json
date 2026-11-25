@@ -1,0 +1,34 @@
+{
+  "name": "long_invalid_stride",
+  "state": "short",
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today"
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    }
+  },
+  "options": {
+    "window": 32,
+    "stride": 33
+  },
+  "error_type": "ValueError",
+  "error_message": "predict_long: stride=33 steps past the 32-token window, so 1 tokens between every pair of windows would be read by no window at all; pass stride <= 32"
+}

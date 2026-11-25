@@ -1,0 +1,8 @@
+# Standalone builds (workspace builds go to laya-rust/target)
+target/
+**/*.rs.bk
+
+# Downloaded model artifacts / run output
+*.onnx
+*.onnx_data
+*.csv

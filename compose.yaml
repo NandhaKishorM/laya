@@ -16,11 +16,13 @@ services:
       LAYA_MODEL: "${LAYA_MODEL:-auto}"
       LAYA_MODEL_PATH: "${LAYA_MODEL_PATH:-}"
       LAYA_REQUEST_FILE: "${LAYA_REQUEST_FILE:-/opt/laya/examples/request.json}"
-      # The Hub commit, branch or tag every checkpoint download resolves to, or `reviewed` for the
-      # reviewed SHAs in `laya/revisions.py`. Empty keeps the Hub default, which is what these
-      # images have always done. This service builds its Router with no `revision=` argument
-      # (`examples/docker/quickstart.py`), so this variable is the only way to pin from Compose.
+      # The supply-chain pair: LAYA_REVISION says which Hub commit a checkpoint download resolves to
+      # (a commit, branch, tag, or `reviewed` for the reviewed SHAs in `laya/revisions.py`) and
+      # LAYA_SHA256_DIGESTS verifies the artifact that arrives (`docs/security.md`). This service
+      # builds its Router with no `revision=` or `sha256_digests=` argument
+      # (`examples/docker/quickstart.py`), so these variables are the only way to pin from Compose.
       LAYA_REVISION: "${LAYA_REVISION:-}"
+      LAYA_SHA256_DIGESTS: "${LAYA_SHA256_DIGESTS:-}"
       HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-0}"
       HF_TOKEN: "${HF_TOKEN:-}"
       HF_TOKEN_FILE: "${HF_TOKEN_FILE:-}"

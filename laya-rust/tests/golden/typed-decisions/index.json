@@ -1,0 +1,657 @@
+[
+  {
+    "name": "quickstart",
+    "file": "case_quickstart.json",
+    "expects_error": false
+  },
+  {
+    "name": "dict_state",
+    "file": "case_dict_state.json",
+    "expects_error": false
+  },
+  {
+    "name": "list_state",
+    "file": "case_list_state.json",
+    "expects_error": false
+  },
+  {
+    "name": "criterion_shapes",
+    "file": "case_criterion_shapes.json",
+    "expects_error": false
+  },
+  {
+    "name": "choice_criteria_list",
+    "file": "case_choice_criteria_list.json",
+    "expects_error": false
+  },
+  {
+    "name": "cjk",
+    "file": "case_cjk.json",
+    "expects_error": false
+  },
+  {
+    "name": "arabic",
+    "file": "case_arabic.json",
+    "expects_error": false
+  },
+  {
+    "name": "json_escaping",
+    "file": "case_json_escaping.json",
+    "expects_error": false
+  },
+  {
+    "name": "nonstring_instructions",
+    "file": "case_nonstring_instructions.json",
+    "expects_error": false
+  },
+  {
+    "name": "single_option",
+    "file": "case_single_option.json",
+    "expects_error": false
+  },
+  {
+    "name": "many_options",
+    "file": "case_many_options.json",
+    "expects_error": false
+  },
+  {
+    "name": "long_state",
+    "file": "case_long_state.json",
+    "expects_error": false
+  },
+  {
+    "name": "mask_injection",
+    "file": "case_mask_injection.json",
+    "expects_error": false
+  },
+  {
+    "name": "sample_app_english",
+    "file": "case_sample_app_english.json",
+    "expects_error": false
+  },
+  {
+    "name": "sample_app_hindi",
+    "file": "case_sample_app_hindi.json",
+    "expects_error": false
+  },
+  {
+    "name": "options_exceed_head",
+    "file": "case_options_exceed_head.json",
+    "expects_error": true
+  },
+  {
+    "name": "shortlist_many_options",
+    "file": "case_shortlist_many_options.json",
+    "expects_error": false,
+    "kind": "shortlist"
+  },
+  {
+    "name": "long_short",
+    "file": "case_long_short.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_exact_limit",
+    "file": "case_long_exact_limit.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_room_fast_path",
+    "file": "case_long_room_fast_path.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_multi_chunk",
+    "file": "case_long_multi_chunk.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_punctuation",
+    "file": "case_long_punctuation.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_dict",
+    "file": "case_long_dict.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_list",
+    "file": "case_long_list.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_clamp",
+    "file": "case_long_clamp.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_special_tokens",
+    "file": "case_long_special_tokens.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_empty_questions",
+    "file": "case_long_empty_questions.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_invalid_stride",
+    "file": "case_long_invalid_stride.json",
+    "expects_error": true,
+    "kind": "long"
+  },
+  {
+    "name": "long_invalid_aggregate",
+    "file": "case_long_invalid_aggregate.json",
+    "expects_error": true,
+    "kind": "long"
+  },
+  {
+    "name": "long_no_state_room",
+    "file": "case_long_no_state_room.json",
+    "expects_error": true,
+    "kind": "long"
+  },
+  {
+    "name": "batch_one_state",
+    "file": "case_batch_one_state.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_mixed",
+    "file": "case_batch_mixed.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_size_1",
+    "file": "case_batch_size_1.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_size_3",
+    "file": "case_batch_size_3.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_size_over_len",
+    "file": "case_batch_size_over_len.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_size_zero",
+    "file": "case_batch_size_zero.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_size_negative",
+    "file": "case_batch_size_negative.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_on",
+    "file": "case_batch_sort_on.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_off",
+    "file": "case_batch_sort_off.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_size_3",
+    "file": "case_batch_sort_size_3.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_partial_window",
+    "file": "case_batch_sort_partial_window.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_no_batch_size",
+    "file": "case_batch_sort_no_batch_size.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_size_1",
+    "file": "case_batch_sort_size_1.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_size_eq_len",
+    "file": "case_batch_sort_size_eq_len.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_size_over_len",
+    "file": "case_batch_sort_size_over_len.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sort_size_zero",
+    "file": "case_batch_sort_size_zero.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_truncated",
+    "file": "case_batch_truncated.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_truncated_sorted",
+    "file": "case_batch_truncated_sorted.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_duplicate_states",
+    "file": "case_batch_duplicate_states.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_empty_states",
+    "file": "case_batch_empty_states.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_empty_states_invalid_questions",
+    "file": "case_batch_empty_states_invalid_questions.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_empty_questions",
+    "file": "case_batch_empty_questions.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_empty_both",
+    "file": "case_batch_empty_both.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sorted",
+    "file": "case_batch_sorted.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_sorted_windows",
+    "file": "case_batch_sorted_windows.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_unsorted_windows",
+    "file": "case_batch_unsorted_windows.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_chunked",
+    "file": "case_batch_chunked.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_single_question",
+    "file": "case_batch_single_question.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_empty_questions_with_options",
+    "file": "case_batch_empty_questions_with_options.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_scalar",
+    "file": "case_batch_min_confidence_scalar.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_zero",
+    "file": "case_batch_min_confidence_zero.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_map",
+    "file": "case_batch_min_confidence_map.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_map_default",
+    "file": "case_batch_min_confidence_map_default.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_empty_questions",
+    "file": "case_batch_min_confidence_empty_questions.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_empty_states",
+    "file": "case_batch_min_confidence_empty_states.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_none_state",
+    "file": "case_batch_none_state.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_options_exceed_head",
+    "file": "case_batch_options_exceed_head.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_invalid",
+    "file": "case_batch_min_confidence_invalid.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_before_none_state",
+    "file": "case_batch_min_confidence_before_none_state.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_min_confidence_bad_key",
+    "file": "case_batch_min_confidence_bad_key.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "min_confidence_scalar",
+    "file": "case_min_confidence_scalar.json",
+    "expects_error": false
+  },
+  {
+    "name": "min_confidence_zero",
+    "file": "case_min_confidence_zero.json",
+    "expects_error": false
+  },
+  {
+    "name": "min_confidence_map",
+    "file": "case_min_confidence_map.json",
+    "expects_error": false
+  },
+  {
+    "name": "min_confidence_map_default",
+    "file": "case_min_confidence_map_default.json",
+    "expects_error": false
+  },
+  {
+    "name": "min_confidence_invalid",
+    "file": "case_min_confidence_invalid.json",
+    "expects_error": true
+  },
+  {
+    "name": "min_confidence_empty_map",
+    "file": "case_min_confidence_empty_map.json",
+    "expects_error": true
+  },
+  {
+    "name": "min_confidence_bad_key",
+    "file": "case_min_confidence_bad_key.json",
+    "expects_error": true
+  },
+  {
+    "name": "lang_replace_de",
+    "file": "case_lang_replace_de.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_region_tag",
+    "file": "case_lang_region_tag.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_uppercase",
+    "file": "case_lang_uppercase.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_miss",
+    "file": "case_lang_miss.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_empty",
+    "file": "case_lang_empty.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_underscore_miss",
+    "file": "case_lang_underscore_miss.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_table_without_lang",
+    "file": "case_lang_table_without_lang.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_inherit_null_entry",
+    "file": "case_lang_inherit_null_entry.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_own_buckets_inherited_temperature",
+    "file": "case_lang_own_buckets_inherited_temperature.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_temperature_and_buckets",
+    "file": "case_lang_temperature_and_buckets.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_clamped",
+    "file": "case_lang_clamped.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_last_duplicate_wins",
+    "file": "case_lang_last_duplicate_wins.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_size_buckets",
+    "file": "case_lang_size_buckets.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_size_buckets_checkpoint",
+    "file": "case_lang_size_buckets_checkpoint.json",
+    "expects_error": false
+  },
+  {
+    "name": "lang_with_min_confidence",
+    "file": "case_lang_with_min_confidence.json",
+    "expects_error": false
+  },
+  {
+    "name": "budget_max_len",
+    "file": "case_budget_max_len.json",
+    "expects_error": false
+  },
+  {
+    "name": "budget_head_max_len",
+    "file": "case_budget_head_max_len.json",
+    "expects_error": false
+  },
+  {
+    "name": "budget_head_squeezed",
+    "file": "case_budget_head_squeezed.json",
+    "expects_error": false
+  },
+  {
+    "name": "budget_both",
+    "file": "case_budget_both.json",
+    "expects_error": false
+  },
+  {
+    "name": "budget_head_zero",
+    "file": "case_budget_head_zero.json",
+    "expects_error": false
+  },
+  {
+    "name": "budget_head_negative",
+    "file": "case_budget_head_negative.json",
+    "expects_error": false
+  },
+  {
+    "name": "budget_head_true",
+    "file": "case_budget_head_true.json",
+    "expects_error": false
+  },
+  {
+    "name": "budget_head_false",
+    "file": "case_budget_head_false.json",
+    "expects_error": false
+  },
+  {
+    "name": "budget_with_lang",
+    "file": "case_budget_with_lang.json",
+    "expects_error": false
+  },
+  {
+    "name": "budget_max_len_zero",
+    "file": "case_budget_max_len_zero.json",
+    "expects_error": true
+  },
+  {
+    "name": "budget_max_len_negative",
+    "file": "case_budget_max_len_negative.json",
+    "expects_error": true
+  },
+  {
+    "name": "budget_max_len_tiny",
+    "file": "case_budget_max_len_tiny.json",
+    "expects_error": true
+  },
+  {
+    "name": "budget_max_len_true",
+    "file": "case_budget_max_len_true.json",
+    "expects_error": true
+  },
+  {
+    "name": "budget_max_len_false",
+    "file": "case_budget_max_len_false.json",
+    "expects_error": true
+  },
+  {
+    "name": "budget_both_zero",
+    "file": "case_budget_both_zero.json",
+    "expects_error": true
+  },
+  {
+    "name": "batch_lang_region_tag",
+    "file": "case_batch_lang_region_tag.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_lang_miss",
+    "file": "case_batch_lang_miss.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_lang_sorted",
+    "file": "case_batch_lang_sorted.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_lang_budgets",
+    "file": "case_batch_lang_budgets.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_budget_max_len",
+    "file": "case_batch_budget_max_len.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_budget_head_max_len",
+    "file": "case_batch_budget_head_max_len.json",
+    "expects_error": false,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_budget_max_len_zero",
+    "file": "case_batch_budget_max_len_zero.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "batch_budget_max_len_negative",
+    "file": "case_batch_budget_max_len_negative.json",
+    "expects_error": true,
+    "kind": "batch"
+  },
+  {
+    "name": "long_lang_scan",
+    "file": "case_long_lang_scan.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_lang_single_window",
+    "file": "case_long_lang_single_window.json",
+    "expects_error": false,
+    "kind": "long"
+  },
+  {
+    "name": "long_lang_miss",
+    "file": "case_long_lang_miss.json",
+    "expects_error": false,
+    "kind": "long"
+  }
+]

@@ -128,8 +128,19 @@ def build_parser():
                         help="flag an answer whose calibrated confidence falls below P (0.0-1.0) as"
                              " low-confidence; the answer itself is kept, so this asks for a warning"
                              " rather than a refusal. Needs --predict, --preset or --questions.")
+    parser.add_argument("--image", metavar="FILE",
+                        help="answer the questions about a picture instead of a text: routes to the vega lane "
+                             "(needs vegaml, which ships with laya); implies --predict")
+    parser.add_argument("--audio", metavar="FILE",
+                        help="answer the questions about a recording (wav, flac, ogg, mp3): transcribed locally, "
+                             "then decided on the vega lane; implies --predict")
+    parser.add_argument("--video", metavar="FILE",
+                        help="answer the questions about a clip: its speech if it has any, else sampled frames, "
+                             "on the vega lane; implies --predict")
     parser.add_argument("--device", help="torch device, e.g. cpu or cuda")
     parser.add_argument("--json", action="store_true", help="print the raw result as JSON")
+    parser.add_argument("--explain", action="store_true",
+                        help="include language-detection reasons and sources in routing mode (no model loading)")
     parser.add_argument("--batch", metavar="FILE",
                         help="score a file of requests, one per line (use '-' for stdin), instead "
                              "of a single text; implies neither --predict nor --preset, but the "
@@ -158,10 +169,33 @@ def load_questions(path):
     file declares it. Default ``"request"``, matching bare ``--predict``.
     """
     try:
-        with open(path, encoding="utf-8") as handle:
+        # `utf-8-sig`, not `utf-8`: a questions file written by Notepad or Excel starts with a
+        # UTF-8 BOM, and a plain `utf-8` read leaves it as U+FEFF, so `json.load` refuses a file
+        # that is valid JSON -- with its own "decode using utf-8-sig" hint. The other file readers
+        # in this repo open the same way for the same reason (docker/entrypoint.py,
+        # laya/train.py, scripts/http_inference_smoke.py).
+        with open(path, encoding="utf-8-sig") as handle:
             raw = json.load(handle)
     except FileNotFoundError:
         raise ValueError("no such --questions file: %s" % path)
+    except OSError as error:
+        # A path that exists but cannot be read as a file -- a directory, or one this process may
+        # not open -- is the same class of fault as the three below: it is about *this* file, not
+        # about a missing dependency or a failed checkpoint download. Letting the raw OSError reach
+        # run()'s `except (ImportError, OSError, RuntimeError)` printed "could not run Laya" and
+        # advised checking the network, which is a false diagnosis for a wrong --questions path.
+        raise ValueError("--questions file %s cannot be read: %s" % (path, error)) from error
+    # The same three refusals `laya/evidence.py::_read_json_object` makes: a bare JSONDecodeError or
+    # UnicodeDecodeError says what is wrong with the text but not which file, and a too-deep document
+    # surfaces as a RecursionError that the caller's `except (OSError, RuntimeError, ...)` misreads as
+    # a dependency/download problem. Prefix each with the path so it is a usage error about this file.
+    except json.JSONDecodeError as error:
+        raise ValueError("--questions file %s is not valid JSON: %s" % (path, error)) from error
+    except UnicodeDecodeError as error:
+        raise ValueError("--questions file %s is not UTF-8 text: %s" % (path, error)) from error
+    except RecursionError as error:
+        raise ValueError("--questions file %s is JSON nested deeper than it can be read: %s"
+                         % (path, error)) from error
     if not isinstance(raw, dict):
         raise ValueError("--questions file must be a JSON object of question id -> definition")
     state_key = "request"
@@ -258,10 +292,31 @@ def resolve_questions(args):
     return laya.router_questions(), PRESET_STATE_KEYS["router"]
 
 
+def media_override(args):
+    """The three media arguments of `Router.predict`, as the flags gave them: at most one set,
+    the others None, so every control the parser names reaches the call."""
+    given = {key: (getattr(args, key, None) or None) for key in ("image", "audio", "video")}
+    if sum(1 for value in given.values() if value) > 1:
+        raise ValueError("pass one of --image, --audio, --video, not %s"
+                         % " and ".join("--" + k for k, v in given.items() if v))
+    return given
+
+
 def run(text, args, router=None):
     """Route or predict one request; returns 0 on success, 2 on a handled error."""
     router = router or make_router(args)
     try:
+        media = media_override(args)
+        if any(media.values()):
+            questions, _ = resolve_questions(args)
+            result = router.predict(None, questions, model=args.model, task=args.task, lang=args.lang,
+                                    lang_guess=args.lang_guess, **media,
+                                    **budget_overrides(args), **abstention_override(args))
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+            else:
+                show_answers(result)
+            return 0
         if args.predict or args.preset or args.questions:
             questions, state_key = resolve_questions(args)
             # Each preset's instructions name the field they read -- `` `message` ``,
@@ -275,7 +330,7 @@ def run(text, args, router=None):
             state = {state_key: text}
             result = router.predict(state, questions,
                                     model=args.model, task=args.task, lang=args.lang,
-                                    lang_guess=args.lang_guess,
+                                    lang_guess=args.lang_guess, **media,
                                     **budget_overrides(args), **abstention_override(args))
             if args.json:
                 print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
@@ -284,7 +339,8 @@ def run(text, args, router=None):
         else:
             state = {"text": text}
             decision = router.route(state, model=args.model, task=args.task, lang=args.lang,
-                                    lang_guess=args.lang_guess)
+                                    lang_guess=args.lang_guess,
+                                    **({"explain": True} if args.explain else {}))
             if args.json:
                 print(json.dumps(dict(decision), ensure_ascii=False, indent=2, default=str))
             else:
@@ -307,10 +363,15 @@ def read_batch_lines(source):
         # A pipe is decoded with the locale's codec by default (cp1252 on Windows), not the utf-8 a
         # FILE is read with, so piped non-Latin requests arrived as mojibake.
         if hasattr(sys.stdin, "reconfigure"):
-            sys.stdin.reconfigure(encoding="utf-8")
+            # `utf-8-sig` for the same reason as FILE below: a producer that wrote the stream with
+            # a Windows editor prefixes U+FEFF, which would otherwise become the first request's
+            # first character. It reads plain UTF-8 unchanged when there is no BOM.
+            sys.stdin.reconfigure(encoding="utf-8-sig")
         lines = sys.stdin.read().splitlines()
     else:
-        with open(source, encoding="utf-8") as handle:
+        # `utf-8-sig`: a batch file saved by Notepad or Excel starts with a UTF-8 BOM, which plain
+        # `utf-8` would keep as U+FEFF at the front of the first request.
+        with open(source, encoding="utf-8-sig") as handle:
             lines = handle.read().splitlines()
     return [line.strip() for line in lines if line.strip()]
 
@@ -407,10 +468,13 @@ def run_batch(lines, args, router=None):
                     print()
         else:
             decisions = router.route_batch([{"state": {"text": line}, "questions": {},
-                                             **overrides} for line in lines])
+                                             **overrides} for line in lines],
+                                           **({"explain": True} if args.explain else {}))
             for line, decision in zip(lines, decisions):
                 if args.json:
                     print(json.dumps(dict(decision), ensure_ascii=False, default=str))
+                elif args.explain:
+                    show_decision(decision)
                 else:
                     print("%-14s %s  <- %s" % (decision["model"], decision["reason"],
                                                line if len(line) <= 48 else line[:45] + "..."))
@@ -429,6 +493,7 @@ def run_batch(lines, args, router=None):
 def interactive(args):
     print("Laya interactive mode. Type a request and press Enter; Ctrl-D or 'quit' to exit.")
     router = make_router(args)
+    code = 0
     while True:
         try:
             text = input("laya> ").strip()
@@ -437,8 +502,11 @@ def interactive(args):
             break
         if not text or text.lower() in ("quit", "exit"):
             break
-        run(text, args, router)
-    return 0
+        # A handled failure stays non-fatal to the session, but the process cannot then report
+        # success for a request it knows did not run: `laya < requests.txt` exited 0 with every
+        # answer missing and only stderr to say so.
+        code = run(text, args, router) or code
+    return code
 
 
 def main(argv=None):
@@ -456,6 +524,10 @@ def main(argv=None):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     text = " ".join(args.text).strip()
+    if args.explain and (args.predict or args.preset or args.questions):
+        print("laya: --explain is for routing only; omit --predict, --preset and --questions.",
+              file=sys.stderr)
+        return 2
     # Routing answers nothing, so there is no confidence to gate: `route` does not take the
     # threshold at all. Accepting the flag there would let `laya --min-confidence 0.9 "..."` exit 0
     # having ignored it, which is the thing this flag exists to avoid.
@@ -469,13 +541,18 @@ def main(argv=None):
             return 2
         try:
             lines = read_batch_lines(args.batch)
-        except OSError as error:
+        except (OSError, UnicodeDecodeError) as error:
             print("laya: could not read %s (%s)." % (args.batch, error), file=sys.stderr)
             return 2
         if not lines:
             print("laya: no requests found in %s." % args.batch, file=sys.stderr)
             return 2
         return run_batch(lines, args)
+    if any(getattr(args, key, None) for key in ("image", "audio", "video")):
+        if text:
+            print("laya: pass either a text or one of --image, --audio, --video, not both.", file=sys.stderr)
+            return 2
+        return run("", args)
     if not text:
         return interactive(args)
     return run(text, args)

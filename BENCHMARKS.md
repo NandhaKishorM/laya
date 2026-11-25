@@ -310,6 +310,50 @@ fp16 costs about 20 to 30 ms per request on `english` and about 10 ms on `multil
 
 Of 1,248 decisions per checkpoint, fp16 changed none on `english` and one on `multilingual` (a `noul` next to 0.5). A decision near the boundary can flip.
 
+### Apple M5 Pro, MPS: fp16 autocast against fp32
+
+The same script, unchanged, on an Apple M5 Pro (24 GB, macOS 27.0.1, Python 3.12, torch 2.14.1, transformers 5.19.0, laya 0.4.6). Same protocol: 72 pairs per row, 24 states, three passes, fp32 and fp16 back to back on one loaded agent with the order alternating. The machine was lightly loaded (1-min load 4.3 during `english`, 0.8 during `multilingual`). Results in `benchmarks/results/mps_autocast_*_m5pro.json`.
+
+Here the gate goes the way #109 measured on its M5, and further: fp16 wins from two rows on short states and from one row on long states, on both checkpoints.
+
+`english` (ModernBERT-large), median ms, and fp16 minus fp32 per request:
+
+| state | rows | fp32 | fp16 | fp16 - fp32 | max probability change |
+|---|---|---|---|---|---|
+| short | 1 | 25.6 | 25.5 | -0.3 | 0.0018 |
+| short | 2 | 36.6 | 30.3 | -5.8 | 0.0018 |
+| short | 4 | 64.4 | 40.2 | -23.7 | 0.0031 |
+| short | 5 | 74.3 | 44.7 | -29.4 | 0.0031 |
+| short | 6 | 84.5 | 49.1 | -35.3 | 0.0031 |
+| short | 8 | 110.3 | 59.0 | -51.1 | 0.0126 |
+| long | 1 | 48.8 | 34.3 | -15.0 | 0.0012 |
+| long | 2 | 86.6 | 50.8 | -36.7 | 0.0012 |
+| long | 4 | 165.1 | 79.0 | -86.5 | 0.0014 |
+| long | 5 | 203.5 | 93.3 | -110.6 | 0.0014 |
+| long | 6 | 241.4 | 108.1 | -133.7 | 0.0014 |
+| long | 8 | 312.6 | 135.7 | -177.4 | 0.0021 |
+
+`multilingual` (mmBERT-base):
+
+| state | rows | fp32 | fp16 | fp16 - fp32 | max probability change |
+|---|---|---|---|---|---|
+| short | 1 | 12.1 | 13.4 | +1.3 | 0.0022 |
+| short | 2 | 17.2 | 16.3 | -1.1 | 0.0022 |
+| short | 4 | 25.5 | 19.7 | -5.8 | 0.0022 |
+| short | 5 | 30.7 | 22.2 | -8.4 | 0.0022 |
+| short | 6 | 34.9 | 24.5 | -10.5 | 0.0022 |
+| short | 8 | 44.3 | 29.6 | -14.6 | 0.0022 |
+| long | 1 | 21.5 | 17.3 | -4.3 | 0.0020 |
+| long | 2 | 36.4 | 25.0 | -11.7 | 0.0021 |
+| long | 4 | 69.0 | 40.4 | -27.8 | 0.0021 |
+| long | 5 | 79.8 | 45.0 | -35.0 | 0.0021 |
+| long | 6 | 95.1 | 52.3 | -43.0 | 0.0050 |
+| long | 8 | 123.3 | 65.2 | -58.7 | 0.0050 |
+
+The saving grows with the work in the request: on `english` long states fp16 is 2.3x faster at eight rows (312.6 to 135.7 ms), and the only cell where fp32 wins is a single short `multilingual` row, by 1.3 ms. So at the default of 5 an M5 Pro runs rows 2 to 4 (and every long single-row request) in fp32 when fp16 would have been faster, while an M1 Pro pays for fp16 from row 5 up. The two tables bracket the current default; which way it should move, or whether it should depend on the chip, is a separate decision. `LAYA_MPS_AMP_MIN_ROWS=1` takes fp16 everywhere on an M5 Pro.
+
+Of 1,248 decisions per checkpoint, fp16 changed one on `english` (a short state at eight rows, where the largest probability change was 0.0126) and none on `multilingual`.
+
 ### Calibration on a routing task runs the other way
 
 On laya_router's 180 requests (zero-shot, one 3-tier `choice`), nearly every configuration we measured was **under**-confident (the few exceptions were +0.01 to +0.06, and among the least accurate). Mean P(chosen) (the chosen option's probability, not the entropy-based `confidence` field) sat below accuracy, by −0.18 on the root checkpoint with example-led tier descriptions (0.562 vs 0.744) and by −0.19 on `typed-decisions` (0.501 vs 0.694). This is one task and one set of labels, so it does not contradict the over-confidence reported above. It does mean the direction of the miscalibration depends on the task, and a temperature fit on your own data is the right fix either way.

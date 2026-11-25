@@ -28,6 +28,14 @@ name that symbol's real owner. The two ``_decode_answers`` citations keep their 
 purpose: they point at fragments of a long function, they are correct today, and they are the
 subjects that keep the second check from going vacuous.
 
+"Fall inside" is what the first version did not test: it accepted any overlap, so a range that
+started above the definition it named still passed. Re-measured over the tree, 5 ``:NNN`` citations
+name a symbol beside them and exactly one spilled -- ``laya/tl_kernels.py:258-268``, cited for
+``compile_cpu``, which runs 261-271. Three of those eleven cited lines are not in it: 258 is
+``attn_kernel``'s ``return main`` and 259-260 are blank. The rule is now containment, which keeps
+the idiom that is legitimate -- a fragment of a long function -- and rejects a range reaching past
+either end of the symbol it names.
+
 Deterministic and cheap: parse the tree, compare, print. No weights, no GPU, no network.
 
 Run: python tests/test_doc_citations.py
@@ -110,6 +118,9 @@ DBLCOLON = re.compile(r'(?P<file>[A-Za-z0-9_.\-/]+\.py)::(?P<name>[A-Za-z_][A-Za
                       r'(?:\.[A-Za-z_][A-Za-z0-9_]*)?)')
 LINECITE = re.compile(r'(?P<file>[A-Za-z0-9_.\-/]+\.py):(?P<a>\d+)(?:\s*-\s*(?P<b>\d+))?')
 IDENT = re.compile(r'`(?P<name>[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)`')
+# `docs/index.md`'s deferral sentence: "<topics> is/are in the [README](...) for now."
+DEFERRAL = re.compile(r'(?P<topics>[A-Za-z0-9 ,&/]+?)\s+(?:is|are) in the\s+'
+                      r'\[README\]\([^)]*\)\s*for now\.')
 
 # What may sit between a backticked symbol and the citation after it. Punctuation and spacing
 # cover both live idioms -- "`Foo.bar` (`file:12`)" and "`Foo.bar`, (`file:12`)" -- and the
@@ -170,8 +181,9 @@ def bound_symbol(text: str, pos: int) -> Optional[str]:
 
 def cites_inside(lo: int, hi: int, named: Sequence["Symbol"]) -> bool:
     """Whether the cited range falls inside the symbol it names -- a fragment of a function is a
-    legitimate citation, so overlap is the test, not containment."""
-    return any(s.start <= hi and lo <= s.end for s in named)
+    legitimate citation, so the whole range has to sit between the definition's ends, not merely
+    touch it: a range that starts above the ``def`` lands the reader on the function before it."""
+    return any(s.start <= lo and hi <= s.end for s in named)
 
 
 def positive_controls() -> None:
@@ -191,6 +203,15 @@ def positive_controls() -> None:
     check_true("control: a range 300 lines below it is rejected",
                not cites_inside(last + 1, last + 300, fn), "")
     check_true("control: line 1 of the cited file is rejected", not cites_inside(1, 1, fn), "")
+
+    # The arms the overlap rule let through: a range that shares lines with the symbol but reaches
+    # past either end lands the reader on whatever owns the line outside it.
+    check_true("control: a range starting three lines above the def is rejected",
+               not cites_inside(first - 3, last, fn), "%d-%d accepted" % (first - 3, last))
+    check_true("control: a range ending three lines past the last line is rejected",
+               not cites_inside(first, last + 3, fn), "%d-%d accepted" % (first, last + 3))
+    check_true("control: a fragment of the function is still accepted",
+               cites_inside(first + 1, first + 3, fn), "%d-%d rejected" % (first + 1, first + 3))
 
     stale = "`Agent._to_internal` (`laya/agent.py:%d`)" % (last + 300)
     got = bound_symbol(stale, stale.index("laya/agent.py"))
@@ -212,8 +233,44 @@ def positive_controls() -> None:
                got is None, got)
 
 
+def landing_page() -> None:
+    """``docs/index.md`` is the site's front door, and it used to send three topics back to the
+    README -- two of which have pages in this tree. A reader who trusts that sentence never finds
+    them, so hold it to the tree: a topic the front door defers must have no page here, and every
+    page it links must exist. The first half is the drift that actually happens (a page is added,
+    the front door is not told); the second is the row this fix added."""
+    path = os.path.join(ROOT, "docs", "index.md")
+    text = open(path, encoding="utf-8").read()
+    pages = sorted(f[:-3] for f in os.listdir(os.path.join(ROOT, "docs")) if f.endswith(".md"))
+    check_true("the landing-page check can see the guide pages", len(pages) >= 20,
+               "only %d docs/*.md pages" % len(pages))
+
+    deferred = DEFERRAL.search(text)
+    check_true("the landing page still defers something to the README", deferred is not None,
+               "the `... is/are in the [README](...) for now.` sentence is gone, so this check "
+               "has nothing to hold -- delete it deliberately, not by accident")
+    if deferred is None:
+        return
+    topics = [t.strip() for t in re.split(r",| and ", deferred.group("topics")) if t.strip()]
+    check_true("the deferral lists the topics by name", len(topics) >= 1, topics)
+    for topic in topics:
+        slug = re.sub(r"\s+", "-", re.sub(r"^the\s+", "", topic.lower()).strip())
+        check_true("the README-only claim about %r has no page in this tree" % topic,
+                   slug not in pages,
+                   "docs/%s.md exists, so the front door has to link it instead of deferring it"
+                   % slug)
+
+    links = [l for l in re.findall(r"\]\(([^)#\s]+\.md)\)", text) if not l.startswith("http")]
+    broken = [l for l in links
+              if not os.path.exists(os.path.join(ROOT, "docs", l.replace("/", os.sep)))]
+    check_true("every guide the landing page links exists", not broken, broken)
+    check_true("the landing-page link check has subjects", len(links) >= 10,
+               "only %d relative links: %s" % (len(links), links))
+
+
 def main() -> int:
     positive_controls()
+    landing_page()
     files = text_files()
     check_true("the scan covers the tree", len(files) > 300, "%d text files" % len(files))
 

@@ -436,32 +436,23 @@ public final class Decisions {
             // A FALSY `anyOf` falls through to `oneOf`, because the reference spells this
             // `prop.get("anyOf") or prop.get("oneOf")`. Falsy is Python's, not "not a list":
             // an empty list, an empty object, an empty string, zero and false are all falsy
-            // there and all fall through, while a NON-EMPTY string or object is truthy and does
-            // NOT -- it is iterated, yields no mapping branch, and lands on the `got 0` refusal
-            // below. Reproducing only the empty-list case sent a truthy `{"anyOf": "abc"}`
-            // through to `oneOf` and, with no `oneOf` to find, out to "unsupported schema".
+            // there and all fall through. What survives is handled only when it is an array: the
+            // reference guards with `isinstance(union, list)`, so a truthy `{"anyOf": "abc"}`, a
+            // truthy `{"anyOf": {...}}`, a `{"anyOf": 5}` or a `{"anyOf": true}` is neither
+            // iterated nor unwrapped -- it falls past this block to the terminal "unsupported
+            // schema" below. Iterating them used to reach the `got 0` refusal, which blamed a
+            // union arity the request never had, and a non-iterable leaked a TypeError.
             Object union = prop.get("anyOf");
             if (!truthy(union)) {
                 union = prop.get("oneOf");
             }
-            if (union != null) {
+            if (union instanceof List) {
                 List<Map<String, Object>> branches = new ArrayList<>();
-                if (union instanceof List) {
-                    for (Object candidate : (List<?>) union) {
-                        if (candidate instanceof Map
-                                && !"null".equals(((Map<?, ?>) candidate).get("type"))) {
-                            branches.add((Map<String, Object>) candidate);
-                        }
+                for (Object candidate : (List<?>) union) {
+                    if (candidate instanceof Map
+                            && !"null".equals(((Map<?, ?>) candidate).get("type"))) {
+                        branches.add((Map<String, Object>) candidate);
                     }
-                } else if (!(union instanceof String) && !(union instanceof Map)) {
-                    // A string iterates its characters and an object its keys, so both reach the
-                    // refusal below with zero branches, which is what the reference raises. A
-                    // number or a boolean is not iterable at all: the reference raises TypeError
-                    // there, and this is the one recorded exception to the
-                    // message-for-message rule -- see the class note.
-                    throw new SchemaException(path + ": '"
-                            + (truthy(prop.get("anyOf")) ? "anyOf" : "oneOf")
-                            + "' must be an array of branches, got " + pythonType(union));
                 }
                 if (branches.size() != 1) {
                     throw new SchemaException(path + ": only 'Optional[...]' unions (one non-null"

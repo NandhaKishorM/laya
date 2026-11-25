@@ -68,11 +68,12 @@ work with `docker run -e`; Compose-only settings are identified below.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `LAYA_DEVICE` | `cpu` / `cuda` | Device selected by the base / GPU configuration |
-| `LAYA_CUDA_AMP` | unset (checkpoint's `amp_dtype`) | `fp16`/`float16` or `bf16`/`bfloat16` for the CUDA forward; anything else is ignored. Not cosmetic: the README's threshold section measures bf16 flipping 3 of 864 argmaxes on the parity set where fp16 flips none |
+| `LAYA_CUDA_AMP` | unset (checkpoint's `amp_dtype`) | `fp16`/`float16` or `bf16`/`bfloat16` for the CUDA forward, or `fp32`/`float32` to turn autocast off; anything else fails the load with a `ValueError`. GPUs below compute capability 8 run fp16 for either half-precision spelling. Not cosmetic: the README's threshold section measures bf16 flipping 3 of 864 argmaxes on the parity set where fp16 flips none |
 | `LAYA_CPU_AMP` | unset | `bf16` or `bfloat16` opts the CPU forward into bf16; anything else leaves it fp32. No fp16 spelling turns it on either: CPU autocast has no fp16 fast path that beats fp32, so bf16 is the only reduced precision core offers on this device |
 | `LAYA_MODEL` | `auto` | Router alias: `auto`, `english`, `multilingual`, `typed-decisions` |
 | `LAYA_MODEL_PATH` | unset | Compatible checkpoint path inside the container |
 | `LAYA_REVISION` | unset | Hub commit, branch or tag used for every checkpoint download, or `reviewed` for the reviewed SHAs in `laya/revisions.py`; a `revision=` argument still wins |
+| `LAYA_SHA256_DIGESTS` | unset | JSON digests verified before weights are parsed and loaded: `{artifact: digest}` for every checkpoint, or `{model: {artifact: digest}}` per checkpoint. See [Security](security.md) |
 | `LAYA_REQUEST_FILE` | bundled request | JSON request path inside the container |
 | `OMP_NUM_THREADS` | `4` | CPU threads; keep within available cores |
 | `HF_TOKEN` / `HF_TOKEN_FILE` | unset | Optional Hugging Face credential |
@@ -314,9 +315,9 @@ The port is published on `127.0.0.1` only. The API has no authentication until
 working; with a key set it answers an unauthenticated caller `{"status": "ok"}` and withholds the
 checkpoint, revision and device fields, which need the bearer.
 
-The service has a healthcheck on `/health`. The server preloads before it starts
-listening, so with `LAYA_PRELOAD=1` a healthy container has its checkpoints loaded.
-`docker compose ... up -d --wait laya-serve` returns once it is healthy.
+The service has a healthcheck on `/health`. `docker compose ... up -d --wait laya-serve` waits for HTTP liveness. With the Compose default `LAYA_PRELOAD=0`, it can return with no checkpoint loaded; the first valid inference request loads the checkpoint it needs. With `LAYA_PRELOAD=1`, the server builds the selected checkpoints before listening, but preloading does not run a model forward.
+
+These are three separate checks: `/health` confirms the HTTP process responds, an authenticated `/health` response lists resident checkpoints, and a successful authenticated `POST /v1/systemone` confirms that the requested inference ran. A healthy container or a nonempty `loaded` list alone does not establish successful inference. The Docker workflow's HTTP job checks startup, loopback publication and authentication with preload disabled and invalid request bodies; it does not run a model forward.
 
 `/health` reports `device` as the device a resident checkpoint actually computes
 on, which is not always what `LAYA_DEVICE` asked for: a checkpoint that wants a
@@ -349,6 +350,7 @@ These apply to the `laya-serve` service only.
 | `LAYA_MAX_TOKEN_BUDGET` | `8192` | cap on per-request `max_len` and `head_max_len` overrides |
 | `LAYA_MAX_BATCH_TOKENS` | `131072` | tokens one `/v1/systemone/batch` forward pass may collate (`states` × questions × row width); a larger batch is split into several passes, not refused |
 | `LAYA_JEV_STRICT` | `0` | `1` serves the strict Jev wire contract (no root `routing`, no per-answer `action` / `answer_confidence`, reduced `usage`) for strict Jev clients |
+| `LAYA_TOURNAMENT_GROUP` | `0` | answer a `choice` with more options than this by elimination in groups of this size (2 to 100), on `/v1/systemone`, and raise its option cap from 100 to 255. See [Large choices](http-api.md#large-choices-laya_tournament_group). Unset, or outside 2 to 100, is off |
 | `LAYA_SHA256_DIGESTS` | (none) | JSON digests checked before a checkpoint is parsed: `{artifact: digest}` for every checkpoint, or `{model: {artifact: digest}}` per checkpoint. See [Security](security.md) |
 
 For example, set `LAYA_ROOT_PATH=/laya` when publishing the API under `/laya`. The proxy must

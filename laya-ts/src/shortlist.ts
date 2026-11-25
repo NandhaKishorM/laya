@@ -136,6 +136,34 @@ function subsetCriteria(criteria: unknown, labels: string[]): unknown {
   return Object.fromEntries(labels.map((l) => [l, (criteria as Record<string, unknown>)[l]]));
 }
 
+/** Return `question` without an `option_order` that no longer fits it.
+ *
+ * `option_order` holds one slot per option, so an order that fitted the caller's label set does not
+ * fit a narrowed one -- and once the agent reads the field at all, that mismatch is a refused
+ * question, not a silently ignored one. Remapping the order onto the kept labels would move options
+ * between slots, so it is dropped instead, once per question per call. Mirrors
+ * `laya.shortlist._drop_stale_order` (`laya/shortlist.py:428`), which both `predict_shortlist` and
+ * `predict_tournament` run on every narrowed choice; a passthrough keeps its order. */
+function dropStaleOrder(qid: string, question: Record<string, unknown>, nOptions: number,
+  warned: Set<string>): Record<string, unknown> {
+  if (!Object.hasOwn(question, "option_order")) return question;
+  const out = { ...question };
+  const order = out["option_order"];
+  delete out["option_order"];
+  if (!warned.has(qid)) {
+    warned.add(qid);
+    // The same shape as the reference's warning: the slot count the order carried, so a caller can
+    // see how much of the label set the narrowing dropped.
+    const had = Array.isArray(order) ? `${order.length} slots` : JSON.stringify(order);
+    console.warn(
+      `laya.shortlist: question ${JSON.stringify(qid)}: 'option_order' (${had}) was dropped because the ` +
+        `label set was narrowed to ${nOptions}; the order no longer fits the kept options and remapping ` +
+        `it onto them would move options between slots.`,
+    );
+  }
+  return out;
+}
+
 /** Return the top-k choice labels for state. Skips embed_fn when k >= n. */
 export async function shortlistChoice(
   state: unknown,
@@ -172,6 +200,7 @@ export async function predictShortlist(
   const embed = embedFn ?? (needsEmbed ? embedFnFromAgent(agent) : null);
   const reduced: Record<string, unknown> = {};
   const meta: Record<string, ShortlistMeta> = {};
+  const warned = new Set<string>();
   for (const [qid, qdef] of Object.entries(questions)) {
     if (typeof qdef !== "object" || qdef === null || Array.isArray(qdef) || (qdef as Record<string, unknown>)["type"] !== "choice") {
       reduced[qid] = qdef;
@@ -187,7 +216,8 @@ export async function predictShortlist(
       reduced[qid] = qdef;
       continue;
     }
-    reduced[qid] = { ...q, criteria: subsetCriteria(q["criteria"], labels) };
+    reduced[qid] = dropStaleOrder(
+      qid, { ...q, criteria: subsetCriteria(q["criteria"], labels) }, labels.length, warned);
   }
   const a = agent as Record<string, unknown>;
   const fn = a?.["predict"] ?? a?.["systemOne"] ?? a?.["system_one"];
@@ -248,20 +278,12 @@ export async function predictTournament(
     return result as SystemOneResult;
   };
   const warned = new Set<string>();
-  const cut = (qid: string, labels: string[]): QuestionDef => {
-    const original = questions[qid];
-    const narrowed: QuestionDef = { ...original, criteria: subsetCriteria(original["criteria"], labels) };
-    if (Object.hasOwn(narrowed, "option_order")) {
-      delete narrowed["option_order"];
-      if (!warned.has(qid)) {
-        warned.add(qid);
-        console.warn(
-          `laya.shortlist: question ${JSON.stringify(qid)}: 'option_order' was dropped because the label set was narrowed to ${labels.length}; the order no longer fits the kept options.`,
-        );
-      }
-    }
-    return narrowed;
-  };
+  const cut = (qid: string, labels: string[]): QuestionDef => dropStaleOrder(
+    qid,
+    { ...questions[qid], criteria: subsetCriteria(questions[qid]["criteria"], labels) },
+    labels.length,
+    warned,
+  ) as QuestionDef;
 
   while (true) {
     const groups: { qid: string; labels: string[] }[] = [];

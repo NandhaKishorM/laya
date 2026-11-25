@@ -61,6 +61,38 @@ public sealed class HfTokenizerFallbackTests : IDisposable
     }
 
     [Fact]
+    public void DecodePreservesSpecialTokensAsPythonDoesForScanWindows()
+    {
+        var added = string.Join(",", [
+            AddedToken("[PAD]", 0), AddedToken("[UNK]", 1), AddedToken("[CLS]", 2),
+            AddedToken("[SEP]", 3), AddedToken("[MASK]", 4),
+        ]);
+        WriteTokenizerJson(added, BracketedVocab);
+        using var tok = new HfTokenizer(Path.Combine(_dir, "tokenizer.json"));
+        Assert.Equal("[CLS] hello [SEP]", tok.Decode([2, 5, 3]));
+        Assert.Equal("", tok.Decode([]));
+    }
+
+    [Fact]
+    public void DecoderCachesCanInitializeConcurrentlyWithoutChangingTheSourceOrEncoding()
+    {
+        var added = string.Join(",", [
+            AddedToken("[PAD]", 0), AddedToken("[UNK]", 1), AddedToken("[CLS]", 2),
+            AddedToken("[SEP]", 3), AddedToken("[MASK]", 4),
+        ]);
+        WriteTokenizerJson(added, BracketedVocab);
+        var path = Path.Combine(_dir, "tokenizer.json");
+        var original = File.ReadAllText(path);
+        using var first = new HfTokenizer(path);
+        using var second = new HfTokenizer(path);
+        Parallel.Invoke(
+            () => Assert.Equal("[CLS] hello [SEP]", first.Decode([2, 5, 3])),
+            () => Assert.Equal("[CLS] hello [SEP]", second.Decode([2, 5, 3])));
+        Assert.Equal(new[] { 2, 5, 3 }, first.Encode("[CLS] hello [SEP]"));
+        Assert.Equal(original, File.ReadAllText(path));
+    }
+
+    [Fact]
     public void NoTokenizerConfig_ResolvesBracketedSpecialTokensFromAddedTokens()
     {
         // Split layout: no tokenizer_config.json beside tokenizer.json. Every role must be

@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from laya.common import QTYPES, TEMP_MAX, TEMP_MIN, clamp_temperature, temp_bucket  # noqa: E402
 from laya.lang import analyse, detect_script, guess_latin_language, is_english, state_text  # noqa: E402
+from laya.lang import NON_EN_DIACRITIC_RATE  # noqa: E402
 from laya.lang import _non_english_segment  # noqa: E402
 from laya.router import (  # noqa: E402
     BUNDLE_REPO,
@@ -103,6 +104,13 @@ for label, text in [("english", "Please refund the duplicate charge"), ("hindi",
     check("analyse/keys " + label, set(analyse(text)), _KEYS)
 # A 0-0 tie between non-English stopword lists is no evidence for any of them
 check("latin_lang/zero tie invents nothing", guess_latin_language("Cât e ora acum la Tokyo"), None)
+# Plain English made of question words, auxiliaries and contractions used to match no English
+# function word at all, so it stayed undecided and took the router default (multilingual).
+for text in ["Why hasn't my card been delivered?",
+             "How long does a card delivery take?",
+             "Where should my refund show up?"]:
+    check("latin_lang/english question words " + text, guess_latin_language(text), "en")
+    check("route/english question words " + text, Router().route(text).model, "english")
 
 # Known limitation, kept visible on purpose: Romanian short enough to carry no diacritics and an
 # English function word ("in") still reads as English. A real LID model is the fix, not more
@@ -167,6 +175,10 @@ check("state_text/dict", "charged twice" in state_text({"body": "charged twice",
 check("state_text/nested", "deep" in state_text({"a": {"b": ["deep"]}}), True)
 check("state_text/list", "x" in state_text(["x", {"y": "z"}]), True)
 check("state_text/none", state_text(None), "")
+check("state_text/plain string", state_text("hello world"), "hello world")
+check("state_text/plain string budget", state_text("hello world", max_chars=5), "hello")
+check("state_text/bytes budget", state_text(b"hello world", max_chars=5), "hello")
+check("state_text/budget truncation halts", state_text(["part1", "part2", "part3"], max_chars=5), "part1")
 # keys must not drive detection: English keys around Hindi content stay non-English
 check("state_text/keys ignored",
       analyse({"subject": "नमस्ते", "body": "ग्राहक से दो बार शुल्क लिया गया"})["is_english"], False)
@@ -680,6 +692,42 @@ for text in [
     check("route/pt-br control " + text[:32], _r_lat.route(text).model, "english")
 
 
+# --------------------------------------------------------------------- short unaccented Spanish & Portuguese
+# ASCII-normalising ticket and telephony pipelines strip accents; without first-person modals,
+# possessives and unaccented function words (`puedo`, `hago`, `mis`, `estoy`, `despues`, `faco`,
+# `qual`), short Spanish and Portuguese messages stayed undecided -- and inside a structured state
+# with English boilerplate, `_non_english_segment` skipped them so the whole ticket routed english.
+for lang, text in [
+    ("es", "no puedo entrar a mi cuenta"),
+    ("es", "como hago para pedir un reembolso?"),
+    ("es", "como actualizo mis datos?"),
+    ("es", "estoy esperando desde ayer una respuesta"),
+    ("es", "con alguien por favor con quien sea"),
+    ("es", "vaya pues gracias hasta luego"),
+    ("pt", "como faco para reembolsar?"),
+    ("pt", "qual o prazo de entrega amanha?"),
+    ("pt", "eles ainda nao fizeram o estorno"),
+]:
+    check("latin_lang/short ascii " + lang + " " + text[:32], guess_latin_language(text), lang)
+    check("is_english/short ascii " + lang + " " + text[:32], is_english(text), False)
+    check("route/short ascii " + lang + " " + text[:32],
+          Router(default="english").route(text).model, "multilingual")
+    mixed = {"header": "Customer support ticket received from web form", "body": text}
+    check("route/short ascii mixed " + lang + " " + text[:32],
+          Router().route(mixed).model, "multilingual")
+# Italian elided `qual` must stay Italian, not flip to Portuguese
+check("latin_lang/italian qual stays italian",
+      guess_latin_language("qual è l'ultima notizia da rete quattro"), "it")
+# English controls must stay English
+for text in [
+    "Please send me the MIS report before tomorrow morning",
+    "I ate lunch and did not spend a dime on the trip",
+    "Do me a favor and check the solo plan settings",
+]:
+    check("is_english/short es-pt control " + text[:32], is_english(text), True)
+    check("route/short es-pt control " + text[:32], Router().route(text).model, "english")
+
+
 # --------------------------------------------------------------------- romanized Bangla
 # Bangla is often typed in Latin letters ("Banglish") when no Bengali keyboard is at hand. It has no
 # diacritics and matched no stopword list, so it was reported `is_english=True` and handed to the
@@ -716,6 +764,9 @@ for text in [
 from laya.lang import _STOP  # noqa: E402
 check("latin_lang/bn list shares no word with another list",
       sorted(w for w in _STOP.get("bn", ()) for lg, words in _STOP.items() if lg != "bn" and w in words), [])
+check("latin_lang/en list shares only in, is, as, was with another list",
+      sorted({w for w in _STOP["en"] for lg, words in _STOP.items() if lg != "en" and w in words}),
+      ["as", "in", "is", "was"])
 check("latin_lang/romanian with ei stays romanian",
       guess_latin_language("Ei nu sunt de acord cu factura, vreau o corecție"), "ro")
 
@@ -849,6 +900,16 @@ check("clamp/nan falls back to neutral", clamp_temperature(float("nan")), 1.0)
 check("clamp/inf falls back to neutral", clamp_temperature(float("inf")), 1.0)
 check("clamp/bools are not temperatures", clamp_temperature(True), 1.0)
 check("clamp/False is not a sharpening zero", clamp_temperature(False), 1.0)
+# A JSON integer wider than a double is not a temperature either. `json.load` keeps arbitrary
+# precision, so a 401-digit literal arrives as an `int` and `float()` answers it with
+# `OverflowError` -- which used to escape the clamp, and every load that calls it, after the
+# checkpoint had already been read off disk. `2 ** 1024` is the smallest power of two `float()`
+# refuses, and the same number written as a JSON *float* (`1e400`) parses as `inf`, which the
+# clamp has always answered with 1.0.
+check("clamp/wide integer falls back to neutral", clamp_temperature(10 ** 400), 1.0)
+check("clamp/negative wide integer falls back to neutral", clamp_temperature(-(10 ** 400)), 1.0)
+check("clamp/smallest unconvertible power of two", clamp_temperature(2 ** 1024), 1.0)
+check("clamp/convertible neighbor still clamps", clamp_temperature(2 ** 1023), TEMP_MAX)
 check("clamp/bounds are sane", TEMP_MIN <= 1.0 <= TEMP_MAX, True)
 # 13 options is the bucket the reported skill-router landed in
 check("clamp/13 options is the 11+ bucket", temp_bucket(QTYPES["choice"], 13), "choice:11+")
@@ -1843,6 +1904,24 @@ try:
 except TypeError:
     check("register/a source must be a path, repo or pair", True, True)
 
+# The pair half of that sentence was unchecked, and an empty one is the worst case: `register`
+# reported success, stored the spec, and `registered` / `route(model=...)` / `load()` then raised
+# `ValueError: not enough values to unpack (expected 2, got 1)` from `_split` on every later call.
+for bad_source, why in (([], "empty pair"), (["a", "b", "c"], "three parts"),
+                        ((None, None), "a pair naming no repo"),
+                        (("acme/laya-tone", 5), "a number among the parts")):
+    _r = Router()
+    try:
+        _r.register("tone", bad_source)
+        check("register/refuses %s" % why, False, True)
+    except TypeError as _e:
+        check("register/refuses %s" % why, "'tone'" in str(_e), True)
+    check("register/%s stores nothing" % why, "tone" in _r.registered, False)
+for good in (("acme/laya-tone", None), ["org/repo", "folder"], ("only-repo",)):
+    check("register/still accepts %r" % (good,),
+          Router(models={"tone": good}).registered["tone"]["source"],
+          "/".join([p for p in (good if isinstance(good, list) else list(good)) if p is not None]))
+
 # Every name-taking option accepts a registered name, the way it accepts a built-in one.
 r3 = Router(models={"papers": "/tmp/laya-papers"}, revisions={"papers": "abc123"}, default="papers",
             sha256_digests={"papers": {"model.safetensors": "a" * 64}})
@@ -2248,6 +2327,62 @@ check("sort report/results keep input order regardless",
       [r["routing"]["model"] for r in _sr.predict_batch(_sr_requests, batch_size=3,
                                                         sort_by_length=True)],
       ["english"] * 4 + ["multilingual"] * 2)
+
+
+# --------------------------------------------------------------------- predict input validation (#707)
+_r_val = Router()
+for label, state, qs, exc_type, err_match in [
+    ("state is None", None, Q_GENERIC, TypeError, "state must not be None"),
+    ("questions not dict", "text", ["q"], TypeError, "questions must be a dict"),
+]:
+    try:
+        _r_val.predict(state, qs)
+        FAIL.append("predict validation/%s: should have raised %s" % (label, exc_type.__name__))
+    except exc_type as _exc:
+        check("predict validation/%s raises %s" % (label, exc_type.__name__), err_match in str(_exc), True)
+    except Exception as _exc:  # noqa: BLE001
+        FAIL.append("predict validation/%s: raised %s instead of %s: %s" %
+                    (label, type(_exc).__name__, exc_type.__name__, _exc))
+check("predict validation/failed calls loaded nothing", _r_val.loaded, [])
+
+try:
+    _r_val.route("text", ["q"])
+    FAIL.append("route validation/questions not dict: should have raised TypeError")
+except TypeError as _exc:
+    check("route validation/questions not dict raises TypeError", "questions must be a dict" in str(_exc), True)
+except Exception as _exc:  # noqa: BLE001
+    FAIL.append("route validation/questions not dict: raised %s instead of TypeError: %s" %
+                (type(_exc).__name__, _exc))
+
+
+# --------------------------------------------------------------------- Vietnamese
+# Vietnamese is a Latin-script language with no stopword list of its own, so the non-English
+# diacritic set is the only signal that keeps it off the English checkpoint -- but every
+# tone-marked Vietnamese letter (`ả`, `ạ`, `ề`, `ơ`, `ư`, ...) is a precomposed codepoint the
+# set did not hold, and it already claimed Vietnamese coverage through `đ` alone. Everyday
+# sentences carried a diacritic rate of 0.0 and routed to the English checkpoint.
+for text in [
+    "Cảm ơn bạn nhiều nhẻ",
+    "Cảm ơn bạn rất nhiều",
+    "Mình muốn hỏi về đơn hàng đã đặt",
+    "Cho tôi xin hoàn tiền cho đơn hàng này",
+    "CẢM ƠN BẠN RẤT NHIỀU",
+]:
+    check("latin/vietnamese diacritic rate " + text[:24],
+          analyse(text)["diacritic_rate"] > NON_EN_DIACRITIC_RATE, True)
+    check("is_english/vietnamese " + text[:24], is_english(text), False)
+    check("route/vietnamese " + text[:24], _r_lat.route(text).model, "multilingual")
+# English must not move: Vietnamese dishes and names that made it into English (`pho`,
+# `banh mi`, `ao dai`) are plain ASCII, and an accented Vietnamese surname in an otherwise
+# English sentence is one loanword, not a Vietnamese state (#337 rescue).
+for text in [
+    "The pho was great and the banh mi was the best in town",
+    "The ao dai show at the cafe was wonderful",
+    "Thanks Nguyen for the meal we had last night",
+    "Please help Nguyễn with the invoice for the last order",
+]:
+    check("is_english/vietnamese control " + text[:24], is_english(text), True)
+    check("route/vietnamese control " + text[:24], _r_lat.route(text).model, "english")
 
 
 # --------------------------------------------------------------------- report

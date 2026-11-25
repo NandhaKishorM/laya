@@ -1,0 +1,42 @@
+{
+  "name": "budget_max_len_false",
+  "state": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+  "questions": {
+    "department": {
+      "type": "choice",
+      "instructions": "Which department should handle this?",
+      "criteria": {
+        "billing": "invoices, payments, double charges, refunds",
+        "technical": "bugs, outages, integration errors",
+        "account": "logins, seats, plan changes"
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today",
+        "drop everything"
+      ]
+    },
+    "churn_risk": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    },
+    "needs_human": {
+      "type": "noul",
+      "instructions": "This requires a human agent rather than an automated reply.",
+      "criteria": {
+        "false": "a template reply resolves it",
+        "true": "a person must intervene"
+      }
+    }
+  },
+  "error_type": "ValueError",
+  "error_message": "question 'department': only 0 of its 3 option markers fit in max_len=0 with head_max_len=256 spent on the question; lower head_max_len, raise max_len, or use fewer options",
+  "options": {
+    "max_len": false
+  }
+}

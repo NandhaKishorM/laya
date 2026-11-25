@@ -1,0 +1,172 @@
+[
+ {
+  "name": "small",
+  "difficulty": 0.4,
+  "domains": {
+   "code": 0.1,
+   "math_or_logic": 0.2,
+   "writing": 0.3,
+   "factual_lookup": 0.3,
+   "data_analysis": 0.05,
+   "chitchat": 0.05
+  },
+  "needs_tools": 0.1,
+  "is_sensitive": 0.1,
+  "tier": "small",
+  "why": "difficulty 0.40 < 1.5, no tools, not sensitive",
+  "row": "   label             0.40 / 3   writing (0.30)   0.100       0.100"
+ },
+ {
+  "name": "hard",
+  "difficulty": 2.2,
+  "domains": {
+   "code": 0.1,
+   "math_or_logic": 0.2,
+   "writing": 0.3,
+   "factual_lookup": 0.3,
+   "data_analysis": 0.05,
+   "chitchat": 0.05
+  },
+  "needs_tools": 0.2,
+  "is_sensitive": 0.3,
+  "tier": "frontier",
+  "why": "difficulty 2.20 >= 1.5",
+  "row": "   label             2.20 / 3   writing (0.30)   0.200       0.300"
+ },
+ {
+  "name": "at-difficulty-threshold",
+  "difficulty": 1.5,
+  "domains": {
+   "code": 0.1,
+   "math_or_logic": 0.2,
+   "writing": 0.3,
+   "factual_lookup": 0.3,
+   "data_analysis": 0.05,
+   "chitchat": 0.05
+  },
+  "needs_tools": 0.2,
+  "is_sensitive": 0.3,
+  "tier": "frontier",
+  "why": "difficulty 1.50 >= 1.5",
+  "row": "   label             1.50 / 3   writing (0.30)   0.200       0.300"
+ },
+ {
+  "name": "just-under-threshold",
+  "difficulty": 1.4999,
+  "domains": {
+   "code": 0.1,
+   "math_or_logic": 0.2,
+   "writing": 0.3,
+   "factual_lookup": 0.3,
+   "data_analysis": 0.05,
+   "chitchat": 0.05
+  },
+  "needs_tools": 0.2,
+  "is_sensitive": 0.3,
+  "tier": "small",
+  "why": "difficulty 1.50 < 1.5, no tools, not sensitive",
+  "row": "   label             1.50 / 3   writing (0.30)   0.200       0.300"
+ },
+ {
+  "name": "tools",
+  "difficulty": 0.2,
+  "domains": {
+   "code": 0.1,
+   "math_or_logic": 0.2,
+   "writing": 0.3,
+   "factual_lookup": 0.3,
+   "data_analysis": 0.05,
+   "chitchat": 0.05
+  },
+  "needs_tools": 0.5,
+  "is_sensitive": 0.49,
+  "tier": "frontier+tools",
+  "why": "needs external data (p=0.50)",
+  "row": "   label             0.20 / 3   writing (0.30)   0.500       0.490"
+ },
+ {
+  "name": "sensitive-overrides-tools",
+  "difficulty": 0.2,
+  "domains": {
+   "code": 0.1,
+   "math_or_logic": 0.2,
+   "writing": 0.3,
+   "factual_lookup": 0.3,
+   "data_analysis": 0.05,
+   "chitchat": 0.05
+  },
+  "needs_tools": 0.9,
+  "is_sensitive": 0.5,
+  "tier": "frontier",
+  "why": "sensitive: money/legal/medical/safety (p=0.50)",
+  "row": "   label             0.20 / 3   writing (0.30)   0.900       0.500"
+ },
+ {
+  "name": "tools-just-under",
+  "difficulty": 0.2,
+  "domains": {
+   "code": 0.1,
+   "math_or_logic": 0.2,
+   "writing": 0.3,
+   "factual_lookup": 0.3,
+   "data_analysis": 0.05,
+   "chitchat": 0.05
+  },
+  "needs_tools": 0.4999,
+  "is_sensitive": 0.1,
+  "tier": "small",
+  "why": "difficulty 0.20 < 1.5, no tools, not sensitive",
+  "row": "   label             0.20 / 3   writing (0.30)   0.500       0.100"
+ },
+ {
+  "name": "tools-overrides-hard",
+  "difficulty": 2.2,
+  "domains": {
+   "code": 0.1,
+   "math_or_logic": 0.2,
+   "writing": 0.3,
+   "factual_lookup": 0.3,
+   "data_analysis": 0.05,
+   "chitchat": 0.05
+  },
+  "needs_tools": 0.9,
+  "is_sensitive": 0.1,
+  "tier": "frontier+tools",
+  "why": "needs external data (p=0.90)",
+  "row": "   label             2.20 / 3   writing (0.30)   0.900       0.100"
+ },
+ {
+  "name": "sensitive-overrides-hard",
+  "difficulty": 2.5,
+  "domains": {
+   "code": 0.1,
+   "math_or_logic": 0.2,
+   "writing": 0.3,
+   "factual_lookup": 0.3,
+   "data_analysis": 0.05,
+   "chitchat": 0.05
+  },
+  "needs_tools": 0.1,
+  "is_sensitive": 0.9,
+  "tier": "frontier",
+  "why": "sensitive: money/legal/medical/safety (p=0.90)",
+  "row": "   label             2.50 / 3   writing (0.30)   0.100       0.900"
+ },
+ {
+  "name": "sensitive-easy",
+  "difficulty": 0.1,
+  "domains": {
+   "code": 0.1,
+   "math_or_logic": 0.2,
+   "writing": 0.3,
+   "factual_lookup": 0.3,
+   "data_analysis": 0.05,
+   "chitchat": 0.05
+  },
+  "needs_tools": 0.0,
+  "is_sensitive": 0.97,
+  "tier": "frontier",
+  "why": "sensitive: money/legal/medical/safety (p=0.97)",
+  "row": "   label             0.10 / 3   writing (0.30)   0.000       0.970"
+ }
+]

@@ -6,13 +6,12 @@ Covers:
   * the autocast path works and degrades to full precision instead of failing
 """
 import os
+import subprocess
 import sys
 from contextlib import nullcontext
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import torch
-import torch.nn as nn
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -20,7 +19,7 @@ from laya.agent import (  # noqa: E402
     MPS_AMP_MIN_ROWS_DEFAULT, Agent, _BATCH_AUTOCAST_CACHE, _amp_context, _cpu_amp_dtype,
     _cuda_amp_dtype, _mps_amp_min_rows,
 )
-from laya.common import DecisionModel, build_sequence, serialize_state  # noqa: E402
+from laya.common import build_sequence, serialize_state  # noqa: E402
 
 PASS, FAIL = [], []
 
@@ -30,6 +29,16 @@ def check(name, got, want):
         PASS.append(name)
     else:
         FAIL.append("%s: got %r, want %r" % (name, got, want))
+
+
+# `tests (windows)` has killed this suite about three runs in thirty-five, and now that the runner
+# prints the exit status (#1172) the status says what it is: `exit 3221225501 (0xC000001D)`,
+# STATUS_ILLEGAL_INSTRUCTION. Every `check` above collects into `PASS`/`FAIL` and nothing prints
+# until the report at the foot of the file, so a crash took the whole log with it: the lane showed
+# the suite's banner and then the next suite's. These markers go to stderr, unbuffered and
+# unconditional, so the next occurrence names the section it died in. They cost one write each.
+def stage(name):
+    print("[stage] %s" % name, file=sys.stderr, flush=True)
 
 
 # ------------------------------------------------------------------ fake tokenizer
@@ -77,6 +86,7 @@ def _bare_agent(model, dtype=torch.float32, amp=False, tok=None):
 
 
 # ------------------------------------------------------------------ state reused once
+stage("state reused once")
 STATE = {"subject": "Duplicate charge", "body": "x" * 400}
 QUESTION = {"t": "choice", "ins": "pick", "crit": {"a": "x", "b": "y"}}
 
@@ -122,6 +132,33 @@ check("build_sequence/option segments stay <= 49 tokens",
 
 
 # ------------------------------------------------------------------ autocast
+stage("autocast")
+# The real bf16 forward -- this model's own ops, not a stand-in -- and the only place in this file
+# that executes one. It runs in a child process rather than here, because on some machines that
+# forward is a native fault and a fault is not an exception: it kills the interpreter, so no
+# `except` sees it and no `check` records it. `tests (windows)` has taken this suite down with
+# `exit 3221225501 (0xC000001D)`, STATUS_ILLEGAL_INSTRUCTION, about three runs in thirty-five; the
+# stage markers narrowed it to this section, which then printed `[stage] autocast` and died. It is
+# the class of issue #1065, where the fbgemm quantization engine raised SIGILL on a CPU with SSE4.2
+# and no AVX2 -- oneDNN chooses a kernel for an instruction set the CPU does not have -- and it is
+# intermittent on one runner label because the hosted fleet is not one CPU model.
+#
+# A capability probe built from `nn.Linear(16, 16)` was not enough to predict it: oneDNN chooses
+# per op and per shape, so the toy GEMM ran on a runner where this model's ops did not. The probe
+# is therefore the assertion itself. The child runs both legs and prints its numbers; this process
+# only ever reads them, and so never touches a bf16 kernel. If the child dies, the section says so
+# with the capability torch reports instead of taking the suite down; if it survives, the numbers
+# are checked for real. laya's own behaviour is unchanged either way: `LAYA_CPU_AMP` is opt-in, and
+# `_cpu_amp_dtype` documents that it is for hardware with native BF16 instructions.
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_AMP_PROBE = r'''
+import torch
+import torch.nn as nn
+from types import SimpleNamespace
+
+from laya.common import DecisionModel
+
+
 class DummyEnc(nn.Module):
     def __init__(self, d=16):
         super().__init__()
@@ -142,9 +179,36 @@ with torch.no_grad():
     logits32, act32 = model(iid, am, mp, mm, qt)
     with torch.autocast(device_type="cpu", dtype=torch.bfloat16, enabled=True):
         logits16, act16 = model(iid, am, mp, mm, qt)
-check("autocast/shapes match", tuple(logits16.shape), tuple(logits32.shape))
-check("autocast/finite", bool(torch.isfinite(logits16).all() and torch.isfinite(act16).all()), True)
-check("autocast/close to fp32", float((logits32 - logits16).abs().max()) < 0.5, True)
+finite = bool(torch.isfinite(logits16).all() and torch.isfinite(act16).all())
+delta = float((logits32 - logits16).abs().max())
+# shapes, then a 0/1 for finite, then the fp32/bf16 gap: parsed, never re-derived, by the parent
+print("ok", "x".join(str(n) for n in logits16.shape), "x".join(str(n) for n in logits32.shape),
+      int(finite), delta)
+'''
+try:
+    # cwd is the repo root, which `python -c` puts first on `sys.path`, so `laya` imports as usual.
+    # The timeout only bounds a hang; a faulting child exits at once with the status above.
+    _probe = subprocess.run([sys.executable, "-c", _AMP_PROBE], capture_output=True, text=True,
+                            cwd=_ROOT, timeout=600)
+except subprocess.TimeoutExpired:                                   # pragma: no cover
+    _probe = None
+_stdout = "" if _probe is None else (_probe.stdout or "")
+_lines = [ln.split() for ln in _stdout.splitlines() if ln.startswith("ok ")]
+_words = _lines[-1] if (_probe is not None and _probe.returncode == 0 and _lines) else []
+_amp_runs = len(_words) == 5
+if not _amp_runs:
+    try:
+        _capability = torch.backends.cpu.get_cpu_capability()
+    except Exception as exc:                                        # pragma: no cover
+        _capability = "unknown (%s)" % type(exc).__name__
+    stage("autocast: SKIPPED, this CPU cannot execute a bf16 autocast forward "
+          "(capability %s, child exit %s)"
+          % (_capability, "timeout" if _probe is None else _probe.returncode))
+    PASS.append("autocast/skipped: bf16 CPU autocast is not executable here")
+else:
+    check("autocast/shapes match", _words[1], _words[2])
+    check("autocast/finite", _words[3] == "1", True)
+    check("autocast/close to fp32", float(_words[4]) < 0.5, True)
 
 calls = {"n": 0}
 
@@ -215,6 +279,7 @@ check("infer/non-autocast error propagates", raised, True)
 
 
 # ------------------------------------------------------------------ MPS autocast gating
+stage("MPS autocast gating")
 # MPS fp16 is slower than fp32 on one small row and only wins once the batch grows, so it is
 # gated by row count. These check the gate without an MPS device.
 def _mps_agent(amp=True, min_rows=None):
@@ -262,8 +327,26 @@ os.environ["LAYA_CUDA_AMP"] = "fp16"
 check("cuda-amp/env fp16 overrides a bf16 checkpoint", _cuda_amp_dtype("bf16"), torch.float16)
 os.environ["LAYA_CUDA_AMP"] = "BF16"
 check("cuda-amp/env bf16 overrides an fp16 checkpoint", _cuda_amp_dtype("fp16"), torch.bfloat16)
+# A value the function cannot parse used to fall back to the checkpoint without a word, so a typo
+# served bf16 to a deployment that believed it had asked for something else (#443). It raises now.
 os.environ["LAYA_CUDA_AMP"] = "int8"
-check("cuda-amp/env invalid falls back to the checkpoint", _cuda_amp_dtype("bf16"), torch.bfloat16)
+try:
+    _cuda_amp_dtype("bf16")
+    invalid = None
+except ValueError as e:
+    invalid = str(e)
+check("cuda-amp/env invalid raises and names the value", invalid is not None and "'int8'" in invalid, True)
+# fp32 is the precision the parity numbers are measured against; the caller turns autocast off for
+# it rather than entering an autocast region at float32.
+os.environ["LAYA_CUDA_AMP"] = "fp32"
+check("cuda-amp/env fp32 asks for full precision", _cuda_amp_dtype("bf16"), torch.float32)
+os.environ["LAYA_CUDA_AMP"] = "Float32"
+check("cuda-amp/env float32 is the same ask as fp32", _cuda_amp_dtype("bf16"), torch.float32)
+os.environ["LAYA_CUDA_AMP"] = " bf16\n"
+check("cuda-amp/env value is trimmed", _cuda_amp_dtype("fp16"), torch.bfloat16)
+# The compose files forward `${LAYA_CUDA_AMP:-}`, so an unset variable arrives as "".
+os.environ["LAYA_CUDA_AMP"] = ""
+check("cuda-amp/env empty means unset", _cuda_amp_dtype("bf16"), torch.bfloat16)
 # `agent.dtype` reports float16 and bfloat16, so those are the spellings a caller can read off one
 # response and ask for on the next. laya/agent.py has accepted both from the start; both prose
 # sites that listed the vocabulary described them as inert, and tests/test_env_docs.py now holds
@@ -291,6 +374,7 @@ del os.environ["LAYA_CPU_AMP"]
 
 
 # ------------------------------------------------------------------ amp context shape
+stage("amp context shape")
 # A disabled gate must never construct torch.autocast: on torch builds without an MPS
 # autocast backend, entering it raises even with enabled=False, which broke MPS predict().
 mps = torch.device("mps")
@@ -311,6 +395,7 @@ check("amp-context/_infer disabled completes", True, True)
 
 
 # ------------------------------------------------------------------ OOM fallback observability (#351)
+stage("OOM fallback observability (#351)")
 class FakeCUDAInput:
     """An input_ids that fails the way a real CUDA OOM does when moved off CPU.
 
@@ -383,6 +468,7 @@ check("oom-fallback/plain CPU reason stays None", cpu_disabled.last_fallback_rea
 
 
 # ------------------------------------------------------------------ example 35 must teach this policy
+stage("example 35 must teach this policy")
 # examples/35 is the page a reader opens to ask "does my machine get mixed precision?", and on main
 # it answered no twice: "CPU and MPS run **fp32**; `torch.autocast` has no MPS backend here, so Laya
 # only wraps the forward pass on CUDA" in the banner, then, printed under the timings, "both legs

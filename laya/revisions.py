@@ -69,8 +69,10 @@ def resolve_revision(model_id_or_path: str, revision: Optional[str] = None) -> O
 
     ``reviewed`` for a repository the table has no entry for raises rather than loading it
     unpinned: a pin that quietly resolves to nothing is the failure mode this control exists to
-    prevent, and `verify_digests` refuses on the same principle. Everything else returns None so
-    huggingface_hub applies its normal default, preserving existing online/offline caches.
+    prevent, and `verify_digests` refuses on the same principle. The refusal names whichever of the
+    two asked for it, because telling a caller who passed `revision='reviewed'` to unset a variable
+    they never set sends them to the wrong file. Everything else returns None so huggingface_hub
+    applies its normal default, preserving existing online/offline caches.
     """
     value = (revision or os.environ.get("LAYA_REVISION", "")).strip()
     if not value:
@@ -78,6 +80,11 @@ def resolve_revision(model_id_or_path: str, revision: Optional[str] = None) -> O
     if value == REVIEWED:
         pinned = _reviewed_pin(model_id_or_path)
         if pinned is None:
+            if revision:
+                raise ValueError(
+                    "laya: revision= asked for 'reviewed', but %r has no reviewed SHA in "
+                    "PINNED_REVISIONS; pass a commit, branch or tag in revision= instead"
+                    % model_id_or_path)
             raise ValueError(
                 "laya: LAYA_REVISION=reviewed, but %r has no reviewed SHA in "
                 "PINNED_REVISIONS; set LAYA_REVISION to a commit or unset it"
@@ -107,8 +114,9 @@ def verify_digests(
     """Verify SHA-256 digests of files under `model_dir` against {relpath: hexdigest}.
 
     Raises FileNotFoundError when a listed file is absent and ValueError on a digest
-    mismatch or an unsafe (absolute or escaping) relative path. Verification runs before
-    any weight is parsed or executed, so a tampered artifact never reaches the runtime.
+    mismatch, an unsafe (absolute or escaping) relative path, or a `LAYA_SHA256_DIGESTS`
+    the JSON reader cannot walk. Verification runs before any weight is parsed or
+    executed, so a tampered artifact never reaches the runtime.
     """
     if expected is None:
         raw = os.environ.get("LAYA_SHA256_DIGESTS", "").strip()
@@ -116,7 +124,13 @@ def verify_digests(
             return
         try:
             expected = json.loads(raw)
-        except json.JSONDecodeError as exc:
+        except (json.JSONDecodeError, RecursionError) as exc:
+            # `RecursionError` is a third way this variable is not a document: `json` reports a
+            # nesting depth it will not walk as a stack overflow, which is neither a `ValueError`
+            # decode failure nor anything the caller catches. `laya/_eval_policy.py`,
+            # `laya/evidence.py` and `laya/cli.py` read an unreadable JSON the same way, and here
+            # the leak escaped `load()` and `Router.load()` -- which both document the ValueError
+            # and mean it as "this pinning configuration is wrong" -- as an interpreter traceback.
             raise ValueError("LAYA_SHA256_DIGESTS must be a JSON object of artifact->sha256") from exc
     if not isinstance(expected, dict):
         raise ValueError("expected_sha256 must be a mapping of artifact paths to digests")
@@ -130,6 +144,13 @@ def verify_digests(
             rel_norm = raw_rel.lstrip("/")
             if not rel_norm or rel_norm == ".." or rel_norm.startswith("../") or "/../" in rel_norm:
                 raise ValueError("laya: unsafe path in expected digests: %r" % (rel,))
+            # Drive-anchored components are not absolute by ntpath's own test
+            # (ntpath.isabs("C:evil") is False), but on Windows ntpath.join resets to
+            # the drive the moment one appears -- os.path.join("C:\\dir", "a", "b:c")
+            # is "b:c" -- so a digest entry like "a/b:c" escapes model_dir and the
+            # verification reads a file outside the checkpoint it is meant to gate.
+            if any(ntpath.splitdrive(part)[0] for part in rel_norm.split("/")):
+                raise ValueError("laya: unsafe drive-anchored path in expected digests: %r" % (rel,))
             path = os.path.join(model_dir, rel_norm)
         if not os.path.isfile(path):
             raise FileNotFoundError(

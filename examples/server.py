@@ -411,6 +411,26 @@ class BatchRequest(BaseModel):
 # --------------------------------------------------------------------------- #
 
 ROUTER: Optional[Router] = None
+
+
+def _resolve_max_loaded() -> Optional[int]:
+    """Resident-checkpoint cap from ``LAYA_MAX_LOADED``; ``None`` leaves it to ``Router``.
+
+    Mirrors ``laya/serve.py::_resolve_max_loaded``. Unparseable or non-positive input falls back
+    to "not asked for" rather than reaching the ``int()`` below as a crash: a typo in a deployment
+    file must not stop the server at import, which is the same fail-soft the shipped server keeps
+    and the one the ``--max-loaded`` flag already gets from argparse ``type=int``.
+    """
+    raw = os.environ.get("LAYA_MAX_LOADED")
+    if not raw or not raw.strip():
+        return None
+    try:
+        n = int(raw)
+    except ValueError:
+        return None
+    return n if n > 0 else None
+
+
 _CFG: Dict[str, Any] = {
     "preload": os.getenv("LAYA_PRELOAD", "1") not in ("0", "false", "False"),
     "device": os.getenv("LAYA_DEVICE") or None,
@@ -423,8 +443,7 @@ _CFG: Dict[str, Any] = {
     # neither key when the variable is unset -- moved with it.
     "default": (os.environ["LAYA_DEFAULT_MODEL"].strip()
                 if os.getenv("LAYA_DEFAULT_MODEL", "").strip() else None),
-    "max_loaded": (int(os.environ["LAYA_MAX_LOADED"])
-                   if os.getenv("LAYA_MAX_LOADED", "").strip() else None),
+    "max_loaded": _resolve_max_loaded(),
 }
 
 

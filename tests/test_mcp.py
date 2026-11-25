@@ -41,11 +41,13 @@ from laya.mcp.tools import (  # noqa: E402
     laya_decide,
     laya_predict,
     laya_predict_batch,
+    laya_predict_long,
     laya_preset,
     laya_route,
     laya_route_batch,
     laya_shortlist,
     laya_status,
+    laya_tournament,
     validate_batch_requests,
     validate_budget,
     validate_lang,
@@ -994,6 +996,196 @@ BATCH_REQUESTS = [
 ]
 
 
+class TournamentAgent:
+    device = "cpu"
+
+    def __init__(self):
+        self.calls = []
+
+    def predict(self, state, questions, **kwargs):
+        self.calls.append((state, questions, kwargs))
+        answers = {}
+        for name, spec in questions.items():
+            if spec["type"] == "choice":
+                labels = list(spec["criteria"])
+                winner = max(labels, key=lambda label: int(label[3:]))
+                answers[name] = {"type": "choice", "choice": winner, "confidence": 0.9,
+                                 "probabilities": {label: float(label == winner) for label in labels}}
+                if kwargs.get("min_confidence", 0) > 0.9:
+                    answers[name]["low_confidence"] = True
+            elif spec["type"] == "score":
+                answers[name] = {"type": "score", "score": 1.0, "confidence": 0.9}
+            else:
+                answers[name] = {"type": "noul", "noul": 0.9, "confidence": 0.9}
+        return {"answers": answers, "usage": {"call": len(self.calls)}}
+
+
+class TournamentRouter:
+    def __init__(self, decision=None):
+        self.decision = decision or {"model": "english", "repo": "fake/repo", "reason": "original request"}
+        self.routes = []
+        self.agent = TournamentAgent()
+        self._agents = {self.decision["model"]: self.agent}
+
+    def route(self, state, questions, **kwargs):
+        self.routes.append((state, questions, kwargs))
+        return self.decision
+
+    def predict(self, state, questions, **kwargs):
+        result = self.agent.predict(state, questions, **kwargs)
+        result["routing"] = {"model": kwargs["model"], "repo": "fake/repo", "reason": "explicit model"}
+        return result
+
+
+def tournament_questions(n):
+    return {"intent": {"type": "choice", "instructions": "Which intent does `body` express?",
+                       "criteria": {"opt%d" % i: "intent %d" % i for i in range(n)}}}
+
+
+def test_tournament():
+    import copy
+
+    for n, rounds, calls, sizes in ((40, 1, 2, [13, 13, 14]), (257, 2, 3, [15] * 8 + [16] + [15] * 7 + [16])):
+        questions = tournament_questions(n)
+        questions["rubric"] = {"type": "score", "instructions": "Rate urgency", "criteria": ["low", "high"]}
+        questions["flag"] = {"type": "noul", "instructions": "Is this urgent?"}
+        original = copy.deepcopy(questions)
+        agent = TournamentAgent()
+        out = laya_tournament(STATE, questions, model="english", agent=agent)
+        ok("tournament/%d_balanced" % n,
+           [len(q["criteria"]) for q in agent.calls[0][1].values()] == sizes)
+        ok("tournament/%d_rounds_and_calls" % n,
+           out["tournament"]["intent"]["rounds"] == rounds and len(agent.calls) == calls)
+        ok("tournament/%d_best_survives" % n, out["answers"]["intent"]["choice"] == "opt%d" % (n - 1))
+        ok("tournament/%d_final_carries_all_questions" % n,
+           set(agent.calls[-1][1]) == set(questions) and set(out["answers"]) == set(questions))
+        ok("tournament/%d_only_choices_have_metadata" % n, set(out["tournament"]) == {"intent"})
+        meta = out["tournament"]["intent"]
+        ok("tournament/%d_original_count" % n, meta["n"] == n)
+        ok("tournament/%d_finalist_probabilities" % n,
+           list(out["answers"]["intent"]["probabilities"]) == meta["labels"])
+        ok("tournament/%d_input_preserved" % n, questions == original)
+        ok("tournament/%d_shape" % n,
+           set(out) == {"answers", "routing", "latency_ms", "device", "tournament"}
+           and out["device"] == "cpu" and out["latency_ms"] >= 0)
+
+    questions = tournament_questions(40)
+    questions["small"] = tournament_questions(2)["intent"]
+    questions["intent"]["option_order"] = list(reversed(range(40)))
+    questions["small"]["option_order"] = [1, 0]
+    original = copy.deepcopy(questions)
+    agent = TournamentAgent()
+    import warnings
+
+    with warnings.catch_warnings(record=True) as seen:
+        warnings.simplefilter("always")
+        out = laya_tournament(STATE, questions, model="en", agent=agent, group_size=4,
+                              lang="de", max_len=1024, head_max_len=384, min_confidence=0.95)
+    ok("tournament/order_drop_once", len(seen) == 1 and "option_order" in str(seen[0].message))
+    ok("tournament/order_drop_report", out["option_order_dropped"] == {"intent": {"n": 40, "kept": 3}})
+    ok("tournament/orders_input_preserved", questions == original)
+    ok("tournament/small_order_kept", agent.calls[-1][1]["small"]["option_order"] == [1, 0])
+    ok("tournament/narrowed_order_removed",
+       all("option_order" not in q for _s, qs, _k in agent.calls[:-1] for q in qs.values()))
+    ok("tournament/controls_every_round",
+       all(kwargs == {"lang": "de", "max_len": 1024, "head_max_len": 384, "min_confidence": 0.95}
+           for _s, _qs, kwargs in agent.calls))
+    ok("tournament/low_confidence_final", out["answers"]["intent"]["low_confidence"] is True)
+    ok("tournament/custom_size_rounds", len(agent.calls) == 3 and out["tournament"]["intent"]["rounds"] == 2)
+
+    for model in ("english", None, "auto"):
+        agent = TournamentAgent()
+        small = tournament_questions(2)
+        out = laya_tournament(STATE, small, model=model, agent=agent)
+        ok("tournament/%r_passthrough" % model, len(agent.calls) == 1 and agent.calls[0][1] == small)
+        ok("tournament/%r_zero_round_metadata" % model,
+           out["tournament"] == {"intent": {"labels": ["opt0", "opt1"], "n": 2, "rounds": 0}})
+        ok("tournament/%r_direct_routing" % model, out["routing"]["model"] == ("english" if model == "english" else None))
+        ok("tournament/%r_no_order_drop" % model, "option_order_dropped" not in out)
+    agent = TournamentAgent()
+    out = laya_tournament(STATE, {"flag": {"type": "noul", "instructions": "Is this urgent?"}},
+                          model="english", agent=agent)
+    ok("tournament/non_choice_one_call", len(agent.calls) == 1 and out["tournament"] == {})
+
+
+def test_tournament_rejects_broken_winners():
+    for bad in (None, {}, {"choice": "opt39"}, {"choice": "unknown"},
+                {"choice": ["opt39"]}, {"choice": 39}):
+        class BrokenAgent(TournamentAgent):
+            def predict(self, state, questions, **kwargs):
+                result = super().predict(state, questions, **kwargs)
+                if len(self.calls) == 1:
+                    if bad is None:
+                        del result["answers"]["0"]
+                    else:
+                        result["answers"]["0"] = bad
+                return result
+
+        agent = BrokenAgent()
+        expect_tool_error("tournament/broken_winner_%r" % bad,
+                          lambda: laya_tournament(STATE, tournament_questions(40),
+                                                 model="english", agent=agent), "internal_error")
+        ok("tournament/broken_winner_stops_round_%r" % bad, len(agent.calls) == 1)
+
+    class BrokenRecursiveAgent(TournamentAgent):
+        def predict(self, state, questions, **kwargs):
+            result = super().predict(state, questions, **kwargs)
+            if len(self.calls) == 2:
+                result["answers"]["0"]["choice"] = "opt256"
+            return result
+
+    agent = BrokenRecursiveAgent()
+    expect_tool_error("tournament/recursive_out_of_group_winner",
+                      lambda: laya_tournament(STATE, tournament_questions(257),
+                                             model="english", agent=agent), "internal_error")
+    ok("tournament/recursive_broken_winner_stops_round", len(agent.calls) == 2)
+
+
+def test_tournament_routing_and_validation():
+    questions = tournament_questions(40)
+    for detection in ({"language": "de"}, SimpleNamespace(language="de")):
+        router = TournamentRouter({"model": "multilingual", "repo": "fake/ml", "reason": "German",
+                                   "detection": detection})
+        unused = TournamentAgent()
+        out = laya_tournament(STATE, questions, router=router, agent=unused,
+                              task="typed_decisions", lang_guess="de", max_len=1024)
+        ok("tournament/auto_original_request", router.routes == [(STATE, questions, {"task": "typed_decisions", "lang_guess": "de"})])
+        ok("tournament/auto_pinned_every_round",
+           all(kwargs == {"model": "multilingual", "lang": "de", "max_len": 1024}
+               for _s, _qs, kwargs in router.agent.calls))
+        ok("tournament/auto_preserves_route", out["routing"] == {"model": "multilingual", "repo": "fake/ml", "reason": "German"})
+        ok("tournament/auto_uses_routed_agent", unused.calls == [] and out["device"] == "cpu")
+        router = TournamentRouter({"model": "multilingual", "reason": "German", "detection": detection})
+        laya_tournament(STATE, questions, router=router, lang="fr")
+        ok("tournament/explicit_lang_wins", all(k["lang"] == "fr" for _s, _qs, k in router.agent.calls))
+
+    router = TournamentRouter()
+    out = laya_tournament(STATE, questions, model="EN", router=router)
+    ok("tournament/pin_skips_selection", router.routes == [] and out["routing"]["model"] == "english")
+    ok("tournament/pin_no_unset_controls", all(k == {"model": "english"} for _s, _qs, k in router.agent.calls))
+    for args, code in (({"state": []}, "invalid_state"), ({"questions": {}}, "invalid_questions"),
+                       ({"model": "gpt4"}, "invalid_model"), ({"task": "bad"}, "invalid_task"),
+                       ({"lang": 3}, "invalid_lang"), ({"lang_guess": 3}, "invalid_lang_guess"),
+                       ({"max_len": 0}, "invalid_max_len"), ({"head_max_len": "384"}, "invalid_head_max_len"),
+                       ({"min_confidence": 2}, "invalid_min_confidence"),
+                       ({"model": "english", "task": "typed"}, "invalid_task"),
+                       ({"model": "english", "lang_guess": "de"}, "invalid_lang_guess")):
+        router = TournamentRouter()
+        params = {"state": STATE, "questions": questions, "router": router, **args}
+        expect_tool_error("tournament/invalid_%r" % args, lambda: laya_tournament(**params), code)
+        ok("tournament/invalid_before_inference_%r" % args, not router.routes and not router.agent.calls)
+    for size in (True, False, None, 1, 0, -1, 2.5, "16"):
+        expect_tool_error("tournament/invalid_group_%r" % size,
+                          lambda: laya_tournament(STATE, questions, group_size=size), "invalid_group_size")
+    expect_tool_error("tournament/not_ready", lambda: laya_tournament(STATE, questions), "models_not_ready")
+    expect_tool_error("tournament/pinned_not_ready",
+                      lambda: laya_tournament(STATE, questions, model="english"), "models_not_ready")
+    bad = tournament_questions(40)
+    bad["intent"]["option_order"] = [0]
+    expect_tool_error("tournament/bad_order_before_rounds",
+                      lambda: laya_tournament(STATE, bad), "invalid_questions")
+
+
 def test_batch_validation():
     for bad in (None, {}, "x", {"state": STATE, "questions": QUESTIONS}):
         expect_tool_error("batch/requests_bad_%r" % (type(bad).__name__,),
@@ -1167,13 +1359,24 @@ def test_batch_predict():
        "min_confidence" not in kwargs and "sort_by_length" not in kwargs, repr(kwargs))
     
     # Call-level controls are validated up front like every sibling tool: a bad value is a clean
-    # ToolError, not an internal_error that escaped the TypeError-only handler, and not a silent
-    # 1-second hook deadline from core's float(True) == 1.0.
+    # ToolError, not an internal_error that escaped the TypeError-only handler. A bool is refused
+    # here before core sees it, so the caller hears `invalid_hooks_timeout` rather than the core
+    # refusal `laya/hooks.py::validate_timeout` raises for the same mistake.
     expect_tool_error("batch/min_confidence_out_of_range",
                       lambda: laya_predict_batch(BATCH_REQUESTS, min_confidence=1.5, router=BatchRouter()),
                       "invalid_min_confidence")
     expect_tool_error("batch/hooks_timeout_bool_rejected",
                       lambda: laya_predict_batch(BATCH_REQUESTS, hooks_timeout=True, router=BatchRouter()),
+                      "invalid_hooks_timeout")
+    # A list and a JSON integer too large for a float are also bad deadlines. `_validate_hooks_timeout`
+    # catches only (TypeError, ValueError), so before core refused them as a ValueError the giant int
+    # escaped as an `OverflowError` and surfaced as `internal_error` -- the failure this handler exists
+    # to prevent. Both must now come back as `invalid_hooks_timeout`.
+    expect_tool_error("batch/hooks_timeout_list_rejected",
+                      lambda: laya_predict_batch(BATCH_REQUESTS, hooks_timeout=[10], router=BatchRouter()),
+                      "invalid_hooks_timeout")
+    expect_tool_error("batch/hooks_timeout_oversized_int_rejected",
+                      lambda: laya_predict_batch(BATCH_REQUESTS, hooks_timeout=10 ** 1000, router=BatchRouter()),
                       "invalid_hooks_timeout")
     # min_confidence=0.0 is a real gate (abstain over nothing) and must still be forwarded.
     router = BatchRouter()
@@ -1215,11 +1418,32 @@ def test_batch_tool_control_forwarding():
         server_mod.laya_predict_batch_tool(requests=BATCH_REQUESTS, hooks_timeout=0)
         ok("batch_tool/hooks_timeout_zero_is_unset", seen["kwargs"]["hooks_timeout"] is None,
            repr(seen["kwargs"]["hooks_timeout"]))
+        # The collapse compares values rather than testing identity: `hooks_timeout` is declared a
+        # number, so a JSON client is free to send its default as `0.0`, and `0.0 == 0` while
+        # `0.0 is 0` is False.
+        server_mod.laya_predict_batch_tool(requests=BATCH_REQUESTS, hooks_timeout=0.0)
+        ok("batch_tool/hooks_timeout_float_zero_is_unset", seen["kwargs"]["hooks_timeout"] is None,
+           repr(seen["kwargs"]["hooks_timeout"]))
         server_mod.laya_predict_batch_tool(requests=BATCH_REQUESTS)
         ok("batch_tool/hooks_timeout_default_is_unset", seen["kwargs"]["hooks_timeout"] is None,
            repr(seen["kwargs"]["hooks_timeout"]))
         ok("batch_tool/min_confidence_default_is_unset", seen["kwargs"]["min_confidence"] is None,
            repr(seen["kwargs"]["min_confidence"]))
+        # `batch_size` is declared `int = 0` for the same eager-default reason, so 0 is its unset
+        # marker too -- and a real cap is forwarded untouched.
+        server_mod.laya_predict_batch_tool(requests=BATCH_REQUESTS, batch_size=0)
+        ok("batch_tool/batch_size_zero_is_unset", seen["kwargs"]["batch_size"] is None,
+           repr(seen["kwargs"]["batch_size"]))
+        # JSON has no integer type, so an eager client can send the declared-int default as `0.0`.
+        server_mod.laya_predict_batch_tool(requests=BATCH_REQUESTS, batch_size=0.0)
+        ok("batch_tool/batch_size_float_zero_is_unset", seen["kwargs"]["batch_size"] is None,
+           repr(seen["kwargs"]["batch_size"]))
+        server_mod.laya_predict_batch_tool(requests=BATCH_REQUESTS)
+        ok("batch_tool/batch_size_default_is_unset", seen["kwargs"]["batch_size"] is None,
+           repr(seen["kwargs"]["batch_size"]))
+        server_mod.laya_predict_batch_tool(requests=BATCH_REQUESTS, batch_size=2)
+        ok("batch_tool/batch_size_forwarded", seen["kwargs"]["batch_size"] == 2,
+           repr(seen["kwargs"]["batch_size"]))
 
         # A value in range is forwarded as given.
         server_mod.laya_predict_batch_tool(requests=BATCH_REQUESTS, hooks_timeout=1.5,
@@ -1235,6 +1459,9 @@ def test_batch_tool_control_forwarding():
             server_mod.laya_predict_batch_tool(requests=BATCH_REQUESTS, hooks_timeout=bad)
             ok("batch_tool/hooks_timeout_%r_reaches_tools" % (bad,),
                seen["kwargs"]["hooks_timeout"] is bad, repr(seen["kwargs"]["hooks_timeout"]))
+            server_mod.laya_predict_batch_tool(requests=BATCH_REQUESTS, batch_size=bad)
+            ok("batch_tool/batch_size_%r_reaches_tools" % (bad,),
+               seen["kwargs"]["batch_size"] is bad, repr(seen["kwargs"]["batch_size"]))
 
         # Out of range reaches the tools layer untouched instead of being folded into "unset".
         for bad in (-1.0, -0.5):
@@ -1256,6 +1483,10 @@ def test_batch_tool_control_forwarding():
                       lambda: laya_predict_batch(BATCH_REQUESTS, hooks_timeout=False,
                                                  router=BatchRouter()),
                       "invalid_hooks_timeout")
+    expect_tool_error("batch_tool/batch_size_false_rejected_downstream",
+                      lambda: laya_predict_batch(BATCH_REQUESTS, batch_size=False,
+                                                 router=BatchRouter()),
+                      "invalid_batch_size")
     expect_tool_error("batch_tool/min_confidence_rejected_downstream",
                       lambda: laya_predict_batch(BATCH_REQUESTS, min_confidence=-0.5,
                                                  router=BatchRouter()),
@@ -1323,6 +1554,111 @@ def test_batch_route():
     expect_tool_error("batch/route_count_mismatch",
                       lambda: laya_route_batch(BATCH_REQUESTS, router=ShortRouter()),
                       "internal_error")
+
+
+def test_route_batch_tool_hooks_timeout_forwarding():
+    """`laya_route_batch_tool` must not fold a boolean `hooks_timeout` into "unset".
+
+    The door collapses `0` to None because MCP clients send a declared default eagerly and
+    `Router.route_batch` reads None as "use my own timeout". But `False == 0`, so that same fold
+    swallowed a caller's `hooks_timeout=false`, which `laya_route_batch` refuses by name
+    (`invalid_hooks_timeout`) -- exactly the collapse the sibling door on `laya_predict_batch`
+    already excludes booleans from, for the reason `test_batch_tool_control_forwarding` states.
+    """
+    import laya.mcp.server as server_mod
+
+    seen = {}
+
+    def fake_wrap(fn, **kwargs):
+        seen["kwargs"] = kwargs
+        return "{}"
+
+    real_router_or_error, real_wrap = server_mod._router_or_error, server_mod._wrap
+
+    def fake_router_or_error():
+        return BatchRouter()
+
+    server_mod._router_or_error = fake_router_or_error
+    server_mod._wrap = fake_wrap
+    try:
+        server_mod.laya_route_batch_tool(requests=BATCH_REQUESTS, hooks_timeout=0)
+        ok("route_batch_tool/hooks_timeout_zero_is_unset", seen["kwargs"]["hooks_timeout"] is None,
+           repr(seen["kwargs"]["hooks_timeout"]))
+        # A JSON client is free to send the default as `0.0` for a declared float, and `0.0 == 0`
+        # while `0.0 is 0` is False -- the collapse has to compare, not test identity.
+        server_mod.laya_route_batch_tool(requests=BATCH_REQUESTS, hooks_timeout=0.0)
+        ok("route_batch_tool/hooks_timeout_float_zero_is_unset",
+           seen["kwargs"]["hooks_timeout"] is None, repr(seen["kwargs"]["hooks_timeout"]))
+        server_mod.laya_route_batch_tool(requests=BATCH_REQUESTS)
+        ok("route_batch_tool/hooks_timeout_default_is_unset", seen["kwargs"]["hooks_timeout"] is None,
+           repr(seen["kwargs"]["hooks_timeout"]))
+        server_mod.laya_route_batch_tool(requests=BATCH_REQUESTS, hooks_timeout=1.5)
+        ok("route_batch_tool/hooks_timeout_forwarded", seen["kwargs"]["hooks_timeout"] == 1.5,
+           repr(seen["kwargs"]["hooks_timeout"]))
+
+        # A bool is never an unset marker, and an out-of-range number is not either: both have to
+        # reach the layer that names them.
+        for bad in (True, False):
+            server_mod.laya_route_batch_tool(requests=BATCH_REQUESTS, hooks_timeout=bad)
+            ok("route_batch_tool/hooks_timeout_%r_reaches_tools" % (bad,),
+               seen["kwargs"]["hooks_timeout"] is bad, repr(seen["kwargs"]["hooks_timeout"]))
+        for bad in (-1.0, -0.5):
+            server_mod.laya_route_batch_tool(requests=BATCH_REQUESTS, hooks_timeout=bad)
+            ok("route_batch_tool/hooks_timeout_%r_reaches_tools" % (bad,),
+               seen["kwargs"]["hooks_timeout"] == bad, repr(seen["kwargs"]["hooks_timeout"]))
+    finally:
+        server_mod._router_or_error, server_mod._wrap = real_router_or_error, real_wrap
+
+    # And the tools layer does refuse them, which is what makes the forwarding observable.
+    expect_tool_error("route_batch_tool/hooks_timeout_false_rejected_downstream",
+                      lambda: laya_route_batch(BATCH_REQUESTS, hooks_timeout=False,
+                                               router=BatchRouter()),
+                      "invalid_hooks_timeout")
+
+
+def test_batch_unknown_task_is_invalid_task():
+    """An unpinned batch `task` that names no checkpoint is `invalid_task`, as on `laya_route`.
+
+    The batch validator only checked that `task` was a non-empty string, so the name reached
+    `Router.route_batch` / `predict_batch`, whose `normalise_name` raised ValueError, and the
+    client got `internal_error`. A pinned model is never routed, so its task is left as it was
+    (`batch/validation_keeps_overrides`); "auto" pins nothing, so its task is checked.
+    """
+    import json
+
+    from laya.mcp import server as server_mod
+    from mcp.server.mcpserver.exceptions import ToolError as McpToolError
+
+    requests = [{"state": STATE, "questions": QUESTIONS},
+                {"state": STATE, "questions": QUESTIONS, "task": "not-a-checkpoint"}]
+    saved = server_mod._ROUTER
+    try:
+        for tool in ("laya_route_batch", "laya_predict_batch"):
+            router = BatchRouter()
+            server_mod._ROUTER = router
+            try:
+                result = asyncio.run(mcp_server.call_tool(tool, {"requests": requests}))
+            except McpToolError as exc:
+                # "Error executing tool <name>: <the wrapper's JSON payload>"
+                payload = json.loads(str(exc).split(": ", 1)[1])
+            else:
+                payload = {"answered": result.content[0].text}
+            ok("batch_task/%s_invalid_task" % tool, payload.get("error") == "invalid_task",
+               repr(payload)[:200])
+            ok("batch_task/%s_names_item" % tool,
+               "requests[1]['task']" in str(payload.get("message")), repr(payload)[:200])
+            ok("batch_task/%s_router_not_called" % tool,
+               router.route_batch_calls == [] and router.predict_batch_calls == [])
+    finally:
+        server_mod._ROUTER = saved
+
+    expect_tool_error("batch_task/auto_model_still_checks_task",
+                      lambda: validate_batch_requests(
+                          [{"state": STATE, "questions": QUESTIONS, "model": "auto",
+                            "task": "not-a-checkpoint"}]),
+                      "invalid_task")
+    out = validate_batch_requests([{"state": STATE, "questions": QUESTIONS, "task": "typed_decisions"}])
+    ok("batch_task/known_task_kept_as_spelled", out[0].get("task") == "typed_decisions", repr(out[0]))
 
 
 # --- decide tool (mocked router, no weights) ----------------------------------
@@ -1577,6 +1913,151 @@ def test_shortlist_embed_cache():
                    embed_fn=counting_embed)
     ok("shortlist_cache/injected_embed_not_wrapped", len(calls) == 2,
        "calls=%d" % len(calls))
+
+
+# --- long-document scan ----------------------------------------------------
+
+LONG_QUESTIONS = {"refund": {"type": "noul", "instructions": "Does the user ask for a refund?"}}
+
+
+class LongAgent:
+    device = "cpu"
+
+    def __init__(self):
+        self.seen = None
+
+    def predict_long(self, state, questions, window=None, stride=None, aggregate=None,
+                     batch_size=None, lang=None, hooks=None, on_predict_start=None,
+                     on_predict_end=None, hooks_raise=None, hooks_timeout=None):
+        # The exact real `Agent.predict_long` signature, with no `**kwargs` and no `task`:
+        # an Agent answers but never routes, so a forwarded `task` must raise rather than be
+        # silently absorbed. Recording only the non-None controls keeps the "unset stays absent"
+        # assertion while letting a wrongly-forwarded keyword reach the tool as a TypeError.
+        self.seen = {k: v for k, v in (
+            ("window", window), ("stride", stride), ("aggregate", aggregate),
+            ("batch_size", batch_size), ("lang", lang),
+        ) if v is not None}
+        return {"answers": {"refund": {"noul": 0.8, "confidence": 0.7,
+                                       "window": {"index": 0, "token_start": 0,
+                                                  "token_end": 10, "count": 3}}},
+                "usage": {"windows": 3}}
+
+
+class LongRouter:
+    """Fake router with predict_long: records the scan kwargs, answers from window 0."""
+
+    def __init__(self, routed="english"):
+        self.routed = routed
+        self.seen = None
+        self._agents = {"english": LongAgent()}
+
+    def predict_long(self, state, questions, **kwargs):
+        self.seen = kwargs
+        return {"answers": {"refund": {"noul": 0.8, "confidence": 0.7,
+                                       "window": {"index": 0, "token_start": 0,
+                                                  "token_end": 10, "count": 3}}},
+                "routing": {"model": kwargs.get("model", self.routed), "repo": "fake/repo",
+                            "reason": "unit-test scan"},
+                "usage": {"windows": 3}}
+
+
+class NoScanAgent:
+    device = "cpu"
+
+    def predict(self, state, questions, **kwargs):
+        raise AssertionError("predict must not answer a long-document call")
+
+
+def test_predict_long():
+    expect_tool_error("long/state_bad",
+                      lambda: laya_predict_long([], LONG_QUESTIONS, router=LongRouter()),
+                      "invalid_state")
+    expect_tool_error("long/questions_bad",
+                      lambda: laya_predict_long(STATE, {}, router=LongRouter()),
+                      "invalid_questions")
+    expect_tool_error("long/model_bad",
+                      lambda: laya_predict_long(STATE, LONG_QUESTIONS, model="gpt4",
+                                               router=LongRouter()),
+                      "invalid_model")
+    for bad in (0, -3, True, 2.5, "256"):
+        expect_tool_error("long/window_bad_%r" % (bad,),
+                          lambda b=bad: laya_predict_long(STATE, LONG_QUESTIONS, window=b,
+                                                          router=LongRouter()),
+                          "invalid_window")
+        expect_tool_error("long/stride_bad_%r" % (bad,),
+                          lambda b=bad: laya_predict_long(STATE, LONG_QUESTIONS, stride=b,
+                                                          router=LongRouter()),
+                          "invalid_stride")
+    expect_tool_error("long/task_with_pinned_model",
+                      lambda: laya_predict_long(STATE, LONG_QUESTIONS, model="english",
+                                               task="triage", router=LongRouter()),
+                      "invalid_task")
+    expect_tool_error("long/auto_needs_router",
+                      lambda: laya_predict_long(STATE, LONG_QUESTIONS), "models_not_ready")
+    expect_tool_error("long/explicit_not_loaded",
+                      lambda: laya_predict_long(STATE, LONG_QUESTIONS, model="english"),
+                      "models_not_ready")
+    expect_tool_error("long/no_scan_method",
+                      lambda: laya_predict_long(STATE, LONG_QUESTIONS, model="english",
+                                               agent=NoScanAgent()),
+                      "internal_error")
+
+    # Auto mode scans through the router: unset scan controls are not forwarded, so a
+    # checkpoint that predates those keywords keeps working.
+    router = LongRouter()
+    out = laya_predict_long(STATE, LONG_QUESTIONS, router=router)
+    ok("long/scan_kwargs_unset_absent", router.seen == {}, repr(router.seen))
+    ok("long/answers", out["answers"]["refund"]["noul"] == 0.8, repr(out["answers"]))
+    ok("long/window_attribution",
+       out["answers"]["refund"]["window"] == {"index": 0, "token_start": 0,
+                                              "token_end": 10, "count": 3},
+       repr(out["answers"]))
+    ok("long/windows", out["windows"] == 3, repr(out))
+    ok("long/routing", out["routing"]["model"] == "english", repr(out["routing"]))
+    ok("long/device", out.get("device") == "cpu", repr(out.get("device")))
+    ok("long/latency", isinstance(out["latency_ms"], float))
+
+    # Set values travel: window/stride size the scan, lang rides for calibration.
+    router = LongRouter()
+    laya_predict_long(STATE, LONG_QUESTIONS, window=256, stride=128, lang="de", router=router)
+    ok("long/scan_kwargs_forwarded", router.seen == {"window": 256, "stride": 128, "lang": "de"},
+       repr(router.seen))
+
+    # Explicit model pins the scan: task would have nothing to route, the model rides along.
+    router = LongRouter()
+    out = laya_predict_long(STATE, LONG_QUESTIONS, model="english", task=None, router=router)
+    ok("long/explicit_model_forwarded", router.seen == {"model": "english"}, repr(router.seen))
+    ok("long/explicit_routing",
+       out["routing"] == {"model": "english", "repo": None, "reason": "explicit model"},
+       repr(out["routing"]))
+
+    # Explicit model with an injected agent answers directly, device read off it.
+    agent = LongAgent()
+    out = laya_predict_long(STATE, LONG_QUESTIONS, model="english", agent=agent)
+    ok("long/agent_answers", out["answers"]["refund"]["noul"] == 0.8, repr(out["answers"]))
+    ok("long/agent_scan_kwargs", agent.seen == {}, repr(agent.seen))
+    ok("long/agent_routing",
+       out["routing"] == {"model": "english", "repo": None, "reason": "explicit model"},
+       repr(out["routing"]))
+    ok("long/agent_device", out.get("device") == "cpu", repr(out.get("device")))
+    ok("long/agent_windows", out["windows"] == 3, repr(out))
+
+    # Auto mode with a bare agent: no routing happened, so no model is named.
+    agent = LongAgent()
+    out = laya_predict_long(STATE, LONG_QUESTIONS, agent=agent)
+    ok("long/bare_agent_routing",
+       out["routing"] == {"model": None, "repo": None, "reason": "auto routing without router"},
+       repr(out["routing"]))
+    ok("long/bare_agent_no_device", "device" not in out, repr(out))
+
+    # Auto + a bare agent + a task: the Agent cannot route between checkpoints, so `task` must be
+    # dropped before the scan. `Agent.predict_long` has no such parameter -- forwarding it surfaces
+    # as a raw TypeError (an opaque internal_error over the tool boundary) instead of an answer.
+    # This is the branch the pinned-model guard at the top of the tool never reaches.
+    agent = LongAgent()
+    out = laya_predict_long(STATE, LONG_QUESTIONS, task="typed_decisions", agent=agent)
+    ok("long/bare_agent_task_dropped", "task" not in agent.seen, repr(agent.seen))
+    ok("long/bare_agent_task_answers", out["answers"]["refund"]["noul"] == 0.8, repr(out))
 
 
 # --- per-call controls: task / lang / max_len / head_max_len -------------------
@@ -1927,8 +2408,11 @@ def test_controls_signature_and_schema():
     import inspect
 
     controls = ["task", "lang", "lang_guess", "max_len", "head_max_len"]
-    for fn, want in ((laya_predict, controls), (laya_shortlist, controls),
-                     (laya_preset, controls), (laya_route, ["model", "task", "lang", "lang_guess"])):
+    for fn, want in ((laya_predict, controls), (laya_shortlist, controls), (laya_tournament, controls),
+                     (laya_preset, controls), (laya_route, ["model", "task", "lang", "lang_guess"]),
+                     # predict_long sizes the scan by window/stride, not the single-window
+                     # budgets, so only the routing overrides are shared controls here.
+                     (laya_predict_long, ["task", "lang"])):
         params = inspect.signature(fn).parameters
         for name in want:
             ok("signature/%s_has_%s" % (fn.__name__, name), name in params, repr(sorted(params)))
@@ -1941,8 +2425,9 @@ def test_controls_signature_and_schema():
        repr(list(inspect.signature(laya_predict).parameters)))
 
     by_name = {t.name: t for t in asyncio.run(mcp_server.list_tools())}
-    for name, want in (("laya_predict", controls), ("laya_shortlist", controls),
-                       ("laya_preset", controls), ("laya_route", ["model", "task", "lang"])):
+    for name, want in (("laya_predict", controls), ("laya_shortlist", controls), ("laya_tournament", controls),
+                       ("laya_preset", controls), ("laya_route", ["model", "task", "lang"]),
+                       ("laya_predict_long", ["task", "lang"])):
         tool = by_name[name]
         schema = tool.input_schema if hasattr(tool, "input_schema") else tool.inputSchema
         props = schema.get("properties", {})
@@ -1963,7 +2448,7 @@ def test_controls_signature_and_schema():
     from laya.mcp import server as server_mod
 
     model_schemas = []
-    for name in ("laya_predict", "laya_shortlist", "laya_decide", "laya_route"):
+    for name in ("laya_predict", "laya_shortlist", "laya_tournament", "laya_decide", "laya_route"):
         parameter = inspect.signature(getattr(server_mod, name + "_tool")).parameters["model"]
         ok("signature/%s_model_default_none" % name, parameter.default is None, repr(parameter.default))
         tool = by_name[name]
@@ -2123,7 +2608,13 @@ def test_min_confidence_control():
     for value in (0, 0.0, 0.5, 1, 1.0, 0.94):
         ok("minconf/ok_%r" % (value,), validate_min_confidence(value) == float(value),
            repr(validate_min_confidence(value)))
-    for bad in (-0.1, 1.1, 2, True, False, [], {}, "0.5", float("nan"), float("inf")):
+    for bad in (-0.1, 1.1, 2, True, False, [], {}, "0.5", float("nan"), float("inf"),
+                # "only re-labels the refusal" holds only while core's refusal reaches this layer as
+                # the exception it catches. A 400-digit JSON integer -- which this server's clients
+                # can send, since JSON has no double limit -- raised `OverflowError` out of
+                # `math.isfinite`, past `except (TypeError, ValueError)`, so `min_confidence` was the
+                # one field a client could crash the tool with instead of being refused.
+                10 ** 400, -(10 ** 400)):
         expect_tool_error("minconf/rejected_%r" % (bad,),
                           lambda b=bad: validate_min_confidence(b), "invalid_min_confidence")
 
@@ -2332,6 +2823,10 @@ def test_question_validation_matches_the_agent():
          {"type": "noul", "instructions": "is true?", "option_order": "10"}),
         ("option_order_null",
          {"type": "noul", "instructions": "is true?", "option_order": None}),
+        # A JSON array or object as the type is unhashable, so testing it against the set of
+        # types raised TypeError instead of naming the question.
+        ("type_list", {"type": [], "instructions": "is true?"}),
+        ("type_object", {"type": {}, "instructions": "is true?"}),
     ]
     for label, qdef in parity:
         ok("question_parity/core_rejects_%s" % label, core_rejects("q", qdef))
@@ -2406,6 +2901,8 @@ def test_a_bad_question_is_a_caller_error_not_a_server_fault():
                               "criteria": ["fine", None]}),
         ("option_order_repeat", {"type": "noul", "instructions": "is true?",
                                  "option_order": [0, 0]}),
+        ("type_list", {"type": [], "instructions": "is true?"}),
+        ("type_object", {"type": {}, "instructions": "is true?"}),
     ):
         try:
             server_mod._wrap(server_mod.laya_predict, state=STATE, questions={"q": qdef},
@@ -2429,7 +2926,7 @@ def test_timeout_removed():
     import laya.mcp.tools as tools_mod
 
     for fn in (laya_predict, laya_route, laya_preset, laya_shortlist,
-               laya_predict_batch, laya_route_batch, laya_decide):
+               laya_predict_batch, laya_route_batch, laya_decide, laya_predict_long):
         ok("timeout/param_absent_%s" % fn.__name__, "timeout" not in inspect.signature(fn).parameters)
     ok("timeout/executor_absent", "ThreadPoolExecutor" not in inspect.getsource(tools_mod))
 
@@ -2723,10 +3220,12 @@ def test_server_registration():
     tools = asyncio.run(mcp_server.list_tools())
     names = sorted(t.name for t in tools)
     ok("server/tool_names", names == ["laya_decide", "laya_predict", "laya_predict_batch",
-                                      "laya_preset", "laya_route", "laya_route_batch",
-                                      "laya_shortlist", "laya_status"], repr(names))
+                                      "laya_predict_long", "laya_preset", "laya_route",
+                                      "laya_route_batch", "laya_shortlist", "laya_status",
+                                      "laya_tournament"], repr(names))
     decision = {"laya_predict", "laya_route", "laya_preset", "laya_shortlist",
-                "laya_predict_batch", "laya_route_batch", "laya_decide"}
+                "laya_predict_batch", "laya_route_batch", "laya_decide", "laya_tournament",
+                "laya_predict_long"}
     for t in tools:
         desc = (t.description or "").lower()
         ok("server/desc_%s_nonempty" % t.name, bool(desc.strip()), repr(desc))
@@ -2738,6 +3237,95 @@ def test_server_registration():
             ok("server/desc_noul_labels", "optional labels" in desc)
         if t.name.endswith("_batch"):
             ok("server/desc_%s_requests" % t.name, "non-empty array" in desc)
+
+
+def test_server_tournament():
+    import json
+
+    from laya.mcp import server as server_mod
+    from mcp.server.mcpserver.exceptions import ToolError as McpToolError
+    import laya
+
+    by_name = {t.name: t for t in asyncio.run(mcp_server.list_tools())}
+    tool = by_name["laya_tournament"]
+    schema = tool.input_schema if hasattr(tool, "input_schema") else tool.inputSchema
+    props = schema["properties"]
+    default = inspect.signature(laya.predict_tournament).parameters["group_size"].default
+    ok("schema/tournament_group_default", props["group_size"]["default"] == default)
+    ok("schema/tournament_group_integer", props["group_size"]["type"] == "integer")
+    ok("schema/tournament_required", schema["required"] == ["state", "questions"])
+    for name in ("labels", "n", "rounds", "finalists", "option_order_dropped", "LAYA_BASE_URL"):
+        ok("schema/tournament_description_%s" % name, name in tool.description)
+
+    saved = server_mod._ROUTER
+    try:
+        router = TournamentRouter()
+        server_mod._ROUTER = router
+        result = asyncio.run(mcp_server.call_tool("laya_tournament", {
+            "state": STATE, "questions": tournament_questions(40), "group_size": 4,
+            "task": "typed_decisions", "lang_guess": "de", "lang": "fr",
+            "max_len": 1024, "head_max_len": 384, "min_confidence": 0.95,
+        }))
+        payload = json.loads(result.content[0].text)
+        ok("server/tournament_call_not_error", not result.is_error)
+        ok("server/tournament_custom_group", payload["tournament"]["intent"]["rounds"] == 2
+           and len(router.agent.calls) == 3)
+        ok("server/tournament_controls_reach_each_round",
+           all(k == {"model": "english", "lang": "fr", "max_len": 1024,
+                     "head_max_len": 384, "min_confidence": 0.95}
+               for _s, _qs, k in router.agent.calls))
+        ok("server/tournament_route_controls", router.routes[0][2] == {
+            "task": "typed_decisions", "lang_guess": "de", "lang": "fr"})
+        ok("server/tournament_final_low_confidence", payload["answers"]["intent"]["low_confidence"])
+        try:
+            server_mod.laya_tournament_tool(STATE, tournament_questions(40), group_size=1)
+        except McpToolError as exc:
+            payload = json.loads(str(exc))
+            ok("server/tournament_error_payload", payload["error"] == "invalid_group_size")
+        else:
+            ok("server/tournament_error_payload", False, "invalid group_size accepted")
+    finally:
+        server_mod._ROUTER = saved
+
+
+def test_server_router_construction_error_is_the_same_on_every_tool():
+    """A router that cannot be built reaches the client as the same JSON on every tool.
+
+    `_router_or_error` turns `_ensure_router`'s ToolError into the payload the wrapper sends; the
+    tournament tool called `_ensure_router` bare, so a bad LAYA_BASE_URL escaped as a raw ToolError
+    and MCP redacted it to "Error executing tool laya_tournament", with no code and no reason.
+    """
+    import json
+
+    from laya.mcp import server as server_mod
+    from mcp.server.mcpserver.exceptions import ToolError as McpToolError
+
+    saved_router, saved_url = server_mod._ROUTER, os.environ.get("LAYA_BASE_URL")
+    os.environ["LAYA_BASE_URL"] = "http://"
+    server_mod._ROUTER = None
+    try:
+        for tool in ("laya_predict", "laya_tournament"):
+            try:
+                asyncio.run(mcp_server.call_tool(tool, {"state": STATE, "questions": tournament_questions(4)}))
+            except McpToolError as exc:
+                # "Error executing tool <name>: <the wrapper's JSON payload>"
+                _, _, raw = str(exc).partition(": ")
+            else:
+                raw = ""
+            try:
+                payload = json.loads(raw)
+            except ValueError:
+                payload = {"raw": raw}
+            ok("server/construction_error_%s_code" % tool, payload.get("error") == "internal_error",
+               repr(payload))
+            ok("server/construction_error_%s_reason" % tool,
+               "remote router construction failed" in str(payload.get("message")), repr(payload))
+    finally:
+        server_mod._ROUTER = saved_router
+        if saved_url is None:
+            os.environ.pop("LAYA_BASE_URL", None)
+        else:
+            os.environ["LAYA_BASE_URL"] = saved_url
 
 
 def test_server_shortlist_k_default():
@@ -2880,8 +3468,8 @@ def test_cli_mcp_page_tool_argument_rows():
                     return cells[2]
         return None
 
-    for tool in ("laya_status", "laya_route", "laya_predict",
-                 "laya_shortlist", "laya_preset", "laya_decide"):
+    for tool in ("laya_status", "laya_route", "laya_predict", "laya_predict_long",
+                 "laya_shortlist", "laya_tournament", "laya_preset", "laya_decide"):
         cell = row_cell(tool)
         ok("docs-mcp/args_row_%s_present" % tool, cell is not None, "row not found")
         if cell is None:
@@ -2912,13 +3500,19 @@ test_shape()
 test_question_forwarding()
 test_option_order_forwarding()
 test_shortlist()
+test_tournament()
+test_tournament_rejects_broken_winners()
+test_tournament_routing_and_validation()
 test_batch_validation()
 test_batch_predict()
 test_batch_tool_control_forwarding()
 test_batch_route()
+test_route_batch_tool_hooks_timeout_forwarding()
+test_batch_unknown_task_is_invalid_task()
 test_decide()
 test_shortlist_lang_parity()
 test_shortlist_embed_cache()
+test_predict_long()
 test_controls_validation()
 test_controls_predict()
 test_controls_route()
@@ -2936,6 +3530,8 @@ test_cli_mcp_page_batch_rows()
 test_auto_task_env()
 test_default_model_env()
 test_server_registration()
+test_server_tournament()
+test_server_router_construction_error_is_the_same_on_every_tool()
 test_server_shortlist_k_default()
 test_cli_mcp_page_tool_argument_rows()
 

@@ -1,0 +1,476 @@
+[
+  {
+    "text": "",
+    "input_ids": []
+  },
+  {
+    "text": " ",
+    "input_ids": [
+      209
+    ]
+  },
+  {
+    "text": "  ",
+    "input_ids": [
+      50276
+    ]
+  },
+  {
+    "text": "\n",
+    "input_ids": [
+      187
+    ]
+  },
+  {
+    "text": "\t",
+    "input_ids": [
+      186
+    ]
+  },
+  {
+    "text": "a",
+    "input_ids": [
+      66
+    ]
+  },
+  {
+    "text": " a",
+    "input_ids": [
+      247
+    ]
+  },
+  {
+    "text": "hello world",
+    "input_ids": [
+      25521,
+      1533
+    ]
+  },
+  {
+    "text": " hello world",
+    "input_ids": [
+      23120,
+      1533
+    ]
+  },
+  {
+    "text": "hello  world",
+    "input_ids": [
+      25521,
+      50276,
+      10186
+    ]
+  },
+  {
+    "text": " leading and trailing ",
+    "input_ids": [
+      4283,
+      285,
+      28417,
+      209
+    ]
+  },
+  {
+    "text": "choice question: Which department should handle this?",
+    "input_ids": [
+      22122,
+      1953,
+      27,
+      6758,
+      7811,
+      943,
+      6016,
+      436,
+      32
+    ]
+  },
+  {
+    "text": "score question: How urgent is this request?",
+    "input_ids": [
+      18891,
+      1953,
+      27,
+      1359,
+      21007,
+      310,
+      436,
+      2748,
+      32
+    ]
+  },
+  {
+    "text": "noul question: The customer threatens to cancel the account.",
+    "input_ids": [
+      79,
+      3941,
+      1953,
+      27,
+      380,
+      7731,
+      37654,
+      281,
+      14002,
+      253,
+      2395,
+      15
+    ]
+  },
+  {
+    "text": " billing: invoices, payments, double charges, refunds",
+    "input_ids": [
+      33484,
+      27,
+      29838,
+      1271,
+      13,
+      10762,
+      13,
+      4021,
+      7260,
+      13,
+      1275,
+      41748
+    ]
+  },
+  {
+    "text": " level 0: not urgent",
+    "input_ids": [
+      1268,
+      470,
+      27,
+      417,
+      21007
+    ]
+  },
+  {
+    "text": " false: no, the statement does not hold",
+    "input_ids": [
+      3221,
+      27,
+      642,
+      13,
+      253,
+      3908,
+      1057,
+      417,
+      2186
+    ]
+  },
+  {
+    "text": " true: yes, the statement holds",
+    "input_ids": [
+      2032,
+      27,
+      4754,
+      13,
+      253,
+      3908,
+      6556
+    ]
+  },
+  {
+    "text": "▁",
+    "input_ids": [
+      10897,
+      212
+    ]
+  },
+  {
+    "text": "▁▁",
+    "input_ids": [
+      10897,
+      212,
+      10897,
+      212
+    ]
+  },
+  {
+    "text": "a▁b",
+    "input_ids": [
+      66,
+      10897,
+      212,
+      67
+    ]
+  },
+  {
+    "text": "CamelCase and_snake_case and-kebab-case",
+    "input_ids": [
+      14651,
+      293,
+      11247,
+      285,
+      64,
+      11489,
+      640,
+      64,
+      5045,
+      285,
+      14,
+      413,
+      43658,
+      14,
+      5045
+    ]
+  },
+  {
+    "text": "1234567890 3.14159 -0.5 1e21",
+    "input_ids": [
+      42594,
+      25025,
+      2270,
+      495,
+      15,
+      1047,
+      17220,
+      428,
+      17,
+      15,
+      22,
+      337,
+      70,
+      1797
+    ]
+  },
+  {
+    "text": "punctuation: !?.,;:'\"()[]{}<>/\\|@#$%^&*~`+=_",
+    "input_ids": [
+      81,
+      10593,
+      2368,
+      27,
+      2195,
+      32,
+      904,
+      28,
+      27,
+      21288,
+      43144,
+      1181,
+      36784,
+      16,
+      6087,
+      33,
+      4,
+      5,
+      6,
+      63,
+      7,
+      3853,
+      65,
+      34788,
+      64
+    ]
+  },
+  {
+    "text": "naïve résumé Müller",
+    "input_ids": [
+      2072,
+      30180,
+      9568,
+      2204,
+      860,
+      49290
+    ]
+  },
+  {
+    "text": "我这个月被重复扣款了两次",
+    "input_ids": [
+      15367,
+      20622,
+      16401,
+      26552,
+      41873,
+      34698,
+      7249,
+      224,
+      11827,
+      98,
+      25715,
+      124,
+      17492,
+      3218,
+      99,
+      35241
+    ]
+  },
+  {
+    "text": "こんにちは世界",
+    "input_ids": [
+      10446,
+      13639,
+      5444,
+      23826,
+      6418,
+      42848,
+      45261
+    ]
+  },
+  {
+    "text": "여보세요",
+    "input_ids": [
+      21053,
+      107,
+      167,
+      113,
+      114,
+      29597,
+      118,
+      42170
+    ]
+  },
+  {
+    "text": "тест русского",
+    "input_ids": [
+      1367,
+      24860,
+      9160,
+      46640,
+      10453,
+      15147
+    ]
+  },
+  {
+    "text": "تم خصم المبلغ مرتين",
+    "input_ids": [
+      8181,
+      5843,
+      45232,
+      30265,
+      5843,
+      30331,
+      13621,
+      4467,
+      50011,
+      13504,
+      6900,
+      8181,
+      37927
+    ]
+  },
+  {
+    "text": "שלום עולם",
+    "input_ids": [
+      26344,
+      20770,
+      12859,
+      240,
+      6810,
+      97,
+      12859,
+      239,
+      42252
+    ]
+  },
+  {
+    "text": "हिन्दी पाठ",
+    "input_ids": [
+      30598,
+      20489,
+      23068,
+      17665,
+      46175,
+      22224,
+      42042,
+      12001,
+      2483,
+      243
+    ]
+  },
+  {
+    "text": "😀 🚀 ❤️",
+    "input_ids": [
+      14931,
+      235,
+      211,
+      22692,
+      237,
+      211,
+      3384,
+      240,
+      99,
+      171,
+      118,
+      226
+    ]
+  },
+  {
+    "text": "zero​width​space",
+    "input_ids": [
+      10528,
+      12882,
+      3429,
+      12882,
+      5641
+    ]
+  },
+  {
+    "text": "<mask>",
+    "input_ids": [
+      29,
+      12477,
+      31
+    ]
+  },
+  {
+    "text": "<bos> <eos> <pad> <unk>",
+    "input_ids": [
+      29,
+      37298,
+      31,
+      654,
+      70,
+      375,
+      31,
+      654,
+      11022,
+      31,
+      654,
+      3938,
+      31
+    ]
+  },
+  {
+    "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "input_ids": [
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      49642,
+      23342
+    ]
+  }
+]

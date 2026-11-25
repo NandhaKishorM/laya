@@ -283,7 +283,16 @@ public static class LayaShortlist
         for (var i = 0; i < docs.Length; i++)
         {
             var denom = Norm(docs[i]) * qn;
-            if (denom > 0.0) sims[i] = Dot(docs[i], query) / denom;
+            if (denom > 0.0)
+            {
+                // Python clips (`np.clip(dot / denom, -1.0, 1.0)`, laya/shortlist.py::_Cosine) and
+                // laya-go ports that with TestCosineIsClipped. The quotient rounds outside [-1, 1]
+                // for vectors that are parallel but not exactly representable -- a self-cosine of
+                // [34, 15.285714285714286, 70.85714285714286] is 1.0000000000000002 -- so an
+                // unclipped value breaks the range ShortlistInfo.Scores documents. Math.Clamp
+                // returns NaN unchanged for a NaN input, as the Go port also leaves it alone.
+                sims[i] = Math.Clamp(Dot(docs[i], query) / denom, -1.0, 1.0);
+            }
         }
         return sims;
     }

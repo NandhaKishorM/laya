@@ -7,6 +7,24 @@ import math
 from typing import Any, Dict, List, Optional
 
 
+def _finite(value: Any) -> bool:
+    """Whether `value` is a real number that `float()` can read -- the test every check here means.
+
+    `math.isfinite` is written for a `float`, and a Python `int` may be wider than one: JSON's
+    grammar has no double limit, so a 400-digit confidence arrives as an `int` and `math.isfinite`
+    raises `OverflowError: int too large to convert to float` instead of answering "not finite".
+    `laya/_eval_policy.py::_finite_number` answers it this way already, and this module reads the
+    same exception as "does not read as a number" in `jev_confidence`. A `bool` is refused here so
+    no caller below has to repeat it.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
 def answer_confidence_value(answer: Dict[str, Any]) -> Optional[float]:
     """The `answer_confidence` of `answer`, or None if it did not report a usable one.
 
@@ -30,7 +48,7 @@ def answer_confidence_value(answer: Dict[str, Any]) -> Optional[float]:
     A `bool` is not a confidence and a NaN is not a decision, so both give None rather than 0.0.
     """
     conf = answer.get("answer_confidence")
-    if isinstance(conf, (int, float)) and not isinstance(conf, bool) and math.isfinite(conf):
+    if _finite(conf):
         return float(conf)
     return None
 
@@ -46,8 +64,14 @@ def jev_confidence(answer: Dict[str, Any]) -> Optional[float]:
         score   max(0, 1 - sum(p_i * |i - mode|) / D), D the same sum for a uniform distribution
 
     Both are 1.0 for a single option, and a zero total is read as uniform, as the adapter does.
-    A noul answer has no Jev `confidence`, and malformed probabilities give None rather than a
-    guess, so a caller filtering on this number never filters on a made-up one.
+    A noul answer has no Jev `confidence`, and a malformed document -- a probability that does not
+    read as a number, a boolean, a non-finite or a negative value -- gives None rather than a
+    guess, so a caller filtering on this number never filters on a made-up one. Negatives are the
+    case that needs naming: the division below normalises by the sum, so a mixed-sign document can
+    divide by a near-zero or negative total and return a number outside [0, 1] for a distribution
+    whose argmax is not the one it measured, while an all-negative document divides back into
+    range and returns exactly what its positive counterpart returns. Refusing them is what makes
+    the range a property: every number this returns lies in [0, 1].
     """
     kind = answer.get("type")
     probabilities = answer.get("probabilities")
@@ -58,14 +82,25 @@ def jev_confidence(answer: Dict[str, Any]) -> Optional[float]:
             p = [float(probabilities[key]) for key in sorted(probabilities, key=int)]
         else:
             p = [float(value) for value in probabilities.values()]
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # `OverflowError` is the same "does not read as a number": a JSON integer literal too wide
+        # for a double (a 400-digit probability) overflows `float()`, and an infinite score level
+        # overflows `int()`. `apply_calibration_payload` in `calibrate.py` already catches it on
+        # the `version` field for the same reason (JSON's `1e999` is `inf`).
         return None
-    if any(isinstance(v, bool) for v in probabilities.values()) or not all(math.isfinite(v) for v in p):
+    if (any(isinstance(v, bool) for v in probabilities.values())
+            or not all(math.isfinite(v) and v >= 0.0 for v in p)):
         return None
     n = len(p)
     if n == 1:
         return 1.0
     total = sum(p)
+    if not math.isfinite(total):
+        # Individually finite weights can still overflow when added. A common scale cancels
+        # in the normalization, and scaling by the maximum keeps every addend at most 1.
+        scale = max(p)
+        p = [v / scale for v in p]
+        total = sum(p)
     p = [v / total for v in p] if total else [1.0 / n] * n
     if kind == "choice":
         return (max(p) - 1.0 / n) / (1.0 - 1.0 / n)
@@ -93,13 +128,13 @@ def _gate_confidence(answer: Dict[str, Any]) -> Optional[float]:
     if conf is not None:
         return conf
     fallback = answer.get("confidence")
-    if isinstance(fallback, (int, float)) and not isinstance(fallback, bool) and math.isfinite(fallback):
+    if _finite(fallback):
         return float(fallback)
     return None
 
 
 def _check_one_threshold(v: Any) -> float:
-    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0.0 or v > 1.0:
+    if not _finite(v) or v < 0.0 or v > 1.0:
         raise ValueError("min_confidence must be a float in [0.0, 1.0], got %r" % (v,))
     return float(v)
 

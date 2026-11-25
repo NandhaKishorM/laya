@@ -4179,17 +4179,29 @@ STRUCTURED_REFUSALS = [
     ("recursive-ref",
      {"type": "object", "properties": {"c": {"$ref": "#/$defs/Node"}},
       "$defs": {"Node": {"$ref": "#/$defs/Node"}}}),
-    # A TRUTHY non-array `anyOf` does NOT fall through to `oneOf`: it is iterated, yields no
-    # mapping branch, and lands here. The other side of `falsy-anyof-falls-through-to-oneof`,
-    # and the case a port testing "is it a list" gets wrong in the opposite direction -- it
-    # falls through and, with nothing to fall through to, refuses with "unsupported schema"
-    # instead of this.
+    # A non-array `anyOf`/`oneOf` is not a recognised optional wrapper, so it is left to the
+    # terminal "unsupported schema" rejection: the reference guards the unwrap with
+    # `isinstance(union, list)` (structured.py), which is what a port must test. Falsiness still
+    # decides the fall-through to `oneOf` first -- that is `falsy-anyof-falls-through-to-oneof`
+    # above -- and what survives it is only unwrapped when it is an array.
+    #
+    # The four shapes below are the whole surface, and each was a separate defect before #1364:
+    # a truthy string and a truthy object were ITERATED, yielding no mapping branch and reaching
+    # the `got 0` refusal, which blamed a union arity the request never had; a truthy number and
+    # a truthy boolean are not iterable at all and leaked `TypeError: 'int' object is not
+    # iterable` (`bool` subclasses `int`, so `true` leaked the same way). Keep all four pinned:
+    # they are the cases a port gets wrong in different directions, and only the first two would
+    # be caught by a fixture that stopped at strings and objects.
     ("truthy-non-array-anyof-is-not-a-fallthrough",
      {"type": "object", "properties": {"x": {"anyOf": "abc"}}}),
     ("truthy-non-array-anyof-with-a-oneof-to-shadow",
      {"type": "object", "properties": {"x": {"anyOf": {"a": 1},
                                              "oneOf": [{"type": "boolean"},
                                                        {"type": "null"}]}}}),
+    ("truthy-non-array-anyof-number",
+     {"type": "object", "properties": {"x": {"anyOf": 5}}}),
+    ("truthy-non-array-oneof-boolean",
+     {"type": "object", "properties": {"x": {"oneOf": True}}}),
     # The one case of the reference's top-level `isinstance(schema, dict)` check that is
     # reachable on a side where the argument is typed: a list, a string or a number cannot be
     # passed at all, and null can.

@@ -44,8 +44,15 @@ def configure_inductor_cache() -> str:
     Returns the directory in use. Inductor reads `TORCHINDUCTOR_CACHE_DIR` when it opens the
     cache, so this must run before the first compile; an explicit `TORCHINDUCTOR_CACHE_DIR` from
     the environment is left alone.
+
+    `LAYA_INDUCTOR_CACHE_DIR` is stripped at the read site the way `warmup_enabled` below reads
+    `LAYA_COMPILE_WARMUP`, so a padded path means the path and a blank one means unset.
+    `expanduser` anchors `~` to the first character, and a value that is not absolute lands under
+    the current working directory, so an unstripped `" /tmp/laya-inductor-cache "` is neither: it
+    resolves to a directory of that name *under the cwd*, and the next process -- started from
+    anywhere else -- compiles from scratch while reporting success.
     """
-    cache_dir = os.path.expanduser(os.environ.get(CACHE_DIR_ENV) or DEFAULT_CACHE_DIR)
+    cache_dir = os.path.expanduser(os.environ.get(CACHE_DIR_ENV, "").strip() or DEFAULT_CACHE_DIR)
     os.environ.setdefault("TORCHINDUCTOR_CACHE_DIR", cache_dir)
     os.environ.setdefault("TORCHINDUCTOR_FX_GRAPH_CACHE", "1")
     os.environ.setdefault("TORCHINDUCTOR_AUTOGRAD_CACHE", "1")

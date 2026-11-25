@@ -1,0 +1,128 @@
+{
+  "name": "long_clamp",
+  "state": "Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today"
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    }
+  },
+  "options": {
+    "window": 4096,
+    "stride": 2048,
+    "batch_size": 2
+  },
+  "state_tokens": 857,
+  "effective_window": 478,
+  "effective_stride": 239,
+  "effective_room": 478,
+  "windows": [
+    {
+      "token_start": 0,
+      "token_end": 478,
+      "text": "Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account"
+    },
+    {
+      "token_start": 239,
+      "token_end": 717,
+      "text": ". Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal"
+    },
+    {
+      "token_start": 478,
+      "token_end": 857,
+      "text": " activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account."
+    }
+  ],
+  "result": {
+    "model": "laya-rl-agent-onnx",
+    "answers": {
+      "topic": {
+        "type": "choice",
+        "choice": "refund",
+        "probabilities": {
+          "refund": 0.9124,
+          "technical": 0.0563,
+          "other": 0.0313
+        },
+        "confidence": 0.6778,
+        "answer_confidence": 0.9124,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 2,
+          "token_start": 478,
+          "token_end": 857,
+          "count": 3
+        }
+      },
+      "urgency": {
+        "type": "score",
+        "score": 1.4876,
+        "legend": {
+          "0": "not urgent",
+          "1": "this week",
+          "2": "today"
+        },
+        "probabilities": {
+          "0": 0.1355,
+          "1": 0.2414,
+          "2": 0.6231
+        },
+        "confidence": 0.1729,
+        "answer_confidence": 0.6231,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 2,
+          "token_start": 478,
+          "token_end": 857,
+          "count": 3
+        }
+      },
+      "cancel": {
+        "type": "noul",
+        "noul": 0.9655,
+        "confidence": 0.9655,
+        "answer_confidence": 0.9655,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 2,
+          "token_start": 478,
+          "token_end": 857,
+          "count": 3
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 4287,
+      "output_tokens": 0,
+      "state_tokens": 1335,
+      "state_tokens_dropped": 0,
+      "truncated": 0,
+      "truncated_questions": [],
+      "windows": 3
+    }
+  }
+}

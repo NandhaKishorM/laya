@@ -13,3 +13,9 @@ research/benchmarks/feishu_zh/results/** text eol=lf
 research/benchmarks/zh_short_commands/data/** text eol=lf
 research/benchmarks/zh_short_commands/prompts.py text eol=lf
 research/benchmarks/zh_short_commands/results/** text eol=lf
+
+# laya-rust/tools/gen_round4_cases.py and laya-dotnet/tools/dump_round4_golden.py both write
+# their 20,000-case corpus with LF. These files are regenerated, never edited, so a checkout
+# that rewrote the line endings would report every line as changed on the next re-run.
+laya-rust/tests/round4_python_cases.txt text eol=lf
+laya-dotnet/tests/Laya.Tests/golden/round4/round4_python.txt text eol=lf

@@ -203,6 +203,69 @@ check_true("ece/overconfidence raises ECE", ece_score(conf_b, base_correct) > ec
 # bins argument changes granularity, not correctness of the perfect case
 close("ece/bins=5 perfectly calibrated", ece_score(conf, correct, bins=5), 0.0, tol=1e-9)
 
+# --------------------------------------------------------------- ece_score's bins knob
+# The histogram is sized by `bins`, and a count that cannot size one used to be misread rather
+# than refused: `np.linspace(0, 1, 0 + 1)` has no interior edge, so the loop body never ran and
+# the function returned 0.0 -- the best score ECE can report -- for a distribution that is badly
+# calibrated. A caller that gates a build on ECE therefore passes unconditionally on a config
+# value of 0, which is exactly the number a missing or zeroed field tends to be.
+_mis = (np.full(10, 0.99), np.array([1] * 5 + [0] * 5))
+close("ece/overconfident and half right reports the gap", ece_score(*_mis), 0.49, tol=1e-9)
+_ECE_REFUSAL = "bins must be an integer of at least 1"
+
+
+def _ece_refuses_bins(value):
+    try:
+        got = ece_score(_mis[0], _mis[1], bins=value)
+    except ValueError as exc:
+        check_true("ece/refuses bins=%r" % (value,),
+                   _ECE_REFUSAL in str(exc) and "got %r" % (value,) in str(exc), str(exc))
+        return
+    except BaseException as exc:  # noqa: BLE001 -- the bare TypeError these used to leak
+        FAIL.append("ece/refuses bins=%r: raised %r, want ValueError" % (value, exc))
+        return
+    FAIL.append("ece/refuses bins=%r: returned %r" % (value, got))
+
+
+# 0 and -1 leave no interior edge so the sum stays 0.0, -5 reaches np.linspace and gets numpy's
+# complaint about a negative sample count, and the rest used to raise a bare TypeError.
+for _b in (0, -1, -5, True, False, 1.5, "15", None, np.float64(3.0)):
+    _ece_refuses_bins(_b)
+
+# the count is checked before the sample, so an empty run cannot smuggle a bad knob past the
+# branch that returns nan
+try:
+    ece_score(np.array([]), np.array([]), bins=0)
+    FAIL.append("ece/refuses bins=0 with no samples: returned instead of raising")
+except ValueError as exc:
+    check_true("ece/refuses bins=0 with no samples", _ECE_REFUSAL in str(exc), str(exc))
+
+# numpy integer counts are the ones that arrive with the arrays this metric is handed
+def _ece_figure(value):
+    """ece_score's number for a bins count, or None when it refuses."""
+    try:
+        return ece_score(_mis[0], _mis[1], bins=value)
+    except BaseException:  # noqa: BLE001 -- a refusal here is a failure to report, not to raise
+        return None
+
+
+_i64, _py = _ece_figure(np.int64(5)), _ece_figure(5)
+check_true("ece/bins=5 as np.int64 matches int", _py is not None and _i64 == _py,
+           "np.int64=%r int=%r" % (_i64, _py))
+# one bucket spans all of [0, 1], so it reports the raw gap between mean confidence and accuracy
+_one = _ece_figure(1)
+check_true("ece/bins=1 is the mean gap over the whole range",
+           _one is not None and abs(_one - 0.49) <= 1e-9, "%r" % (_one,))
+
+# laya.evals.ece delegates here, so the CLI's gate inherits the refusal
+from laya.evals import ece as _evals_ece  # noqa: E402
+
+try:
+    _evals_ece([0.99] * 10, [True] * 5 + [False] * 5, bins=0)
+    FAIL.append("ece/laya.evals.ece inherits the refusal: returned instead of raising")
+except ValueError as exc:
+    check_true("ece/laya.evals.ece inherits the refusal", _ECE_REFUSAL in str(exc), str(exc))
+
 
 # =============================================================== confidence_from_probs
 close("confidence/uniform over 2 is 0", confidence_from_probs(np.array([0.5, 0.5]), 2), 0.0)

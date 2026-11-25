@@ -99,21 +99,26 @@ def _parse_pairs(pairs: Optional[Sequence[str]]) -> Dict[str, float]:
             number = float(raw)
         except ValueError:
             raise EvalError("%r is not a number in %r" % (raw, pair))
-        # float() accepts "nan", and a NaN limit or tolerance would disable the gate it names.
-        if math.isnan(number):
+        # A non-finite limit or tolerance disables the gate it names rather than tightening it:
+        # `--max ece=inf` and `--min accuracy=-inf` pass every measurement, and
+        # `--tolerance METRIC=inf` makes `compare` accept a drift of any size and still exit 0 --
+        # the code that means "the gate ran and the numbers passed". `nan` was refused for this
+        # exact reason; `inf` reaches the same gate by a route `nan` has no equivalent of, because
+        # `float("1e999")` overflows to `inf` and raises nothing.
+        if not math.isfinite(number):
             raise EvalError("%r is not a number in %r" % (raw, pair))
         out[name.strip()] = number
     return out
 
 
 def _limit(raw: str) -> float:
-    """argparse `type=` for `--min-accuracy` and `--max-ece`: refuse "nan" as `_parse_pairs` does."""
+    """argparse `type=` for `--min-accuracy` and `--max-ece`: refuse a non-finite number."""
     try:
         number = float(raw)
     except ValueError:
         raise argparse.ArgumentTypeError("%r is not a number" % raw)
-    # float() accepts "nan", and a NaN limit would disable the gate it names.
-    if math.isnan(number):
+    # Same gate as `_parse_pairs`: a non-finite limit decides nothing.
+    if not math.isfinite(number):
         raise argparse.ArgumentTypeError("%r is not a number" % raw)
     return number
 
@@ -124,16 +129,35 @@ def _parse_revisions(pairs: Optional[Sequence[str]]) -> Tuple[Optional[str], Dic
     A bare value is the commit for every checkpoint this run loads; `NAME=SHA` pins one
     checkpoint, which is what an auto-routing run needs, because the three checkpoints are three
     Hub repositories and one commit cannot exist in all of them.
+
+    Repeating a pin is agreement, not a clash, and is accepted either way. Two different commits for
+    one checkpoint -- every checkpoint, or the same one -- are refused rather than resolved to
+    whichever pair came last: a run loads one commit per checkpoint, and the report's `revisions`
+    block records the commit that ANSWERED, so the dropped pin would leave no trace anywhere a
+    reader could see the ambiguity in.
     """
+    # The target is a checkpoint, not a spelling: `Router.resolve` folds case and aliases onto the
+    # key it loads, so `en=` beside `english=` asks for two commits of one checkpoint. Asking the
+    # same function the Router asks keeps the CLI's grouping and the Router's from diverging.
+    from .router import canonical_name
+
     shared: Optional[str] = None
     per_model: Dict[str, str] = {}
+    pinned: Dict[str, Tuple[str, str]] = {}    # checkpoint -> (spelling it arrived as, commit)
     for pair in pairs or []:
         name, sep, value = pair.partition("=")
         if sep:
             name, value = name.strip(), value.strip()
             if not name or not value:
                 raise EvalError("expected NAME=REVISION, got %r" % pair)
+            checkpoint = canonical_name(name)
+            earlier = pinned.get(checkpoint)
+            if earlier is not None and earlier[1] != value:
+                spelled = "" if earlier[0] == name else " (given as %r and %r)" % (earlier[0], name)
+                raise EvalError("--revision names two commits for %r%s: %r, %r"
+                                % (checkpoint, spelled, earlier[1], value))
             per_model[name] = value
+            pinned[checkpoint] = (name, value)
         else:
             value = pair.strip()
             if not value:
@@ -257,15 +281,41 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _load_report(path: str) -> Dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
+    # `main`'s usage-error handler promises that "an unreadable report" exits 2, and four report
+    # reads route through here. Only one shape of unreadable kept that promise: a missing path
+    # raised FileNotFoundError and landed in the handler, while a path that is a directory or on an
+    # unreadable volume, a file that is not valid JSON, and a file that is valid JSON but not an
+    # object each escaped as a traceback and exit 1 -- the code this CLI reserves for "a threshold
+    # or a baseline tolerance failed". A CI job cannot tell those apart, which is the one
+    # distinction the exit codes exist to draw. `laya-evals agreement` has always read its three
+    # runs this way; this makes the shared report loader satisfy the same contract.
+    try:
+        # `utf-8-sig`, not `utf-8`: a report saved through a Windows editor or a spreadsheet export
+        # starts with a BOM, and a plain `utf-8` read leaves it as U+FEFF, so `json.load` refuses a
+        # document that is valid JSON -- with its own "decode using utf-8-sig" hint. `laya/cli.py`,
+        # `laya/train.py` and the dataset reader in `laya/evals.py` open a caller's file this way
+        # for the same reason.
+        with open(path, "r", encoding="utf-8-sig") as handle:
+            document = json.load(handle)
+    except (OSError, ValueError, RecursionError) as exc:
+        raise EvalError("cannot read report %r: %s" % (path, exc)) from exc
+    if not isinstance(document, dict):
+        raise EvalError("cannot read report %r: expected a JSON object, found %s"
+                        % (path, type(document).__name__))
+    return document
 
 
 def _check_thresholds(overall: Dict[str, float], mins: Dict[str, float],
                       maxs: Dict[str, float]) -> List[str]:
+    """Each limit is checked against the metric it names, and a metric absent from the report fails.
+
+    A `noul_accuracy` standing in for `choice_accuracy` here would gate a choice threshold on the
+    accuracy of a different question type, so a noul-only run could clear a `--min choice_accuracy`
+    it never answered -- `docs/evals.md` requires the missing-metric failure instead. `--min-accuracy`
+    is the flag that means "whichever accuracy this dataset has", and `_cmd_run` resolves it to the
+    key the report actually carries.
+    """
     failures: List[str] = []
-    if "choice_accuracy" not in overall and "noul_accuracy" in overall:
-        overall = dict(overall, choice_accuracy=overall["noul_accuracy"])
     for name, limit in mins.items():
         value = overall.get(name)
         if value is None:
@@ -460,11 +510,24 @@ def _cmd_run(args) -> int:
                                    " ".join("%s=%.4f" % (k, v) for k, v in sorted(metrics.items()))))
 
     if args.json_out:
-        with open(args.json_out, "w", encoding="utf-8") as handle:
-            json.dump(report.to_json(), handle, ensure_ascii=False, indent=2, sort_keys=True)
+        # `_cmd_agreement` already turns a report it cannot write into `EvalError`, and for the same
+        # reason: a path that is a directory, or on a read-only volume, raises an `OSError` that is
+        # not a `FileNotFoundError`, so it walks past `main`'s usage-error handler and leaves a
+        # traceback and exit 1 -- the code this CLI reserves for "a threshold or a baseline
+        # tolerance failed" -- on a run that wrote nothing. A missing parent directory already
+        # exited 2 through that handler; the two shapes of one mistake have to agree.
+        try:
+            with open(args.json_out, "w", encoding="utf-8") as handle:
+                json.dump(report.to_json(), handle, ensure_ascii=False, indent=2, sort_keys=True)
+        except OSError as exc:
+            raise EvalError("cannot write report %r: %s" % (args.json_out, exc)) from exc
     if args.markdown_out:
-        with open(args.markdown_out, "w", encoding="utf-8") as handle:
-            handle.write(report.to_markdown())
+        try:
+            with open(args.markdown_out, "w", encoding="utf-8") as handle:
+                handle.write(report.to_markdown())
+        except OSError as exc:
+            raise EvalError("cannot write markdown report %r: %s"
+                            % (args.markdown_out, exc)) from exc
 
     if failures:
         for failure in failures:
@@ -476,7 +539,15 @@ def _cmd_run(args) -> int:
 def _cmd_evidence(args) -> int:
     try:
         result = evidence.inspect_checkpoint(args.checkpoint, args.report)
-    except (FileNotFoundError, ValueError) as exc:
+    except (OSError, ValueError) as exc:
+        # `FileNotFoundError` alone covered a missing path only. A `--report` that is a directory,
+        # or a checkpoint config the process may not read, raised an OSError subclass that walked
+        # out of `main` and left a traceback with exit 1 -- the code this CLI keeps for a quality
+        # failure -- next to the same mistake on a missing path, which exited 2. Both are caller
+        # mistakes about a named path, and the errno text names it. Nothing here reaches the Hub:
+        # `laya/evidence.py` imports `json` and `os` only, so there is no failed download to
+        # mistake for a usage error, which is why this handler is allowed to be wider than the
+        # `FileNotFoundError` one in `main`.
         print("laya-evals: %s" % exc, file=sys.stderr)
         return 2
     print(evidence.format_summary(result))
@@ -526,7 +597,10 @@ def _cmd_agreement(args) -> int:
     runs = []
     for path in (args.reference, args.repeat, args.student):
         try:
-            with open(path, encoding="utf-8") as handle:
+            # `utf-8-sig` for the same reason as `_load_report` above: a run re-saved through an
+            # editor or a spreadsheet export starts with a BOM, which a plain `utf-8` read leaves as
+            # U+FEFF and `json` refuses -- naming an agreement run as unreadable when it is valid.
+            with open(path, encoding="utf-8-sig") as handle:
                 runs.append(json.load(handle, object_pairs_hook=unique_object))
         except (OSError, ValueError, RecursionError) as exc:
             raise EvalError("cannot read agreement run %r: %s" % (path, exc)) from exc

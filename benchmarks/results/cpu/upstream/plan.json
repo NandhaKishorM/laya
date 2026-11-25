@@ -1,0 +1,18 @@
+{
+  "baseline_commit": "3293116c89425c3d04b22aa4d9464fef82e2c858",
+  "pr_commit": "b4e7c9a434671e6b08daadf30c572270d015cd48",
+  "checkpoint_repo": "convaiinnovations/laya",
+  "checkpoint_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+  "checkpoint_sha256": {
+    "english": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
+    "multilingual": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+    "typed-decisions": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e"
+  },
+  "unchanged_upstream_script_sha256": {
+    "verify/bench_devices.py": "af7e2d126122c01a388f167a67c2c8a53c9bf060f2c8fd0d2335cf4416da6cb1",
+    "research/scripts/bench_latency.py": "b83cdc954c33af7f8cff47a5490ce0fc060ef64d8936c8f335485056fc140c72",
+    "research/scripts/bench_long_context.py": "1867b70d672f2af871989c2ea4c1e4d1beb967518679c002a9fb4b063688a79f",
+    "verify/checkpoints.json": "b130131e4f2333695f24fd104584f45656406f805bbd648f578b14b204728a5e"
+  },
+  "protocol": "Run upstream scripts as-is with their default fixtures, warmups and repetitions in separate clean main/PR processes. Four OMP/MKL threads initially; bench_devices retains its native thread sweep. No custom fixture or timing function. Baseline and PR use identical verified public checkpoints."
+}

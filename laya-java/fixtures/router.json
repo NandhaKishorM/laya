@@ -1167,15 +1167,15 @@
         "value": "plain english words here now"
       },
       "decision": {
-        "model": "multilingual",
-        "repo": "convaiinnovations/laya/multilingual",
-        "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "English Latin text",
         "workflow": null,
         "detection": {
           "script": "latin",
-          "language": null,
+          "language": "en",
           "is_english": true,
-          "language_undecided": true,
+          "language_undecided": false,
           "non_latin_fraction": 0.0,
           "diacritic_rate": 0.0,
           "mixed_segment": null
@@ -1192,15 +1192,15 @@
         "value": "plain english words here now"
       },
       "decision": {
-        "model": "multilingual",
-        "repo": "convaiinnovations/laya/multilingual",
-        "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
+        "model": "english",
+        "repo": "convaiinnovations/laya",
+        "reason": "English Latin text",
         "workflow": null,
         "detection": {
           "script": "latin",
-          "language": null,
+          "language": "en",
           "is_english": true,
-          "language_undecided": true,
+          "language_undecided": false,
           "non_latin_fraction": 0.0,
           "diacritic_rate": 0.0,
           "mixed_segment": null

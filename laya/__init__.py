@@ -22,7 +22,7 @@ import os as _os
 _os.environ.setdefault("USE_TF", "0")
 
 from .email import clean_email_body, email_state
-from .hooks import AsyncHook, BaseHook, Hook, PredictContext, PredictHook
+from .hooks import AsyncHook, BaseHook, Hook, OptionStabilityHook, PredictContext, PredictHook
 from .lang import analyse as detect_language
 from .lang import detect_script, is_english
 from .presets import (
@@ -35,7 +35,7 @@ from .presets import (
 from .router import DEFAULT_MODELS, RouteDecision, Router
 from .structured import DecisionResult, decide, decide_batch
 
-__version__ = "0.4.6"
+__version__ = "0.5.3"
 
 # Routing, language detection and email cleaning are pure Python. The torch-backed names are
 # resolved lazily so that `import laya` -- and therefore `from laya import Router` or
@@ -44,6 +44,10 @@ _LAZY_ATTRS = {
     # stdlib-only module, but keep it lazy so `import laya` does not pull in hashlib
     "PINNED_REVISIONS": (".revisions", "PINNED_REVISIONS"),
     "Agent": (".agent", "Agent"),
+    "VegaAgent": (".vega", "VegaAgent"),       # vegaml's engine behind laya's surface
+    "Learner": (".learn", "Learner"),           # vegaml's continuous learner
+    "Escalator": (".learn", "Escalator"),       # and its teacher for what it is unsure of
+    "vllm_teacher": (".learn", "vllm_teacher"), # a teacher served on your own machines
     "RLAgent": (".agent", "RLAgent"),
     "load": (".agent", "load"),
     "fit_temperatures": (".calibrate", "fit_temperatures"),
@@ -100,6 +104,10 @@ def __dir__():
 __all__ = [
     "Agent",
     "RLAgent",
+    "VegaAgent",
+    "Learner",
+    "Escalator",
+    "vllm_teacher",
     "load",
     "fit_temperatures",
     "fit_one_temperature",
@@ -151,6 +159,7 @@ __all__ = [
     "Hook",
     "BaseHook",
     "AsyncHook",
+    "OptionStabilityHook",
     "decide",
     "decide_batch",
     "DecisionResult",

@@ -25,6 +25,21 @@ export function validateJson(value: unknown, path = 'request', ancestors = new S
   ancestors.delete(value);
 }
 
+/**
+ * The fields a question may carry. `type`, `instructions` and `criteria` are the schema; the
+ * other two are documented extensions the server honours (`laya/agent.py::_check_question`) and
+ * the Python client passes through unchanged ("Question extensions such as `option_order` pass
+ * through unchanged", `sdk/python/README.md`):
+ *
+ *   * `option_order` -- a permutation of the option indices, controlling positional option bias;
+ *   * `labels` -- custom wording for a `noul` question's true/false options.
+ *
+ * They were missing from this whitelist, so both were rejected as "unknown question field" and
+ * the request never left the process, even though the server accepts them. The set stays closed
+ * otherwise, so a typo (`instruction`) is still caught here rather than by a 422.
+ */
+const QUESTION_FIELDS = new Set(['type', 'instructions', 'criteria', 'option_order', 'labels']);
+
 export function validateQuestions(questions: unknown): void {
   if (!isRecord(questions) || Object.keys(questions).length === 0) {
     throw new LayaValidationError('questions must be an object containing at least one question');
@@ -34,7 +49,7 @@ export function validateQuestions(questions: unknown): void {
     if (!isRecord(q)) invalid('expected a question object');
     const question = q as Record<string, unknown>;
     if (!Object.hasOwn(question, 'instructions')) invalid('instructions is required');
-    if (Object.keys(question).some(key => !['type', 'instructions', 'criteria'].includes(key))) {
+    if (Object.keys(question).some(key => !QUESTION_FIELDS.has(key))) {
       invalid('unknown question field');
     }
     const criteria = question.criteria;

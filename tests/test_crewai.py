@@ -259,6 +259,95 @@ check_true("guard/score_fallback_flagged",
            harm_result({"type": "score", "score": 1.5, "confidence": 0.5})["passed"] is False)
 check_true("guard/score_fallback_passes", harm_result({"type": "score", "score": 0.53, "confidence": 0.5})["passed"])
 
+from laya.integrations._guard import probability_map
+
+# A remote JSON integer may be wider than a Python float. Refuse it as a malformed numeric field
+# instead of leaking OverflowError from the shared answer guard.
+_wide_guard = LayaTaskGuard(
+    agent=MockLayaAgent(lambda state, questions: {
+        "answers": {"jailbreak": {"type": "noul", "noul": 10 ** 400}}
+    }),
+    action="annotate",
+)
+try:
+    _wide_guard.screen("Summarize this report")
+    check_true("guard/wide_integer_is_malformed", False, "no error raised")
+except RuntimeError as _exc:
+    check_true("guard/wide_integer_is_malformed",
+               "Malformed decision response" in str(_exc), str(_exc))
+except Exception as _exc:
+    check_true("guard/wide_integer_is_malformed", False,
+               "%s: %s" % (type(_exc).__name__, _exc))
+
+try:
+    probability_map({"probabilities": {"choice_0": 10 ** 400}}, ["choice_0"])
+    check_true("guard/wide_probability_is_malformed", False, "no error raised")
+except RuntimeError as _exc:
+    check_true("guard/wide_probability_is_malformed",
+               "Malformed decision response" in str(_exc), str(_exc))
+except Exception as _exc:
+    check_true("guard/wide_probability_is_malformed", False,
+               "%s: %s" % (type(_exc).__name__, _exc))
+
+# --------------------------------------------------------------- 3b. Guard probabilities are robust to a malformed answer
+#
+# `score_violation_probability` reads `probabilities` (and `score`) straight from a decision answer,
+# so both are arbitrary remote/caller JSON. Before the guard, a non-mapping `probabilities` raised at
+# `len`/`.get`; a value that is not a real number raised inside `float`; and a boolean read as
+# 0.0/1.0 because `bool` subclasses `int` -- each of which crashed or mis-scored the guardrail screen.
+# A distribution that is not a mapping of real numbers now falls back to the same normalised expected
+# level the empty path uses; a numeric (and numeric-string) distribution sums exactly as before.
+from laya.integrations._guard import score_violation_probability
+
+_VALID = {"0": 0.10, "1": 0.15, "2": 0.30, "3": 0.45}
+check_true("guardprob/valid_distribution",
+           abs(score_violation_probability({"probabilities": _VALID}, 4) - 0.75) < 1e-9)
+_STRINGS = {"0": "0.10", "1": "0.15", "2": "0.30", "3": "0.45"}
+check_true("guardprob/numeric_strings_still_sum",
+           abs(score_violation_probability({"probabilities": _STRINGS}, 4) - 0.75) < 1e-9)
+
+# Each malformed distribution has no usable probabilities, so the answer's own score of 1.5 stands in:
+# score / (k - 1) = 1.5 / 3 = 0.5. None of these may raise.
+_BAD_DISTRIBUTIONS = {
+    "list": {"probabilities": [0.1, 0.2, 0.3, 0.4], "score": 1.5},
+    "str": {"probabilities": "0.3,0.45", "score": 1.5},
+    "int": {"probabilities": 5, "score": 1.5},
+    "value_str": {"probabilities": {"0": 0.1, "1": 0.1, "2": "high", "3": 0.4}, "score": 1.5},
+    "value_none": {"probabilities": {"0": 0.1, "1": 0.1, "2": None, "3": 0.4}, "score": 1.5},
+    "value_bool": {"probabilities": {"0": 0.1, "1": 0.1, "2": True, "3": False}, "score": 1.5},
+    "value_nan_string": {"probabilities": {"0": 0.1, "1": 0.1, "2": "NaN", "3": 0.4}, "score": 1.5},
+    "value_inf_string": {"probabilities": {"0": 0.1, "1": 0.1, "2": "Infinity", "3": 0.4}, "score": 1.5},
+    "value_neg_inf_string": {"probabilities": {"0": 0.1, "1": 0.1, "2": "-Infinity", "3": 0.4}, "score": 1.5},
+    "value_overflow_string": {"probabilities": {"0": 0.1, "1": 0.1, "2": "1e10000", "3": 0.4}, "score": 1.5},
+    "value_wide_int": {"probabilities": {"0": 0.1, "1": 0.1, "2": 10 ** 1000, "3": 0.4}, "score": 1.5},
+    "sum_overflow": {"probabilities": {"0": 0.1, "1": 0.1, "2": 1e308, "3": 1e308}, "score": 1.5},
+}
+for _label, _ans in _BAD_DISTRIBUTIONS.items():
+    try:
+        _got = score_violation_probability(_ans, 4)
+        check_true("guardprob/%s_uses_score_fallback" % _label, abs(_got - 0.5) < 1e-9)
+    except Exception as _e:
+        check_true("guardprob/%s_uses_score_fallback" % _label, False, "%s: %s" % (type(_e).__name__, _e))
+
+# A bool score is not a level, and a non-numeric score is not one either: both read as 0.0.
+for _label, _bad_score in (("bool_score_is_zero", True), ("nonnumeric_score_is_zero", "1.5"),
+                           ("nan_score_is_zero", float("nan")), ("inf_score_is_zero", float("inf")),
+                           ("neg_inf_score_is_zero", float("-inf")), ("wide_int_score_is_zero", 10 ** 1000)):
+    try:
+        check("guardprob/" + _label, score_violation_probability({"score": _bad_score}, 4), 0.0)
+    except Exception as _e:
+        check_true("guardprob/" + _label, False, "%s: %s" % (type(_e).__name__, _e))
+
+# The same malformed answer must also survive the live screen path rather than raising out of
+# guard.screen() -- the guardrail degrades to a decision instead of dying.
+_bad_screen = {"type": "score", "score": 1.5, "confidence": 0.5,
+               "probabilities": {"0": 0.1, "1": 0.1, "2": True, "3": False}}
+try:
+    check_true("guardprob/screen_survives_bad_probabilities",
+               isinstance(harm_result(_bad_screen)["passed"], bool))
+except Exception as _e:
+    check_true("guardprob/screen_survives_bad_probabilities", False, "%s: %s" % (type(_e).__name__, _e))
+
 # `threshold` is a probability: above 1 no question could ever be flagged, so reject it.
 for bad in (1.5, -0.1):
     rejected = False
@@ -327,6 +416,121 @@ with patch("urllib.request.build_opener") as mock_build_opener:
     check("remote/auth", req.headers.get("Authorization"), "Bearer sk-crew-key")
 
 
+# --------------------------------------------------------------- 4b. Non-Object Remote Response
+#
+# A remote laya-serve body is arbitrary JSON: a gateway, a mis-pointed `base_url`, or a proxy error
+# page can answer with a top-level array, string, number or `true`/`null`. `json.loads` accepts each
+# of those and both consumers read the result with `res.get("answers", …)`, so before the guard a
+# non-object leaked `AttributeError: 'list' object has no attribute 'get'` past the fail-closed path
+# instead of the `RuntimeError` every other remote failure raises here. `_call_remote` and the public
+# `route()` are both driven so a regression at either layer is caught.
+from laya.integrations.crewai import _call_remote as _crewai_call_remote
+
+_CREWAI_NON_OBJECT_BODIES = [
+    ([], "list"),
+    ([{"answers": {"delegation": {"choice": "agent_1"}}}], "list-of-objects"),
+    ("unauthorized", "str"),
+    (None, "null"),
+    (123, "int"),
+    (True, "bool"),
+]
+for _body, _label in _CREWAI_NON_OBJECT_BODIES:
+    with patch("urllib.request.build_opener") as _m:
+        _m.return_value.open.return_value = DummyHTTPResponse(_body)
+        try:
+            _crewai_call_remote("http://localhost:8000", "s", {"q": {}})
+            check_true("nonobj/%s/_call_remote raises" % _label, False, "no error raised")
+        except RuntimeError as exc:
+            check_true("nonobj/%s/malformed" % _label, "Malformed decision response" in str(exc))
+            check_true("nonobj/%s/names object" % _label, "expected a JSON object" in str(exc))
+        except Exception as exc:
+            check_true("nonobj/%s/_call_remote raises" % _label, False, type(exc).__name__)
+
+        try:
+            LayaCrewRouter(base_url="http://localhost:8000", api_key="k").route(
+                "Analyze codebase", agents)
+            check_true("nonobj/%s/route raises" % _label, False, "no error raised")
+        except RuntimeError as exc:
+            check_true("nonobj/%s/route malformed" % _label,
+                       "Malformed decision response" in str(exc))
+        except Exception as exc:
+            check_true("nonobj/%s/route surfaces RuntimeError" % _label, False, type(exc).__name__)
+
+# Positive control: a well-formed object body still routes -- the guard does not over-reject.
+with patch("urllib.request.build_opener") as _m:
+    _m.return_value.open.return_value = DummyHTTPResponse(remote_response)
+    check("nonobj/object still routes",
+          LayaCrewRouter(base_url="http://localhost:8000").route(
+              "Analyze codebase", agents).agent_index, 1)
+
+
+# --------------------------------------------------------------- 4c. Non-Object `answers` Field
+#
+# Section 4b makes `_call_remote` refuse a top-level array, string, number or `true`/`null`. One level
+# deeper is the same arbitrary JSON: a gateway can answer `{"answers": []}`. `res.get("answers", {})`
+# hands back the list -- the key is present, so the `{}` default never fires -- and both consumers then
+# crash on it: route's delegation lookup with `'list' object has no attribute 'get'`, the guardrail
+# screen with `'list' object has no attribute 'items'`. A crash is not the fail-closed path either.
+# A body without `answers`, or with `answers` as an object (even an empty one), is a no-decision
+# response rather than a malformed one, and has to keep routing and screening exactly as it does today.
+from laya.integrations.crewai import _call_remote as _crewai_call_remote
+
+_CREWAI_BAD_ANSWERS = [
+    (["boom"], "list"),
+    ("boom", "str"),
+    (3, "int"),
+    (True, "bool"),
+    (None, "null"),
+]
+for _answers, _label in _CREWAI_BAD_ANSWERS:
+    with patch("urllib.request.build_opener") as _m:
+        _m.return_value.open.return_value = DummyHTTPResponse({"answers": _answers})
+        try:
+            _crewai_call_remote("http://localhost:8000", "s", {"q": {}})
+            check_true("badans/%s/_call_remote raises" % _label, False, "no error raised")
+        except RuntimeError as _exc:
+            check_true("badans/%s/names answers" % _label,
+                       "'answers' must be a JSON object" in str(_exc), str(_exc))
+        except Exception as _exc:
+            check_true("badans/%s/_call_remote raises" % _label, False, type(_exc).__name__)
+
+        for _entry, _run in (
+            ("route", lambda a=_answers: LayaCrewRouter(base_url="http://localhost:8000",
+                                                        api_key="k").route(
+                                                           "Analyze codebase", agents)),
+            ("screen", lambda a=_answers: LayaTaskGuard(base_url="http://localhost:8000",
+                                                        api_key="k").screen("hello")),
+        ):
+            try:
+                _run()
+                check_true("badans/%s/%s raises" % (_label, _entry), False, "no error raised")
+            except RuntimeError:
+                check_true("badans/%s/%s raises" % (_label, _entry), True)
+            except Exception as _exc:
+                check_true("badans/%s/%s raises" % (_label, _entry), False, type(_exc).__name__)
+
+# The refusal names the offending type -- with `answers` nested inside an otherwise valid body, that
+# is the only thing a caller reading a log line can act on.
+with patch("urllib.request.build_opener") as _m:
+    _m.return_value.open.return_value = DummyHTTPResponse({"answers": ["boom"]})
+    try:
+        _crewai_call_remote("http://localhost:8000", "s", {"q": {}})
+        check_true("badans/names the type", False, "no error raised")
+    except RuntimeError as _exc:
+        check_true("badans/names the type", "got list" in str(_exc), str(_exc))
+
+# Controls: the two no-decision shapes still route and still screen.
+for _body, _label in (({"model": "laya-multilingual"}, "answers absent"),
+                      ({"answers": {}}, "answers empty")):
+    with patch("urllib.request.build_opener") as _m:
+        _m.return_value.open.return_value = DummyHTTPResponse(_body)
+        check("badans/%s still routes" % _label,
+              LayaCrewRouter(base_url="http://localhost:8000").route(
+                  "Analyze codebase", agents).agent_index, 0)
+        check("badans/%s still screens safe" % _label,
+              LayaTaskGuard(base_url="http://localhost:8000").screen("hello"), "hello")
+
+
 # --------------------------------------------------------------- 5. Per-call decision controls
 #
 # `laya.integrations.langchain` has forwarded `max_len` / `head_max_len` and the five hook
@@ -344,6 +548,7 @@ from laya.router import Router
 
 CONTROLS = (tuple(_controls.PREDICT_CONTROLS) + tuple(_controls.DECISION_CONTROLS)
             + tuple(_controls.HOOK_CONTROLS))
+ROUTER_HINTS = tuple(_controls.ROUTER_ONLY_CONTROLS)
 
 
 def _params(fn):
@@ -357,6 +562,8 @@ check("controls/decision tuple names decision_kwargs",
       set(_params(_controls.decision_kwargs)), set(_controls.DECISION_CONTROLS))
 check("controls/hook tuple names hook_kwargs",
       set(_params(_controls.hook_kwargs)), set(_controls.HOOK_CONTROLS))
+check("controls/routing tuple names router_kwargs",
+      set(_params(_controls.router_kwargs)), set(_controls.ROUTER_ONLY_CONTROLS))
 
 # Everything this file calls a control is an argument a real runner accepts, or a chain would fail
 # with a TypeError deep inside core instead of at the call site.
@@ -366,15 +573,23 @@ for _c in CONTROLS:
     check_true("controls/%s accepted by Agent" % _c, _c in _agent_params)
     check_true("controls/%s accepted by Router.predict" % _c, _c in _router_params)
 
+# The two routing hints are the opposite case, and the whole reason `require_router_controls`
+# exists: a `Router` reads them and an `Agent` -- which has no routing step to read them in --
+# does not. Read from core rather than asserted in a comment, because a runner that gains either
+# knob turns the refusal below from correct into a bug, and only this check would say so.
+for _c in ROUTER_HINTS:
+    check_true("routing/%s accepted by Router.predict" % _c, _c in _router_params)
+    check_true("routing/%s rejected by Agent.predict" % _c, _c not in _agent_params)
+
 # Both classes and the shared executor must accept all of them. Two classes, two call sites --
 # a third of them missing is exactly the bug this section exists to keep shut.
 for cls in (LayaCrewRouter, LayaTaskGuard):
-    for _c in CONTROLS:
+    for _c in CONTROLS + ROUTER_HINTS:
         check_true("controls/%s takes %s" % (cls.__name__, _c), _c in _params(cls.__init__))
 check("controls/_execute_decision takes every control",
       set(_params(crewai_module._execute_decision)) - {"state", "questions", "agent",
                                                        "base_url", "api_key", "model"},
-      set(CONTROLS))
+      set(CONTROLS) | set(ROUTER_HINTS))
 
 # The three wrappers end at the same runner call, so they must accept the same controls.
 for _mod in (langchain_module, llamaindex_module):
@@ -572,10 +787,233 @@ def _silent(state, questions):
 kept = LayaCrewRouter(agent=DisagreeingAgent(_silent), confidence_threshold=0.80).route(
     "anything", agents)
 check("gate/missing confidence still passes", kept.agent_index, 2)
+# ------------------------------------------------------- 5c. The two Router-only routing hints
+ROUTING_ANSWER = {
+    "answers": {
+        "delegation": {"choice": "agent_0", "confidence": 0.9, "answer_confidence": 0.9},
+        "injection_risk": {"type": "noul", "noul": 0.1, "confidence": 0.9},
+    },
+    "routing": {"model": "english", "repo": None, "reason": "explicit model"},
+}
+
+
+class RoutingRunner:
+    """A Router-shaped runner: it declares the arguments core's `Router.predict` declares.
+
+    Explicit parameters rather than `**kwargs`, because the point of the section is the *name* a
+    control arrives under -- a `**kwargs` sink records anything, including a control that arrived
+    misspelled or in the wrong slot.
+    """
+
+    def __init__(self):
+        self.seen = {}
+
+    def predict(self, state, questions, model=None, task=None, lang=None, lang_guess=None,
+                max_len=None, head_max_len=None):
+        self.seen = {k: v for k, v in locals().items()
+                     if v is not None and k not in ("self", "state", "questions")}
+        return dict(ROUTING_ANSWER)
+
+
+class NonRoutingRunner(RoutingRunner):
+    """An Agent-shaped runner: the budgets yes, either routing hint never."""
+
+    def predict(self, state, questions, max_len=None, head_max_len=None):
+        return RoutingRunner.predict(self, state, questions, max_len=max_len,
+                                    head_max_len=head_max_len)
+
+
+# A mock that silently diverges from core would make the two sections below agree with each other
+# and with nothing real. Each declared name has to be one the entry point it imitates accepts.
+check_true("routing/RoutingRunner imitates accepted arguments only",
+           (_params(RoutingRunner.predict) - {"state", "questions"}) <= _router_params,
+           repr(_params(RoutingRunner.predict)))
+check_true("routing/NonRoutingRunner imitates accepted arguments only",
+           (_params(NonRoutingRunner.predict) - {"state", "questions"}) <= _agent_params,
+           repr(_params(NonRoutingRunner.predict)))
+
+SURFACES = (
+    ("router", lambda runner, **kw: LayaCrewRouter(agent=runner, **kw).route(
+        "Analyze Q3 sales", agents)),
+    ("guard", lambda runner, **kw: LayaTaskGuard(agent=runner, **kw).screen(
+        "Summarize this report")),
+)
+
+for _label, _run in SURFACES:
+    def _seen(_run=_run, _cls=RoutingRunner, **_hints):
+        _r = _cls()
+        _run(_r, **_hints)
+        return _r.seen
+
+    check("routing/%s default sends nothing" % _label, _seen(), {})
+    check("routing/%s forwards both hints" % _label,
+          _seen(task="typed_decisions", lang_guess="de"),
+          {"task": "typed_decisions", "lang_guess": "de"})
+    check("routing/%s forwards one hint alone" % _label, _seen(lang_guess="de"),
+          {"lang_guess": "de"})
+    # A blank hint is core's documented "no usable hint, fall through to detection", so it is a
+    # value the caller chose and must survive; `task=""` is not a fall-through, it is an empty name.
+    check("routing/%s keeps an empty lang_guess" % _label, _seen(lang_guess=""),
+          {"lang_guess": ""})
+    check("routing/%s beside model and budget" % _label,
+          _seen(model="laya-multilingual", max_len=1024, task="typed_decisions"),
+          {"model": "laya-multilingual", "max_len": 1024, "task": "typed_decisions"})
+
+    # And a runner with no routing step must not be handed a routing hint: core would raise a
+    # `TypeError` from inside `predict`, past every hook, on the way to an answer nobody asked for.
+    for _c, _sample in zip(ROUTER_HINTS, ("typed_decisions", "de")):
+        try:
+            _seen(_cls=NonRoutingRunner, **{_c: _sample})
+            check_true("routing/%s refuses %s at a runner that cannot route" % (_label, _c),
+                       False, "no error raised")
+        except ValueError as exc:
+            check_true("routing/%s refuses %s at a runner that cannot route" % (_label, _c), True)
+            check_true("routing/%s %s names itself" % (_label, _c), _c in str(exc))
+            check_true("routing/%s %s names the call that refused" % (_label, _c),
+                       "NonRoutingRunner.predict" in str(exc))
+            check_true("routing/%s %s says what to do" % (_label, _c), "Router" in str(exc))
+        except Exception as exc:
+            check_true("routing/%s refuses %s at a runner that cannot route" % (_label, _c),
+                       False, type(exc).__name__)
+
+    # Nothing was forwarded, so nothing reached the runner either.
+    _strict = NonRoutingRunner()
+    try:
+        _run(_strict, task="typed_decisions")
+    except ValueError:
+        pass
+    check("routing/%s refusal happens before the call" % _label, _strict.seen, {})
+
+# Both hints ride in the laya-serve body -- they are `BODY_CONTROLS` there -- and a blank one
+# stays blank rather than dropping out of the request.
+check("routing/remote body carries both hints",
+      {k: v for k, v in remote_body({"task": "typed_decisions", "lang_guess": "de"}).items()
+       if k in ROUTER_HINTS},
+      {"task": "typed_decisions", "lang_guess": "de"})
+check("routing/remote body omits unset hints",
+      [k for k in remote_body({}) if k in ROUTER_HINTS], [])
+check("routing/remote body keeps an empty lang_guess",
+      remote_body({"lang_guess": ""}).get("lang_guess"), "")
+
+# A `lang_guess` may also be a callable taking the state, and only the code string has a wire form.
+# `laya-serve` answers 422 for the callable; naming it here says so before the request goes out.
+for _surface, _go in (("router", lambda **kw: LayaCrewRouter(base_url="http://localhost:8000",
+                                                            **kw).route("x", agents)),
+                      ("guard", lambda **kw: LayaTaskGuard(base_url="http://localhost:8000",
+                                                          **kw).screen("x"))):
+    try:
+        _go(lang_guess=lambda state: "de")
+        check_true("routing/%s remote refuses a callable lang_guess" % _surface,
+                   False, "no error raised")
+    except ValueError as exc:
+        check_true("routing/%s remote refuses a callable lang_guess" % _surface, True)
+        check_true("routing/%s remote lang_guess names itself" % _surface,
+                   "lang_guess" in str(exc))
+        check_true("routing/%s remote lang_guess names the endpoint" % _surface,
+                   "laya-serve" in str(exc))
+    except Exception as exc:
+        check_true("routing/%s remote refuses a callable lang_guess" % _surface,
+                   False, type(exc).__name__)
 
 
 # --------------------------------------------------------------- Results Summary
 print(f"PASS: {len(PASS)}")
+
+# ------------------------------------------------------ 4c. Malformed NESTED decision fields
+#
+# #1301 refuses a top-level non-object and #1321 refuses a non-object `answers`. One level below
+# those, both consumers still trusted every nested value: `answers` was iterated with `.items()`,
+# each answer was used as a dict, `choice` with `.startswith`, and `noul` compared with `>=`. A
+# well-formed object whose `answers` is a list, whose answer is a string, or whose `noul` is a
+# string/null/bool raised AttributeError/TypeError out of the fail-closed path -- and a `true` read
+# as 1.0 because bool subclasses int, i.e. a spurious full-probability violation.
+_CREWAI_NESTED_ROUTE = [
+    ({"answers": []}, "answers-list"),
+    ({"answers": {"delegation": "agent_1"}}, "answer-str"),
+    ({"answers": {"delegation": None}}, "answer-null"),
+    ({"answers": {"delegation": {"choice": ["agent_1"]}}}, "choice-list"),
+]
+for _body, _label in _CREWAI_NESTED_ROUTE:
+    with patch("urllib.request.build_opener") as _m:
+        _m.return_value.open.return_value = DummyHTTPResponse(_body)
+        try:
+            LayaCrewRouter(base_url="http://localhost:8000").route(
+                "Analyze codebase", agents)
+            check_true("nested/%s/route raises" % _label, False, "no error raised")
+        except RuntimeError as exc:
+            check_true("nested/%s/route malformed" % _label,
+                       "Malformed decision response" in str(exc))
+        except Exception as exc:
+            check_true("nested/%s/route is RuntimeError" % _label, False, type(exc).__name__)
+
+# A `choice` may name an index the crew does not have. `chosen_key` is remote JSON and `agents` is
+# the caller's list, and the code parsed `agent_N` straight into `agents[N]`: `agent_9` raised a
+# bare IndexError out of the routing decision, and `agent_-1` wrapped to the LAST agent -- a route
+# no caller asked for and nothing in the decision names. `tools.py:493` answers an unknown decision
+# by name instead of raising, so the index range is checked the same way here.
+_CREWAI_CHOICE_INDEX = [
+    "agent_4",      # one past the end of the four-agent crew
+    "agent_9",      # far past the end
+    "agent_-1",     # would wrap to the last agent
+    "agent_-99",    # far before the start
+]
+for _choice in _CREWAI_CHOICE_INDEX:
+    with patch("urllib.request.build_opener") as _m:
+        _m.return_value.open.return_value = DummyHTTPResponse(
+            {"answers": {"delegation": {"choice": _choice, "answer_confidence": 0.95}}})
+        try:
+            _d = LayaCrewRouter(base_url="http://localhost:8000").route("Analyze codebase", agents)
+            check_true("choice-index/%s/route raises" % _choice, False,
+                       "no error raised (routed to index %r)" % (_d.agent_index,))
+        except RuntimeError as exc:
+            check_true("choice-index/%s/route malformed" % _choice,
+                       "Malformed decision response" in str(exc))
+            check_true("choice-index/%s/route names the choice" % _choice, _choice in str(exc))
+            check_true("choice-index/%s/route names the crew size" % _choice, "4-agent" in str(exc))
+        except Exception as exc:
+            check_true("choice-index/%s/route is RuntimeError" % _choice, False, type(exc).__name__)
+
+# The last real index still routes: the guard is a range check, not a rejection of the highest one.
+with patch("urllib.request.build_opener") as _m:
+    _m.return_value.open.return_value = DummyHTTPResponse(
+        {"answers": {"delegation": {"choice": "agent_3", "answer_confidence": 0.95}}})
+    check("choice-index/last agent still routes",
+          LayaCrewRouter(base_url="http://localhost:8000").route("Analyze codebase", agents).agent_index, 3)
+
+_CREWAI_NESTED_SCREEN = [
+    ({"answers": []}, "answers-list"),
+    ({"answers": {"harm_severity": "nope"}}, "answer-str"),
+    ({"answers": {"harm_severity": {"type": "noul", "noul": "high"}}}, "noul-str"),
+    ({"answers": {"harm_severity": {"type": "noul", "noul": None}}}, "noul-null"),
+    ({"answers": {"harm_severity": {"type": "noul", "noul": True}}}, "noul-bool"),
+]
+for _body, _label in _CREWAI_NESTED_SCREEN:
+    with patch("urllib.request.build_opener") as _m:
+        _m.return_value.open.return_value = DummyHTTPResponse(_body)
+        try:
+            LayaTaskGuard(base_url="http://localhost:8000").screen(
+                "Summarize the annual shareholder meeting")
+            check_true("nested/%s/screen raises" % _label, False, "no error raised")
+        except RuntimeError as exc:
+            check_true("nested/%s/screen malformed" % _label,
+                       "Malformed decision response" in str(exc))
+        except Exception as exc:
+            check_true("nested/%s/screen is RuntimeError" % _label, False, type(exc).__name__)
+
+# Positive controls: a well-formed body is read exactly as before, on both surfaces.
+with patch("urllib.request.build_opener") as _m:
+    _m.return_value.open.return_value = DummyHTTPResponse(
+        {"answers": {"delegation": {"choice": "agent_2", "answer_confidence": 0.95}}})
+    check("nested/well-formed route still routes",
+          LayaCrewRouter(base_url="http://localhost:8000").route(
+              "Analyze codebase", agents).agent_index, 2)
+with patch("urllib.request.build_opener") as _m:
+    _m.return_value.open.return_value = DummyHTTPResponse(
+        {"answers": {"harm_severity": {"type": "noul", "noul": 0.0, "confidence": 0.9}}})
+    check_true("nested/well-formed screen still passes",
+               LayaTaskGuard(base_url="http://localhost:8000").screen(
+                   "Summarize the annual shareholder meeting") is not None)
+
 print(f"FAIL: {len(FAIL)}")
 for f in FAIL:
     print(f"  - {f}")

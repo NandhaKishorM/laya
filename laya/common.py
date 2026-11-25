@@ -7,6 +7,7 @@ import warnings
 from contextlib import nullcontext
 from contextvars import ContextVar
 from functools import wraps
+from numbers import Integral
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 import numpy as np
@@ -459,6 +460,36 @@ def window_budget(tok, questions, max_len: int = 512, head_max_len: int = 192,
 
 
 
+def check_batch_size(batch_size: Any) -> Optional[int]:
+    """Validate the per-call `batch_size` cap before the chunker has to spend it.
+
+    `batch_size` counts states per forward pass, and the batch loop uses it as a `range()` step.
+    A `float` -- what a JSON `2.0` parses to, and what `n / 2` yields -- reached `range()` and came
+    back as the interpreter's own `'float' object cannot be interpreted as an integer`; a `str` was
+    compared to zero first and leaked `'>' not supported between instances of 'str' and 'int'`;
+    `True` is an `int` to `range()`, so it silently capped every pass at one state and switched
+    `sort_by_length` off, because that knob's own gate is `1 < chunk`. `laya/shortlist.py`,
+    `laya/mcp/tools.py` and `laya/serve.py` already refuse these shapes; the two `predict_batch`
+    entry points and `window_batch_cap` did not, so a Python caller -- the documented route, and
+    the one with no schema in front of it -- met the raw `TypeError` instead of the named refusal.
+
+    `None`, `0` and a negative integer are **not** refused: they mean "no cap", the chunker uses
+    `len(states)` and `window_batch_cap` returns `None`. That is pinned, not incidental --
+    `laya-java/fixtures/window_plan.json`'s `batch_cap` grid replays `(None, 0, -1, 1, 8)` through
+    the Java, Go, C# and C++ ports, and those ports take a typed `int` whose zero and negative
+    values are their own "unset", so refusing here would move the oracle for every port while
+    helping no caller. Anything with `__index__` is accepted, a `numpy.int64` among them, for the
+    same reason `ece_score` in this module gives: a value `range()` can spend is a value worth
+    accepting. A `bool` is refused even though it is an `int`, because `True` is not a count that
+    anyone meant to pass.
+    """
+    if batch_size is None:
+        return None
+    if isinstance(batch_size, bool) or not isinstance(batch_size, Integral):
+        raise ValueError("batch_size must be an integer count of states, got %r" % (batch_size,))
+    return int(batch_size)
+
+
 def window_batch_cap(n_windows: int, window: int, config_budget: int,
                      batch_size: Optional[int] = None) -> Optional[int]:
     """Keep one forward pass no wider than the un-capped scan's would have been -- but only when
@@ -475,8 +506,11 @@ def window_batch_cap(n_windows: int, window: int, config_budget: int,
     those would trade a real property for no real protection. So the cap only applies past
     `_WINDOW_BATCH_BLOWUP`x, and then bounds the pass at the count the un-capped budget would have
     produced: peak memory stays at parity with the behaviour before the cap, and the scan still reads
-    the whole document, just in more passes. An explicit `batch_size` is always honoured.
+    the whole document, just in more passes. An explicit `batch_size` is always honoured --
+    `check_batch_size` decides what counts as explicit, and a value it refuses is one no chunker
+    downstream could honour either.
     """
+    batch_size = check_batch_size(batch_size)
     if batch_size and batch_size > 0:
         return batch_size
     if window >= config_budget:
@@ -571,6 +605,136 @@ def unpermute_probs(p: np.ndarray, option_order: Optional[List[int]]) -> np.ndar
     return canonical
 
 
+def _can_use_cpu_head(layer, h):
+    # Keep training, export/compile, other devices/precisions and instrumented/custom layers
+    # on the original path. Hooks must still observe the full sequence they registered for.
+    if (torch._dynamo.is_compiling() or torch.jit.is_tracing() or torch.jit.is_scripting()
+            or h.device.type != "cpu" or h.dtype != torch.float32 or torch.is_grad_enabled()
+            or _autocast_enabled("cpu")
+            or type(layer) is not nn.TransformerEncoderLayer or not layer.norm_first):
+        return False
+    if (type(layer.linear1) is not nn.Linear or type(layer.linear2) is not nn.Linear
+            or type(layer.norm1) is not nn.LayerNorm or type(layer.norm2) is not nn.LayerNorm
+            or layer.activation not in (F.relu, F.gelu)
+            or any(type(m) is not nn.Dropout for m in (layer.dropout, layer.dropout1, layer.dropout2))):
+        return False
+    attn = layer.self_attn
+    if (type(attn) not in (nn.MultiheadAttention, _DynamicMultiheadAttention)
+            or not attn.batch_first or not attn._qkv_same_embed_dim
+            or attn.in_proj_weight is None or attn.bias_k is not None or attn.bias_v is not None or attn.add_zero_attn
+            or type(attn.out_proj) not in (nn.Linear, nn.modules.linear.NonDynamicallyQuantizableLinear)):
+        return False
+    if (nn.modules.module._global_forward_hooks or nn.modules.module._global_forward_pre_hooks):
+        return False
+    return not any(m.training or m._forward_hooks or m._forward_pre_hooks or "forward" in m.__dict__
+                   or getattr(m, "_compiled_call_impl", None) is not None for m in layer.modules())
+
+
+def _cpu_head(layer, h, pad, positions=None):
+    normalized = layer.norm1(h)
+    attn, d = layer.self_attn, h.shape[-1]
+    weight, bias = attn.in_proj_weight, attn.in_proj_bias
+    if positions is None:
+        selected = h
+        q, k, v = F.linear(normalized, weight, bias).chunk(3, dim=-1)
+    else:
+        # Earlier layers retain every query: their outputs are keys/values for the next layer.
+        idx = positions[:, :, None].expand(-1, -1, d)
+        selected = h.gather(1, idx)
+        q = F.linear(normalized.gather(1, idx), weight[:d], None if bias is None else bias[:d])
+        k, v = F.linear(normalized, weight[d:], None if bias is None else bias[d:]).chunk(2, dim=-1)
+    q, k, v = (t.unflatten(-1, (attn.num_heads, attn.head_dim)).transpose(1, 2) for t in (q, k, v))
+    out = F.scaled_dot_product_attention(q, k, v, attn_mask=~pad[:, None, None, :], dropout_p=0.0)
+    selected = selected + layer.dropout1(attn.out_proj(out.transpose(1, 2).flatten(-2)))
+    return selected + layer.dropout2(layer.linear2(layer.dropout(layer.activation(layer.linear1(layer.norm2(selected))))))
+
+
+def _can_use_cpu_windows(encoder, input_ids, attention_mask):
+    # Transformers 4.x has a different ModernBERT layer/RoPE API. Keep its original forward.
+    if (torch._dynamo.is_compiling() or torch.jit.is_tracing() or torch.jit.is_scripting()
+            or input_ids.device.type != "cpu" or torch.is_grad_enabled() or _autocast_enabled("cpu")
+            or input_ids.ndim != 2 or input_ids.shape[1] < 512 or not isinstance(attention_mask, torch.Tensor)
+            or attention_mask.shape != input_ids.shape
+            or type(encoder).__module__ != "transformers.models.modernbert.modeling_modernbert"):
+        return False
+    from transformers import __version__ as transformers_version
+    if transformers_version.split(".")[0] != "5":
+        return False
+    from transformers.models.modernbert.modeling_modernbert import (
+        ModernBertModel, ModernBertEncoderLayer, ModernBertAttention, ALL_ATTENTION_FUNCTIONS,
+    )
+    from transformers.integrations.sdpa_attention import sdpa_attention_forward
+    from transformers.masking_utils import ALL_MASK_ATTENTION_FUNCTIONS, sdpa_mask
+    if (ALL_ATTENTION_FUNCTIONS.get("sdpa") is not sdpa_attention_forward
+            or ALL_MASK_ATTENTION_FUNCTIONS.get("sdpa") is not sdpa_mask):
+        return False
+    cfg = encoder.config
+    types = getattr(cfg, "layer_types", None)
+    radius = getattr(cfg, "sliding_window", None)
+    rope = getattr(cfg, "rope_parameters", {})
+    if (type(encoder) is not ModernBertModel or cfg._attn_implementation != "sdpa"
+            or not types or len(types) != len(encoder.layers) or "sliding_attention" not in types
+            or not isinstance(radius, int) or radius < 1 or input_ids.shape[1] <= 2 * radius
+            or set(types) - {"full_attention", "sliding_attention"} or not isinstance(rope, dict)
+            or getattr(cfg, "output_attentions", False) or getattr(cfg, "output_hidden_states", False)
+            or any(rope.get(kind, {}).get("rope_type") != "default" for kind in types)
+            or any(type(layer) is not ModernBertEncoderLayer or type(layer.attn) is not ModernBertAttention
+                   or layer.attn.config is not cfg or layer.attention_type != kind
+                   for layer, kind in zip(encoder.layers, types))):
+        return False
+    if (nn.modules.module._global_forward_hooks or nn.modules.module._global_forward_pre_hooks
+            or any(m.training or m._forward_hooks or m._forward_pre_hooks or "forward" in m.__dict__
+                   or getattr(m, "_compiled_call_impl", None) is not None for m in encoder.modules())
+            or any(p.device.type != "cpu" or p.dtype != torch.float32 for p in encoder.parameters())):
+        return False
+    # The helper accepts ordinary binary key-padding masks, never arbitrary additive/dict masks.
+    return bool(((attention_mask == 0) | (attention_mask == 1)).all())
+
+
+def _cpu_window_attention(q, k, v, valid, radius, block=64):
+    # Overlapping key blocks retain the original inclusive |query - key| <= radius band.
+    batch, heads, length, dim = q.shape
+    chunks = (length + block - 1) // block
+    tail, width = chunks * block - length, block + 2 * radius
+    queries = F.pad(q, (0, 0, 0, tail)).reshape(batch, heads, chunks, block, dim)
+    queries = queries.permute(0, 2, 1, 3, 4).reshape(batch * chunks, heads, block, dim)
+
+    def windows(tensor):
+        padded = F.pad(tensor, (0, 0, radius, radius + tail))
+        return padded.unfold(2, width, block).permute(0, 2, 1, 4, 3).reshape(batch * chunks, heads, width, dim)
+
+    keys, values = windows(k), windows(v)
+    valid = F.pad(valid, (radius, radius + tail), value=False).unfold(1, width, block)
+    valid = valid.reshape(batch * chunks, width)
+    offsets = torch.arange(width, device=q.device)[None] - (torch.arange(block, device=q.device)[:, None] + radius)
+    mask = (offsets.abs() <= radius)[None, None] & valid[:, None, None, :]
+    out = F.scaled_dot_product_attention(queries, keys, values, attn_mask=mask, dropout_p=0.0)
+    return out.reshape(batch, chunks, heads, block, dim).permute(0, 2, 1, 3, 4).reshape(
+        batch, heads, chunks * block, dim)[:, :, :length]
+
+
+def _cpu_window_encoder(encoder, input_ids, attention_mask):
+    from transformers.models.modernbert.modeling_modernbert import apply_rotary_pos_emb
+
+    valid = attention_mask.bool()
+    h = encoder.embeddings(input_ids=input_ids)
+    position_ids = torch.arange(input_ids.shape[1], device=input_ids.device)[None]
+    rotary = {kind: encoder.rotary_emb(h, position_ids, kind) for kind in set(encoder.config.layer_types)}
+    full_mask = None if valid.all() else valid[:, None, None, :]
+    for layer in encoder.layers:
+        if layer.attention_type == "full_attention":
+            h = layer(h, attention_mask=full_mask, position_embeddings=rotary[layer.attention_type])
+            continue
+        attn = layer.attn
+        qkv = attn.Wqkv(layer.attn_norm(h)).view(*h.shape[:-1], 3, -1, attn.head_dim)
+        q, k, v = (part.transpose(1, 2) for part in qkv.unbind(-3))
+        q, k = apply_rotary_pos_emb(q, k, *rotary[layer.attention_type], unsqueeze_dim=1)
+        out = _cpu_window_attention(q, k, v, valid, encoder.config.sliding_window)
+        h = h + attn.out_drop(attn.Wo(out.transpose(1, 2).reshape_as(h).contiguous()))
+        h = h + layer.mlp(layer.mlp_norm(h))
+    return encoder.final_norm(h)
+
+
 class DecisionModel(nn.Module):
     """Bidirectional transformer encoder backbone + typed decision head."""
 
@@ -609,7 +773,10 @@ class DecisionModel(nn.Module):
     def forward(self, input_ids, attention_mask, marker_pos, marker_mask, qtype, detach_encoder: bool = False,
                 position_ids=None, option_ids=None):
         if option_ids is None:
-            h = self.encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state
+            if not self.training and _can_use_cpu_windows(self.encoder, input_ids, attention_mask):
+                h = _cpu_window_encoder(self.encoder, input_ids, attention_mask)
+            else:
+                h = self.encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state
         else:
             # Parallel option layout (`parallel_layout`). The head below has no positional
             # encoding, so with order-blind marker embeddings the logits permute with the options.
@@ -619,17 +786,28 @@ class DecisionModel(nn.Module):
         if detach_encoder:
             h = h.detach()
         h = h + self.type_emb(qtype)[:, None, :]
+        selected = False
         if self.head is not None:
             pad = ~attention_mask.bool()
-            for layer in self.head.layers:
+            for i, layer in enumerate(self.head.layers):
                 if self.head_checkpointing and self.training and torch.is_grad_enabled():
                     # Non-reentrant checkpointing also trains the head when its input
                     # is frozen. Default RNG preservation keeps dropout consistent.
                     h = checkpoint(layer, h, src_key_padding_mask=pad, use_reentrant=False)
+                elif not self.training and _can_use_cpu_head(layer, h):
+                    # The scorer reads the markers; the action head also needs token zero.
+                    positions = None
+                    if i == len(self.head.layers) - 1 and marker_pos.shape[1] + 1 < h.shape[1]:
+                        positions = torch.cat([torch.zeros_like(marker_pos[:, :1]), marker_pos.clamp(min=0)], dim=1)
+                        selected = True
+                    h = _cpu_head(layer, h, pad, positions)
                 else:
                     h = layer(h, src_key_padding_mask=pad)
-        idx = marker_pos.clamp(min=0)[:, :, None].expand(-1, -1, h.size(-1))
-        m = torch.gather(h, 1, idx)
+        if selected:
+            m = h[:, 1:]
+        else:
+            idx = marker_pos.clamp(min=0)[:, :, None].expand(-1, -1, h.size(-1))
+            m = torch.gather(h, 1, idx)
         logits = self.scorer(m).squeeze(-1).float()
         logits = logits.masked_fill(~marker_mask, -1e4)
 
@@ -764,7 +942,18 @@ def td_lambda_targets(p_true: torch.Tensor, batch: Dict, lam: float = 1.0) -> to
 
 
 def ece_score(conf: np.ndarray, correct: np.ndarray, bins: int = 15) -> float:
-    """Expected Calibration Error across confidence bins."""
+    """Expected Calibration Error across confidence bins.
+
+    `bins` is the number of histogram buckets and must be an integer of at least 1. It is refused
+    rather than misread because `np.linspace(0, 1, bins + 1)` yields no interior edge for `0` and
+    `-1`: the loop body never runs and the function returns `0.0`, the best score ECE can report,
+    for a distribution that is anything but well calibrated. A count that arrives from a config
+    file as `0` therefore turns a calibration gate into one that always passes. `True` is refused
+    with the same argument -- it would silently histogram into a single bucket. Any other
+    `Integral` is accepted, a `numpy.int64` among them, since the arrays here are numpy's own.
+    """
+    if isinstance(bins, bool) or not isinstance(bins, Integral) or bins < 1:
+        raise ValueError("bins must be an integer of at least 1, got %r" % (bins,))
     if len(conf) == 0:
         return float("nan")
     edges = np.linspace(0, 1, bins + 1)
@@ -796,7 +985,8 @@ def answer_confidence(p: np.ndarray, k: int) -> float:
     """
     if k < 1:
         return 1.0
-    return float(np.clip(np.max(p[:k]), 0.0, 1.0))
+    val = float(p[:k].max())
+    return 0.0 if val < 0.0 else (1.0 if val > 1.0 else val)
 
 
 def confidence_from_probs(p: np.ndarray, k: int) -> float:
@@ -818,9 +1008,17 @@ def confidence_from_probs(p: np.ndarray, k: int) -> float:
     """
     if k < 2:
         return 1.0
-    p = p[:k]
-    ent = -(p * np.log(np.clip(p, 1e-12, 1.0))).sum()
-    return float(np.clip(1.0 - ent / math.log(k), 0.0, 1.0))
+    # The scalar `np.clip` on the score is the part worth replacing (a native comparison is ~4x
+    # the dispatcher); the entropy sum itself stays vectorised. A Python loop over `pk` is faster
+    # below roughly k=40 and slower above it -- 0.9 us vs 2.4 us at k=11, but 14.6 us vs 3.0 us at
+    # k=256 -- and summing in a different order moves the last bits (1.7e-15 over 136k measured
+    # distributions). Both callers `round(..., 4)` this, so that drift is invisible today; it is
+    # the SDK goldens in laya-rust, laya-dotnet and laya-ts that have to keep reproducing these
+    # numbers, and there is no reason to spend bit-exactness on a microsecond.
+    pk = p[:k]
+    ent = -float((pk * np.log(np.clip(pk, 1e-12, 1.0))).sum())
+    score = 1.0 - ent / math.log(k)
+    return 0.0 if score < 0.0 else (1.0 if score > 1.0 else score)
 
 
 def temp_bucket(qtype: int, k: int) -> str:
@@ -847,11 +1045,43 @@ def clamp_temperature(t, lo: float = TEMP_MIN, hi: float = TEMP_MAX) -> float:
         return 1.0
     try:
         t = float(t)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # `OverflowError` is a number this function cannot read, not a bug in the caller: JSON's
+        # grammar has no double limit, so a temperature written as a 401-digit integer literal
+        # parses as an `int` and `float()` refuses it. (`1e400` in the same file is fine -- JSON
+        # reads that as a float, which is `inf`, and the check below already answers 1.0 for it.)
+        # `confidence._finite`, `hooks.validate_timeout` and `calibrate.apply_calibration_payload`
+        # all read this exception as "does not read as a number" already; here it used to escape,
+        # and with it every `Agent`/`ONNXAgent`/`load_calibration` load that had read the
+        # checkpoint off disk by then.
         return 1.0
     if t != t or t in (float("inf"), float("-inf")):    # NaN / inf
         return 1.0
     return min(hi, max(lo, t))
+
+
+def temperature_rejected(raw, applied: float) -> bool:
+    """Whether `raw` is not the number `clamp_temperature` turned into `applied`.
+
+    Loaders use this to name the entries they had to replace. The obvious test, `float(raw) !=
+    applied`, misses the bool case: `clamp_temperature(True)` returns the neutral 1.0 and
+    `float(True)` *is* 1.0, so a checkpoint or calibration file shipping `true` where a number
+    belongs read as an accepted temperature and loaded in silence, while `false` floated to 0.0,
+    mismatched and was reported. So ask the question `clamp_temperature` itself asks -- is this a
+    number at all -- instead of re-deriving its answer. A value that will not convert is rejected
+    the same way: it has a neutral fallback to report, and the diagnostic must never raise for it.
+    """
+    if isinstance(raw, bool):
+        return True
+    try:
+        value = float(raw)
+    except (TypeError, ValueError, OverflowError):
+        # The same "does not read as a number" `clamp_temperature` answers with 1.0, so the entry
+        # is named rather than the loader raising while it builds the warning about it. A wide
+        # integer literal is that case: it has a neutral fallback to report, and the value that
+        # `float()` cannot hold is exactly the one a reader needs to see.
+        return True
+    return value != applied
 
 
 def resolve_lang_temperatures(raw: Optional[Dict[str, Any]],
@@ -869,6 +1099,12 @@ def resolve_lang_temperatures(raw: Optional[Dict[str, Any]],
 
     A `null` entry or a `null` temperature both mean "inherit the checkpoint's own", which is how
     the `laya-ts` port reads the same option (`agent.ts:322-327`).
+
+    Every value still goes through `clamp_temperature`, and a value the clamp had to replace is named
+    in a `RuntimeWarning` for its language: `{"de": {"temperature": [True, 1.5, 2.0]}}` answers
+    `[1.0, 1.5, 2.0]` and `[99, 0.01, 1]` answers `[5.0, 0.5, 1.0]`, which is a different confidence
+    scale from the one the caller wrote. `temperature_rejected` is what distinguishes a replaced entry
+    from an accepted one.
     """
     resolved: Dict[str, Dict[str, Any]] = {}
     for lang, cfg in (raw or {}).items():
@@ -881,7 +1117,8 @@ def resolve_lang_temperatures(raw: Optional[Dict[str, Any]],
             raise ValueError("Language override %r must be a mapping, got %s"
                              % (lang, type(cfg).__name__))
         t_raw = cfg.get("temperature")
-        if t_raw is None:
+        inherited = t_raw is None
+        if inherited:
             t_raw = base_temperature
         if not isinstance(t_raw, (list, tuple)) or len(t_raw) != 3:
             raise ValueError("Language override %r temperature must be a list of 3 floats, got %r"
@@ -890,9 +1127,27 @@ def resolve_lang_temperatures(raw: Optional[Dict[str, Any]],
         if not isinstance(tbo_raw, dict):
             raise ValueError("Language override %r temperature_by_options must be a mapping of "
                              "bucket -> float, got %s" % (lang, type(tbo_raw).__name__))
+        temperature = [clamp_temperature(t) for t in t_raw]
+        by_options = {k: clamp_temperature(v) for k, v in tbo_raw.items()}
+        # An override that omits `temperature` inherits the checkpoint's own list, and the loader
+        # that got here has already reported the entries it replaced in it. Repeating that line once
+        # per language would bury the overrides a reader is actually holding.
+        entries = [] if inherited else [
+            ("temperature[%d]" % i, raw, applied)
+            for i, (raw, applied) in enumerate(zip(t_raw, temperature))
+        ]
+        entries += [("%s" % k, v, by_options[k]) for k, v in tbo_raw.items()]
+        rejected = ["%s=%r -> %g" % (name, raw, applied)
+                    for name, raw, applied in entries if temperature_rejected(raw, applied)]
+        if rejected:
+            warnings.warn(
+                "laya: language override %r ships invalid temperatures or values outside "
+                "[%g, %g]; using %s. Treat confidence from the affected entries as uncalibrated."
+                % (lang, TEMP_MIN, TEMP_MAX, ", ".join(rejected)),
+                RuntimeWarning, stacklevel=2)
         resolved[norm] = {
-            "temperature": [clamp_temperature(t) for t in t_raw],
-            "temperature_by_options": {k: clamp_temperature(v) for k, v in tbo_raw.items()},
+            "temperature": temperature,
+            "temperature_by_options": by_options,
         }
     return resolved
 
@@ -907,21 +1162,25 @@ def collate_items(batch, pad_id: int):
         return None
     n, L = len(items), max(len(it["ids"]) for it in items)
     kmax = max(len(it["markers"]) for it in items)
-    ids = torch.full((n, L), pad_id, dtype=torch.long)
-    att = torch.zeros((n, L), dtype=torch.long)
-    mpos = torch.zeros((n, kmax), dtype=torch.long)
-    mmask = torch.zeros((n, kmax), dtype=torch.bool)
+    ids = np.full((n, L), pad_id, dtype=np.int64)
+    att = np.zeros((n, L), dtype=np.int64)
+    mpos = np.zeros((n, kmax), dtype=np.int64)
+    mmask = np.zeros((n, kmax), dtype=bool)
     has_target = any("target" in it for it in items)
-    target = torch.zeros((n, kmax), dtype=torch.float32) if has_target else None
+    target = np.zeros((n, kmax), dtype=np.float32) if has_target else None
 
     for i, it in enumerate(items):
-        ids[i, : len(it["ids"])] = torch.tensor(it["ids"])
-        att[i, : len(it["ids"])] = 1
-        k = len(it["markers"])
-        mpos[i, :k] = torch.tensor(it["markers"])
+        it_ids = it["ids"]
+        l_ids = len(it_ids)
+        ids[i, :l_ids] = it_ids
+        att[i, :l_ids] = 1
+        markers = it["markers"]
+        k = len(markers)
+        mpos[i, :k] = markers
         mmask[i, :k] = True
         if has_target and "target" in it:
-            if len(it["target"]) > k:
+            t = it["target"]
+            if len(t) > k:
                 # Otherwise this lands as "The expanded size of the tensor (k) must match the
                 # existing size (kmax)" from inside the assignment, which says nothing about the
                 # actual mistake: a target with more entries than the item has options. The limit
@@ -929,28 +1188,29 @@ def collate_items(batch, pad_id: int):
                 # batch a longer sibling row must not legitimise extra entries (#311).
                 raise ValueError(
                     "collate_items: item %d has %d target entries but only %d marker positions; "
-                    "a target needs one entry per option" % (i, len(it["target"]), k))
-            target[i, : len(it["target"])] = torch.tensor(it["target"], dtype=torch.float32)
+                    "a target needs one entry per option" % (i, len(t), k))
+            target[i, : len(t)] = t
 
     res = {
-        "input_ids": ids,
-        "attention_mask": att,
-        "marker_pos": mpos,
-        "marker_mask": mmask,
-        "qtype": torch.tensor([it["qtype"] for it in items]),
-        "label": torch.tensor([it.get("label", -1) for it in items]),
+        "input_ids": torch.from_numpy(ids),
+        "attention_mask": torch.from_numpy(att),
+        "marker_pos": torch.from_numpy(mpos),
+        "marker_mask": torch.from_numpy(mmask),
+        "qtype": torch.from_numpy(np.array([it["qtype"] for it in items], dtype=np.int64)),
+        "label": torch.from_numpy(np.array([it.get("label", -1) for it in items], dtype=np.int64)),
         "meta": [{k: it[k] for k in it if k not in ("ids", "markers", "target", "layout")} for it in items],
     }
     if target is not None:
-        res["target"] = target
+        res["target"] = torch.from_numpy(target)
     if any("layout" in it for it in items):
         # All or none: a batch that mixes layouts would run half its rows through the wrong masks
         if not all("layout" in it for it in items):
             raise ValueError("collate_items: some items carry a parallel layout and some do not")
-        pos = torch.zeros((n, L), dtype=torch.long)
-        opt = torch.zeros((n, L), dtype=torch.long)
+        pos = np.zeros((n, L), dtype=np.int64)
+        opt = np.zeros((n, L), dtype=np.int64)
         for i, it in enumerate(items):
-            pos[i, : len(it["ids"])] = torch.tensor(it["layout"]["position_ids"])
-            opt[i, : len(it["ids"])] = torch.tensor(it["layout"]["option_ids"])
-        res["position_ids"], res["option_ids"] = pos, opt
+            l_ids = len(it["ids"])
+            pos[i, :l_ids] = it["layout"]["position_ids"]
+            opt[i, :l_ids] = it["layout"]["option_ids"]
+        res["position_ids"], res["option_ids"] = torch.from_numpy(pos), torch.from_numpy(opt)
     return res

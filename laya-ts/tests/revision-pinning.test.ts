@@ -5,7 +5,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { Agent } from "../src/agent.js";
 import { Router } from "../src/router.js";
-import { PINNED_REVISIONS, createNodeProvider, loadNodeBundle, loadWebBundle, resolveRevision } from "../src/providers.js";
+import { PINNED_REVISIONS, createNodeProvider, createWebProvider, loadNodeBundle, loadWebBundle, resolveRevision } from "../src/providers.js";
 
 const fakeProvider = () => ({
   async runEncoder(_b: any) { return { lastHidden: [[[1, 0], [0, 1]]] }; },
@@ -164,6 +164,36 @@ describe("loadNodeBundle expectedSha256", () => {
       expectedSha256: { "encoder.onnx": "0".repeat(64) },
     })).rejects.toThrow(/SHA-256 mismatch/);
   });
+
+  // A pin that is not a {artifact: digest} map yields no keys, so every loader would skip the
+  // integrity check it was handed and load tampered weights in silence. `laya/revisions.py`
+  // refuses the same shapes; the port now does too.
+  it("a pin that is not a map is refused instead of verifying nothing", async () => {
+    const dir = makeCheckpoint({ ...cfgFile, "model.bin": new TextEncoder().encode("weights") });
+    for (const notAMap of ["a".repeat(64), 5, 0, true, false, ["a".repeat(64)]]) {
+      await expect(loadNodeBundle(dir, { expectedSha256: notAMap as any }))
+        .rejects.toThrow(/expected_sha256 must be a mapping of artifact paths to digests/);
+      await expect(createNodeProvider(dir, { expectedSha256: notAMap as any }))
+        .rejects.toThrow(/expected_sha256 must be a mapping/);
+      await expect(loadWebBundle("https://example.com/m", { expectedSha256: notAMap as any }))
+        .rejects.toThrow(/expected_sha256 must be a mapping/);
+      await expect(createWebProvider("https://example.com/m", { expectedSha256: notAMap as any }))
+        .rejects.toThrow(/expected_sha256 must be a mapping/);
+    }
+  });
+
+  it("absent and empty pins keep their distinct meanings", async () => {
+    const dir = makeCheckpoint(cfgFile);
+    for (const notPinned of [undefined, null]) {
+      expect((await loadNodeBundle(dir, { expectedSha256: notPinned as any })).dir).toBe(dir);
+    }
+    const weights = new TextEncoder().encode("weights");
+    const withWeights = makeCheckpoint({ ...cfgFile, "model.bin": weights });
+    expect((await loadNodeBundle(withWeights, { expectedSha256: {} })).dir).toBe(withWeights);
+    expect((await loadNodeBundle(withWeights, {
+      expectedSha256: { "model.bin": sha256(weights) },
+    })).dir).toBe(withWeights);
+  });
 });
 
 describe("revision plumbing", () => {
@@ -183,6 +213,25 @@ describe("revision plumbing", () => {
     expect(router.revisions["typed-decisions"]).toBe("typed-sha");
     expect(new Router().revision).toBeNull();
     expect(new Router().revisions).toEqual({});
+  });
+
+  it("a null or blank per-model revision inherits Router.revision, as Python does", async () => {
+    const captured: Array<Record<string, unknown> | undefined> = [];
+    const spy = vi.spyOn(Agent, "load").mockImplementation(async (_repo, opts) => {
+      captured.push(opts);
+      return new Agent({ provider: fakeProvider(), cfg: {} });
+    });
+    try {
+      for (const revisions of [{ english: null }, { english: "" }, { english: "   " }, {}, { english: "own-sha" }]) {
+        await new Router({ revision: "shared-sha", revisions }).load("english");
+      }
+      await new Router({ revision: "   " }).load("english");
+      expect(captured.map((opts) => opts?.revision)).toEqual(
+        ["shared-sha", "shared-sha", "shared-sha", "shared-sha", "own-sha", undefined],
+      );
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

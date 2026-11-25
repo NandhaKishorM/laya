@@ -1,0 +1,146 @@
+{
+  "name": "long_list",
+  "state": [
+    {
+      "role": "assistant",
+      "content": "Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. "
+    },
+    {
+      "role": "user",
+      "content": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account."
+    }
+  ],
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today"
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    }
+  },
+  "options": {
+    "window": 96,
+    "stride": 48
+  },
+  "state_tokens": 244,
+  "effective_window": 96,
+  "effective_stride": 48,
+  "effective_room": 478,
+  "windows": [
+    {
+      "token_start": 0,
+      "token_end": 96,
+      "text": "[{\"role\": \"assistant\", \"content\": \"Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we"
+    },
+    {
+      "token_start": 48,
+      "token_end": 144,
+      "text": " check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we"
+    },
+    {
+      "token_start": 96,
+      "token_end": 192,
+      "text": " check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. \"}, {\"role\": \"user\", \"content\": \"Subject: Double charged on invoice 882"
+    },
+    {
+      "token_start": 144,
+      "token_end": 240,
+      "text": " check the account. Please wait while we check the account. Please wait while we check the account. Please wait while we check the account. \"}, {\"role\": \"user\", \"content\": \"Subject: Double charged on invoice 88213\\n\\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling"
+    },
+    {
+      "token_start": 192,
+      "token_end": 244,
+      "text": "13\\n\\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.\"}]"
+    }
+  ],
+  "result": {
+    "model": "laya-rl-agent-onnx",
+    "answers": {
+      "topic": {
+        "type": "choice",
+        "choice": "refund",
+        "probabilities": {
+          "refund": 0.9092,
+          "technical": 0.0544,
+          "other": 0.0364
+        },
+        "confidence": 0.6674,
+        "answer_confidence": 0.9092,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 3,
+          "token_start": 144,
+          "token_end": 240,
+          "count": 5
+        }
+      },
+      "urgency": {
+        "type": "score",
+        "score": 1.8904,
+        "legend": {
+          "0": "not urgent",
+          "1": "this week",
+          "2": "today"
+        },
+        "probabilities": {
+          "0": 0.029,
+          "1": 0.0516,
+          "2": 0.9194
+        },
+        "confidence": 0.6969,
+        "answer_confidence": 0.9194,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 4,
+          "token_start": 192,
+          "token_end": 244,
+          "count": 5
+        }
+      },
+      "cancel": {
+        "type": "noul",
+        "noul": 0.9909,
+        "confidence": 0.9909,
+        "answer_confidence": 0.9909,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 4,
+          "token_start": 192,
+          "token_end": 244,
+          "count": 5
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 1778,
+      "output_tokens": 0,
+      "state_tokens": 436,
+      "state_tokens_dropped": 0,
+      "truncated": 0,
+      "truncated_questions": [],
+      "windows": 5
+    }
+  }
+}

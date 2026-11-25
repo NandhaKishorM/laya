@@ -1,0 +1,148 @@
+{
+  "name": "long_lang_single_window",
+  "state": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today"
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    }
+  },
+  "options": {
+    "lang": "pt"
+  },
+  "lang_temperatures": {
+    "de": {
+      "temperature": [
+        2.0,
+        3.0,
+        1.5
+      ]
+    },
+    "fr": null,
+    "es": {
+      "temperature_by_options": {
+        "choice:3-5": 2.5,
+        "noul:2": 0.7
+      }
+    },
+    "pt": {
+      "temperature": [
+        1.2,
+        4.0,
+        0.8
+      ],
+      "temperature_by_options": {
+        "score:3-5": 2.0,
+        "choice:6-10": 3.0
+      }
+    },
+    "it": {
+      "temperature": null,
+      "temperature_by_options": {
+        "choice:2": 3.0,
+        "choice:6-10": 0.6,
+        "score:6-10": 2.0
+      }
+    },
+    "nl": {
+      "temperature": [
+        9.0,
+        0.1,
+        1.0
+      ]
+    },
+    "sv-SE": {
+      "temperature": [
+        1.5,
+        1.5,
+        1.5
+      ]
+    },
+    "SV": {
+      "temperature": [
+        3.5,
+        3.5,
+        3.5
+      ]
+    }
+  },
+  "state_tokens": 57,
+  "effective_window": 312,
+  "effective_stride": 156,
+  "effective_room": 478,
+  "windows": [],
+  "result": {
+    "model": "laya-rl-agent-onnx",
+    "answers": {
+      "topic": {
+        "type": "choice",
+        "choice": "refund",
+        "probabilities": {
+          "refund": 0.9345,
+          "technical": 0.0503,
+          "other": 0.0153
+        },
+        "confidence": 0.7474,
+        "answer_confidence": 0.9345,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "urgency": {
+        "type": "score",
+        "score": 1.6495,
+        "legend": {
+          "0": "not urgent",
+          "1": "this week",
+          "2": "today"
+        },
+        "probabilities": {
+          "0": 0.0964,
+          "1": 0.1578,
+          "2": 0.7458
+        },
+        "confidence": 0.3305,
+        "answer_confidence": 0.7458,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "cancel": {
+        "type": "noul",
+        "noul": 0.9998,
+        "confidence": 0.9998,
+        "answer_confidence": 0.9998,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 265,
+      "output_tokens": 0,
+      "state_tokens": 57,
+      "state_tokens_dropped": 0,
+      "truncated": false,
+      "truncated_questions": [],
+      "windows": 1
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "checkpoint": "english",
+  "checkpoint_sha256": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
+  "hub_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+  "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+  "processor": "x86_64",
+  "python": "3.11.18",
+  "torch": "2.15.0+cpu",
+  "transformers": "5.22.1",
+  "threads": 2,
+  "interop_threads": 1,
+  "repeats": 5,
+  "optimization": "combined",
+  "suite": "standard",
+  "common_sha256": "efb8558be8246810bc0d5ef0a1d152b1cd23a8fcc886befa013fdcbe8e7346d2",
+  "harness_sha256": "4327f3b3710031cccf7b534e5108c744fb1e213c0ae8caa8ff8c5d0effb4d9de",
+  "fixtures_sha256": "d3bd360edf1bf3e02edd7dc32a8257181ef253d750d7ea680c9120b5adadfa57",
+  "memory_variant": "selected",
+  "peak_rss_after_load_mib": 2849.890625,
+  "cases": [
+    {
+      "name": "triage/0",
+      "peak_rss_mib": 2849.890625
+    },
+    {
+      "name": "long/512",
+      "peak_rss_mib": 2849.890625
+    },
+    {
+      "name": "long/1024",
+      "peak_rss_mib": 2849.890625
+    },
+    {
+      "name": "long/2048",
+      "peak_rss_mib": 2849.890625
+    },
+    {
+      "name": "long/4096",
+      "peak_rss_mib": 2849.890625
+    },
+    {
+      "name": "options/1",
+      "peak_rss_mib": 2849.890625
+    },
+    {
+      "name": "options/32",
+      "peak_rss_mib": 2849.890625
+    },
+    {
+      "name": "batch/padded",
+      "peak_rss_mib": 2849.890625
+    },
+    {
+      "name": "structured/mixed",
+      "peak_rss_mib": 2849.890625
+    },
+    {
+      "name": "structured/batch",
+      "peak_rss_mib": 2849.890625
+    }
+  ],
+  "peak_rss_mib": 2849.890625,
+  "parameters_unchanged": true
+}

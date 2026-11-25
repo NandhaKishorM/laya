@@ -3,7 +3,12 @@
 `laya-serve` exposes Laya over the TypeSafe Jev `/v1/systemone` wire protocol. A client written
 against Jev -- `hs-jev`, `typesafe-sdk`, or your own -- can point its base URL at this server and
 keep working: Laya's `predict()` output is already schema-compatible, and the server adds only the
-HTTP surface: one decision route, a health probe, an optional bearer check and request limits.
+HTTP surface: single and batch inference, a routing snapshot, a health probe, an optional bearer
+check and request limits.
+
+The [Python HTTP client](https://github.com/NandhaKishorM/laya/blob/main/sdk/python/README.md)
+provides synchronous `predict` and `health` calls with no runtime dependencies. Install it
+from `sdk/python` in the application environment to keep the inference stack on the server.
 
 A client that targets `laya-serve` rather than the Jev API exists for PHP:
 [`marcreichel/laya-php`](https://github.com/marcreichel/laya-php) is a Composer SDK (PHP 8.4+)
@@ -38,17 +43,18 @@ Everything is environment variables, so one image serves a laptop dev run and a 
 | `LAYA_MAX_TOKEN_BUDGET` | server-side ceiling on the per-request `max_len` and `head_max_len` overrides; a larger value is a `422`. Unparseable or non-positive input logs a warning and falls back | `8192` |
 | `LAYA_DEFAULT_MODEL` | checkpoint a state with no language evidence falls back to; aliases such as `ml` resolve the way core resolves them, and an unresolvable name stops the server at startup | `multilingual` |
 | `LAYA_EXTRA_MODELS` | JSON object `{name: source}` registering extra checkpoints beside the bundled ones: a Hub repo id or local checkpoint directory as a string, or a `["repo", "subfolder"]` pair. Names get the same `model=` pin a built-in does; a malformed value or bad name stops the server at startup | none |
-| `LAYA_API_KEY` | if set, require `Authorization: Bearer <key>` | none |
+| `LAYA_API_KEY` | if set, require `Authorization: Bearer <key>` on every route, and stop serving `/docs`, `/redoc` and `/openapi.json` (FastAPI's own routes, which per-route auth never covered) | none |
 | `LAYA_LOG_LEVEL` | uvicorn log level | `info` |
 | `LAYA_MAX_CONCURRENT` | requests admitted past auth at once; excess gets `503` | `16` |
+| `LAYA_BODY_READ_TIMEOUT` | seconds a request may spend delivering its body before the server answers `408` and releases the admission slot it was holding. Unparseable, non-positive or infinite input falls back | `10` |
 | `LAYA_MAX_BATCH_TOKENS` | tokens one `/v1/systemone/batch` FORWARD PASS may collate (`states` x questions x row width); a larger batch is split into several passes, not refused | `131072` |
 | `LAYA_JEV_STRICT` | serve the strict Jev wire contract: no root `routing`, no per-answer `action` / `answer_confidence`, no `confidence` on noul answers, and `usage` reduced to `input_tokens` + `output_tokens`. For clients that validate the response against the Jev contract with no extra fields | `0` |
-| `LAYA_TOURNAMENT_GROUP` | answer a `choice` with more options than this by elimination, in groups of this size, on `/v1/systemone`, and raise its option cap from 100 to 255. See [Large choices](#large-choices-laya_tournament_group). Unset, or outside 2 to 100, is off | `0` |
+| `LAYA_TOURNAMENT_GROUP` | answer a `choice` with more options than this by elimination, in groups of this size, on `/v1/systemone` and `/v1/systemone/batch`, and raise their option cap from 100 to 255. See [Large choices](#large-choices-laya_tournament_group). Unset, or outside 2 to 100, is off | `0` |
 
 For a deployment published under a prefix such as `/laya`, set `LAYA_ROOT_PATH=/laya`.
 FastAPI uses it when generating OpenAPI and Swagger UI URLs. Configure the reverse proxy to
 strip `/laya` before forwarding requests to Laya; the app's routes remain `/health` and
-`/v1/systemone` internally.
+`/v1/systemone`, `/v1/systemone/batch` and `/v1/route` internally.
 
 For containers, including CUDA and ARM64 images, see [Docker quickstart](docker.md).
 
@@ -83,7 +89,8 @@ sample to the handler that produces it, field by field.
 
 With idle unloading enabled, authenticated health responses also include `idle_unload_seconds`
 (the configured window) and `idle_seconds` (time since the last inference request or completion).
-Health probes do not reset that clock. An empty `loaded` list is normal after an idle unload.
+Health probes and routing snapshots do not reset that clock. An empty `loaded` list is normal
+after an idle unload.
 
 - `status` is `ok` whenever the process answers at all. It says nothing about the checkpoints.
 - `loaded` lists the checkpoints resident in memory. It is empty until a request builds one, which is
@@ -104,9 +111,90 @@ Health probes do not reset that clock. An empty `loaded` list is normal after an
   of the latest one. The demotion is scoped to the request that failed, so a checkpoint built on CPU
   because the GPU was never available is not a fallback and counts `0` here -- that shows in `device`.
 
+### `POST /v1/route`
+
+Inspect the deployed Router's checkpoint selection without requesting inference. This is useful
+when an application's local routing configuration differs from the service's. MCP remote routing
+still runs locally; it does not call this endpoint.
+
+```bash
+curl -s localhost:8000/v1/route -H 'content-type: application/json' -d '{
+  "state": {"message": "Turn lights off"},
+  "questions": {},
+  "explain": true
+}'
+```
+
+With the default fallback model, this returns:
+
+```json
+{"model": "multilingual", "repo": "convaiinnovations/laya/multilingual",
+ "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
+ "diagnostic": {"stage": "whole_state", "reason": "insufficient_words", "source": null}}
+```
+
+`state` and `questions` are required, with the same shape and size limits as prediction. An empty
+questions object is allowed. This is a routing snapshot, not a complete inference-request validator:
+a successful route does not certify that every question will pass inference-time validation.
+
+The optional routing controls are `model`, `task`, `lang` and `lang_guess`, with the same
+[model aliases, registry and override semantics](#post-v1systemone) as prediction. Omitted controls
+(and `null` routing overrides) leave deployment settings in charge. `explain` defaults to `false`;
+only JSON booleans are accepted. Strings, numbers and `null` return `422` naming `explain` before
+routing. Unknown fields are ignored, as on the prediction endpoints, but prediction-only controls
+`max_len`, `head_max_len`, `min_confidence`, `batch_size`, `sort_by_length`, `diagnostics` and `states`
+are refused with `422`, including when their value is `null`. The same applies to `hooks`,
+`on_route`, `on_predict_start`, `on_predict_end`, `hooks_raise` and `hooks_timeout`: hook policy
+belongs to the operator.
+
+The default response contains only `model`, `repo` and `reason`. With `explain: true`, it also
+contains `diagnostic`, read from the final decision **after** `on_route`; no detector is run a
+second time. It is `null` when that decision carries no diagnostic. Built-in diagnostics contain
+`stage`, `reason` and `source`, preserving `source: null` when no source is available. The full
+`detection` mapping, including `mixed_segment` containing verbatim input, is never exported.
+Built-in diagnostic metadata does not include caller values, but `source.path` may contain
+caller-chosen field names. Hook-provided diagnostics remain operator-controlled. The routing
+`reason` can include input text, so the response as a whole is **not text-free**.
+
+Authentication, admission, body-read timeout and request limits are shared with prediction.
+Routing runs behind the same gate on the same worker, so it can wait behind a forward pass;
+use `/health` for liveness. The endpoint does not call prediction or load a checkpoint. Startup
+preload is unchanged, and operator-installed hooks still run and may have side effects.
+Cancellation of an HTTP request or a hook timeout does not forcibly stop code already running.
+Routing does not reset the inference idle deadline on success, failure or cancellation, though
+queued/running work can delay unloading. The result describes routing **now**, not a guarantee
+about a later prediction if configuration, hooks or input change.
+
+An injected legacy router without the `explain` parameter still supports omitted/false requests;
+`explain: true` returns a clear `422`, without silently retrying. As with prediction, a `ValueError`
+returns `422` with its message, including one raised by an operator hook. Other unexpected errors
+are logged server-side and return `500` with `routing failed`.
+There is no batch routing endpoint or SDK routing method in this change.
+
+#### Try a configuration mismatch locally
+
+From a checkout, run the complete example without downloading checkpoints or starting a server:
+
+```bash
+python -m pip install -e ".[serve]" httpx
+python examples/http_route.py
+```
+
+The example uses FastAPI's in-process `TestClient` against the real handler. Its local Router
+defaults to `multilingual`, while its injected server Router defaults to `english`. The same short
+state produces identical language diagnostics but different model selections, demonstrating why
+local diagnostics cannot establish a deployment's decision. It also checks the default three-field
+response and an explicit model pin, whose diagnostic is `null`, and verifies that neither Router
+loaded checkpoints. Each response is a snapshot of that request, not a reservation for later
+inference. Injecting the Router keeps the example independent of normal startup preload;
+`httpx` is needed for the test client, not by the routing endpoint.
+
 ### `POST /v1/systemone`
 
-One request carries a `state` and any number of questions over it:
+One request carries a `state` and any number of questions over it. Those questions share that
+state: each is answered against the whole serialized context, so a question whose instructions
+name `rows[i]` still sees every record. One answer per record is one entry of `states` on
+`POST /v1/systemone/batch`.
 
 ```bash
 curl -s localhost:8000/v1/systemone -H 'content-type: application/json' -d '{
@@ -123,7 +211,7 @@ curl -s localhost:8000/v1/systemone -H 'content-type: application/json' -d '{
 
 | field | required | meaning |
 |---|---|---|
-| `state` | yes | text, email, ticket or JSON document to decide on; a missing or `null` state is a `400` |
+| `state` | yes | the one context every question in the request is answered against: text, email, ticket or JSON; a missing or `null` state is a `400` |
 | `questions` | yes | object keyed by question id; each question is `choice` / `score` / `noul` with `instructions` and `criteria` |
 | `model` | no | names a checkpoint; a path or unpublished Hub id is a `422`, anything else is ignored (see below) |
 | `task` | no | forces a checkpoint by workflow name instead of letting routing decide; an unknown name is a `422` naming it |
@@ -141,7 +229,10 @@ hook arguments `predict` also takes -- `hooks`, `on_predict_start`, `on_predict_
 that runs inside the server process, and the last two say how the hooks a deployment installed
 execute, so no value a caller sends has a meaning here. The same five are refused client-side by a
 LangChain node with a `base_url` (`laya.integrations.langchain`), so a chain and a raw HTTP client
-now get the same answer.
+now get the same answer. `image`, `audio` and `video`, which `predict` takes since 0.4.25 to route a
+picture, a recording or a clip to the vega lane, are refused with a `422` as well: this endpoint
+takes text states only, and media goes through `laya.Agent(vegaml=True)` or a `Router` with the vega
+lane in the process that holds the model.
 
 `model` is accepted so a Jev client can keep sending one. The public Hugging Face ids
 (`convaiinnovations/laya-multilingual`, `convaiinnovations/laya-typed-decisions`), the checkpoint
@@ -186,6 +277,11 @@ The sample is one answer this server gave, verbatim: the request above, the cach
 checkpoint on CPU. `answers` and `usage` are the keys Jev clients decode; `model` is the constant
 name of the decision head, and the checkpoint that answered is in `routing`.
 
+`probabilities` on `choice` and `score` answers are rounded independently to four decimal places
+and need not sum exactly to 1, just as in the [in-process API](questions-and-answers.md#probability-precision).
+For strict unit-sum validation, allow a rounding tolerance that accounts for the number of options,
+or normalize a copy of the distribution.
+
 | answer type | keys |
 |---|---|
 | `choice` | `choice` (the argmax option), `probabilities` per option, `x_jev_confidence` |
@@ -210,7 +306,8 @@ marks, it does not drop.
 
 `usage` reports what the forward pass was built from. How much of a state the model reads is a token
 budget, not a character count, and the budget moves with `max_len`, `head_max_len` and every
-question's own option prompt (#174), so these keys are the only place that fact is visible:
+question's own option prompt (#174), so these keys are the only place in the response
+that fact is visible:
 
 | `usage` key | meaning |
 |---|---|
@@ -223,7 +320,13 @@ question's own option prompt (#174), so these keys are the only place that fact 
 | `options` | present only when some question's options no longer have a token span each: keyed by question id, with `total` (the options that question defines), `distinct` (the spans that reached the sequence) and `tokens_per_option` |
 
 A truncated answer is still an answer -- the head decides on the evidence it was given -- but a
-caller sizing states by character count cannot see the cut anywhere else in the response.
+caller sizing states by character count cannot see the cut anywhere else in the response. When
+`usage.truncated` is true or `state_tokens_dropped` is above zero, the server logs one warning
+for the request with that dropped-token count and the question ids. The warning is written on
+`/v1/systemone` and `/v1/systemone/batch` before `LAYA_JEV_STRICT` projects the payload, so a
+strict response that no longer carries these keys still leaves the cut in the server log. A
+batch logs once, with the indexes of the results that were cut and the dropped-token count of
+each, rather than once per answer.
 
 `routing` records which checkpoint answered and why:
 
@@ -282,8 +385,9 @@ answering, on both `/v1/systemone` and `/v1/systemone/batch`:
 The projection keeps only the contracted keys and recomputes nothing: every value is the one the
 result already carries, so the probabilities and scores a strict client reads are identical to
 the ones the full payload reports. The default stays the full payload, and a deployment that
-turns the flag on loses the truncation visibility `usage` provides -- a cut state is then
-visible in the logs, not in the response. Score `criteria` should stay plain strings under the
+turns the flag on loses the truncation visibility `usage` provides. The server has already
+logged the dropped state tokens by then, so a cut state is in the log, where the response no
+longer carries it. Score `criteria` should stay plain strings under the
 strict contract: a strict client compares the returned `legend` against the criteria it sent,
 and Laya renders a structured criterion with Python's JSON, which a JavaScript caller that
 stringifies its own criteria may not match byte for byte.
@@ -294,10 +398,10 @@ Successful responses also carry `Server-Timing: inference;dur=<ms>` and `X-Infer
 
 One pass reads every option of a `choice` inside one option budget, so past a few dozen options
 they stop getting a token span each (`usage.options` reports when that happens), and past about 100
-the request is refused. Jev accepts up to 255. With `LAYA_TOURNAMENT_GROUP=16`, `/v1/systemone`
-answers a choice with more than 16 options the way `laya.predict_tournament` does: the options are
+the request is refused. Jev accepts up to 255. With `LAYA_TOURNAMENT_GROUP=16`, both decision routes
+answer a choice with more than 16 options the way `laya.predict_tournament` does: the options are
 cut into groups of at most 16, each group is answered in one shared call, and the group winners go
-to a final call. Its option cap becomes 255. A choice of 16 or fewer, and every other question,
+to a final call. Their option cap becomes 255. A choice of 16 or fewer, and every other question,
 takes the usual path unchanged. The group size is limited to 2 to 100, the one-pass cap, so every
 choice the raised cap newly admits is always narrowed rather than read in one pass it cannot fit.
 A larger group is not a better one: each group is still read in one pass, and one pass loses
@@ -308,15 +412,23 @@ The answer keeps the Jev shape, so the official SDK parses it:
 
 - `probabilities` names every option, in criteria order. The finalists carry the final round's
   probabilities and an option eliminated in an earlier round carries `0.0`, so `choice` is still
-  the argmax and the values still sum to 1;
+  the argmax, but the rounded values need not sum exactly to 1;
 - `x_tournament` lists the `finalists` and the number of `rounds`, so a caller can tell an
   eliminated option from one the final round scored. Under `LAYA_JEV_STRICT` it is not sent;
 - `confidence` and `answer_confidence` are the final round's, over the finalists;
 - `usage.input_tokens` is summed over every call; the other `usage` keys are the final call's.
 
-A choice that sets `option_order`, or uses a non-string label, keeps the one-pass path, since an order
-over the full label set cannot be carried through a narrowing (#1062). `/v1/systemone/batch` is not
-covered and keeps the 100-option cap.
+Narrowing drops an `option_order`, since an order over the full label set no longer fits a group
+(#1062). So a choice that sets one keeps the one-pass path while one pass can read it. Once a
+request has a choice over 100 options, which only the raised cap admits, it is narrowed, and a
+narrowed choice that carried an order reports `x_tournament.option_order_dropped: true`. A label
+that is not a string cannot be mapped back onto the answer: such a choice keeps one pass, and a
+request that has to be narrowed is refused with a `422` naming it.
+
+On `/v1/systemone/batch` the question set is shared, so the decision is made once: a batch with
+nothing to narrow is the single batched pass it has always been, and one with a large choice runs
+the elimination state by state. `batch_size` and `sort_by_length` shape one batched pass, so they
+do not apply on that path; `total_usage` still sums every call.
 
 Measured on the `english` checkpoint (CPU) with one test query per intent from CLINC150 (150
 intents, `random_state=0`), the question listing every intent and the instruction "Which intent does
@@ -338,7 +450,7 @@ it answers `503` with `Retry-After: 1`.
 | `state` | 50,000 characters of the text the model is given -- the string itself for a string state, `json.dumps(state, ensure_ascii=False)` for an object or array |
 | questions per request | 64 |
 | `states` per batch request | 64 |
-| options per `choice` question | 100; 255 on `/v1/systemone` with `LAYA_TOURNAMENT_GROUP` set |
+| options per `choice` question | 100; 255 with `LAYA_TOURNAMENT_GROUP` set |
 | levels per `score` question | 32 |
 | options across all questions | 512 |
 | concurrent admitted requests (`503`, not `413`) | `LAYA_MAX_CONCURRENT` (16) |
@@ -353,7 +465,7 @@ Rather than refuse a large batch, the endpoint **splits** it: when that product 
 inside the budget, and `Router.predict_batch` runs the batch in several passes. Every state is still
 answered and the response is unchanged. A request whose rows already fit is passed no `batch_size` at
 all, so it behaves exactly as before -- which matters because batch shape can move floating-point
-results. A `batch_size` the caller sends always wins: it asked for a shape.
+results. A `batch_size` the caller sends may make a pass *smaller* than that plan -- it asked for a shape -- but never larger: the budget is a property of one forward pass, so a value above the plan is capped at it.
 
 At the default, 256 rows go through in one pass -- 64 states of 4 questions, or 8 of 32. Larger
 batches are split, and raising `max_len` makes each pass narrower rather than costing 16 times the
@@ -434,15 +546,23 @@ never runs on the event loop: requests are handed to a single-worker executor, w
 forward pass at a time -- the shape a single checkpoint on one device wants. Admission (the
 `LAYA_MAX_CONCURRENT` semaphore) is checked before any body byte is read and held through
 inference; the inference gate is joined only after the body is complete, so a slow client holds an
-admission slot but never an inference slot.
+admission slot but never an inference slot. That ordering is what bounds how many bodies are
+buffered at once, so the body read carries its own deadline (`LAYA_BODY_READ_TIMEOUT`, 10 s): a peer
+that sends a request head and then stops writing answers `408` and gives the slot back, rather than
+holding one of the `LAYA_MAX_CONCURRENT` slots -- and so both decision routes -- out of service for
+as long as it keeps the socket open.
 
 ## Not (yet) here
 
 This server speaks one protocol on purpose. There is no OpenAI-compatible endpoint; run several
-questions in one request instead, since they share a single forward pass per question set. The one
-other route is `POST /v1/systemone/batch`, which answers one `questions` set over an array of
-`states`. It has no section on this page yet -- its request shape is in the README's self-hosting
-section -- and every check above applies to it as it does to `POST /v1/systemone`: the same shape
-`400`s, the same unpaired-surrogate refusal, the same auth, admission, size limits, body-control
-validation and `500` mapping. The `laya` CLI and MCP server cover local use -- see the
+questions in one request instead, since they share a single forward pass per question set.
+`POST /v1/systemone/batch` answers one `questions` set over an array of
+`states`. Each state is its own context, which is what a caller needs for one decision per
+record; questions in one `/v1/systemone` request see the whole shared state, including when
+their text names `rows[i]`. It has no section on this page yet -- its request shape is in the
+README's self-hosting section -- and every check above applies to it as it does to
+`POST /v1/systemone`: the same shape `400`s, the same unpaired-surrogate refusal, the same auth,
+admission, size limits, body-control validation and `500` mapping. A state that does not fit
+the token room is truncated the same way, and a batch with any truncated result logs one
+warning for the call. The `laya` CLI and MCP server cover local use -- see the
 [README](https://github.com/NandhaKishorM/laya#readme).

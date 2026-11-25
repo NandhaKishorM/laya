@@ -1,0 +1,138 @@
+{
+  "name": "long_punctuation",
+  "state": "I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I want a refund ! I 'll cancel today .",
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today"
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    }
+  },
+  "options": {
+    "window": 64,
+    "stride": 64,
+    "batch_size": 3
+  },
+  "state_tokens": 317,
+  "effective_window": 64,
+  "effective_stride": 64,
+  "effective_room": 990,
+  "windows": [
+    {
+      "token_start": 0,
+      "token_end": 64,
+      "text": " I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n"
+    },
+    {
+      "token_start": 64,
+      "token_end": 128,
+      "text": "'t we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen"
+    },
+    {
+      "token_start": 128,
+      "token_end": 192,
+      "text": " this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking ."
+    },
+    {
+      "token_start": 192,
+      "token_end": 256,
+      "text": " We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I"
+    },
+    {
+      "token_start": 256,
+      "token_end": 317,
+      "text": " 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I 'm checking . We 've seen this , have n't we ? I want a refund ! I 'll cancel today ."
+    }
+  ],
+  "result": {
+    "model": "laya-rl-agent-onnx",
+    "answers": {
+      "topic": {
+        "type": "choice",
+        "choice": "refund",
+        "probabilities": {
+          "refund": 0.9993,
+          "technical": 0.0004,
+          "other": 0.0003
+        },
+        "confidence": 0.994,
+        "answer_confidence": 0.9993,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 4,
+          "token_start": 256,
+          "token_end": 317,
+          "count": 5
+        }
+      },
+      "urgency": {
+        "type": "score",
+        "score": 1.8986,
+        "legend": {
+          "0": "not urgent",
+          "1": "this week",
+          "2": "today"
+        },
+        "probabilities": {
+          "0": 0.0148,
+          "1": 0.0717,
+          "2": 0.9135
+        },
+        "confidence": 0.6959,
+        "answer_confidence": 0.9135,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 4,
+          "token_start": 256,
+          "token_end": 317,
+          "count": 5
+        }
+      },
+      "cancel": {
+        "type": "noul",
+        "noul": 0.3804,
+        "confidence": 0.6196,
+        "answer_confidence": 0.6196,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 4,
+          "token_start": 256,
+          "token_end": 317,
+          "count": 5
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 1431,
+      "output_tokens": 0,
+      "state_tokens": 317,
+      "state_tokens_dropped": 0,
+      "truncated": 0,
+      "truncated_questions": [],
+      "windows": 5
+    }
+  }
+}

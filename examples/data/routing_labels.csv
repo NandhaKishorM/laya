@@ -1,0 +1,61 @@
+state,team,urgency
+"We were charged twice for the March invoice, please refund the duplicate.",billing,2
+Can you send me a copy of last quarter's invoices for our records?,billing,0
+The card on file expired and the renewal failed; how do I update payment details?,billing,1
+Our invoice shows 12 seats but we only have 9 users. Please correct it.,billing,1
+Is GST included in the amount on the invoice or added on top?,billing,0
+Payment went through but the account still says overdue and access is blocked.,billing,2
+Please change the billing address on our account to the new office.,billing,0
+We want to move from monthly to annual billing. What is the process?,billing,0
+I would like to apply for the open backend engineer role. Where do I send my CV?,hr,0
+My payslip for October is missing the overtime hours I logged.,hr,1
+How many leave days do I have left this year?,hr,0
+I need to report a harassment incident involving a colleague. Who do I speak to?,hr,2
+Can I get an employment verification letter for my visa application by Friday?,hr,1
+What is the policy on working from another country for two weeks?,hr,0
+My health insurance card has not arrived and I have a hospital visit tomorrow.,hr,2
+I am resigning; please tell me the notice period and the exit steps.,hr,1
+A journalist from the Economic Times is asking for a comment on today's outage.,pr,2
+Could we get a quote from your CEO for our article on AI in banking?,pr,1
+We would like to invite your founder to speak at our conference in January.,pr,0
+Our podcast wants to feature your team. Who handles media requests?,pr,0
+There is a viral post claiming your product leaks data. Do you have a statement?,pr,2
+Can we use your logo in a partner announcement going out next week?,pr,1
+Requesting a press kit and high-resolution photos of the leadership team.,pr,0
+A TV channel wants a live interview about the funding round this evening.,pr,2
+We are a 200-person company evaluating your product. Can we get a demo?,sales,1
+What does the enterprise plan cost for 500 seats with SSO?,sales,1
+Do you offer discounts for non-profits or universities?,sales,0
+Our trial ends tomorrow and we want to buy before it lapses.,sales,2
+Can you send a formal quote and the terms so procurement can review them?,sales,1
+We need on-premises deployment. Is that available and at what price?,sales,1
+Is there a reseller or partner programme we could join?,sales,0
+Please extend our trial by a week; the decision meeting slipped.,sales,1
+The API returns 500 errors on every request since this morning.,technical,2
+How do I rotate an API key without downtime?,technical,1
+Exports to CSV come out with the wrong encoding for Hindi text.,technical,1
+"Is there a Python SDK, and does it support async calls?",technical,0
+Webhooks stopped arriving an hour ago and our queue is backing up.,technical,2
+The dashboard chart shows last week's numbers instead of today's.,technical,1
+Which TLS versions does the endpoint accept?,technical,0
+Login works on desktop but the mobile app says invalid token.,technical,1
+Why was a late fee added to this month's bill when we paid on the due date?,billing,1
+Please split the invoice between our two cost centres.,billing,0
+The refund you promised three weeks ago has still not reached our account.,billing,2
+Can we pay by bank transfer instead of card?,billing,0
+"What documents do I need for my first day, and when does onboarding start?",hr,0
+I was not paid for the public holiday last week.,hr,1
+A new hire needs a laptop and accounts before Monday; who approves that?,hr,1
+Can I switch to a four-day week under the flexible working policy?,hr,0
+A blogger has published our internal roadmap and is asking for comment.,pr,2
+We would like your founder on a panel about open-source AI next month.,pr,0
+Can you confirm the headcount figure before our article goes to print at six?,pr,2
+Requesting permission to film inside your office for a documentary.,pr,0
+How does your pricing compare to Jev for a team of fifty?,sales,1
+We need a signed NDA before we can share our evaluation data.,sales,1
+Our board approved the purchase; send the contract for signature today.,sales,2
+Do you have a startup plan for companies under ten people?,sales,0
+Rate limits are hitting at 20 requests a second; the docs say 100.,technical,1
+Production is down: every login returns a 502 from your gateway.,technical,2
+Is the Python package compatible with Python 3.13?,technical,0
+Batch predictions return answers in a different order from the inputs.,technical,1

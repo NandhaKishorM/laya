@@ -5,11 +5,12 @@ name: Go
 # before the Go tests read them. The goldens are never taken from disk:
 #
 #   * laya-java/scripts/gen_fixtures.py records the families laya-go shares with the other ports
-#     (language tables, language detection, python_json, tokenizer ids, decode text) into a
-#     scratch directory with --strict, so a checkpoint that failed to download is an error and not
-#     a skip marker;
-#   * laya-go/scripts/gen_go_fixtures.py records the one family only this port needs, which
-#     holds what the reference answers over every code point and over seeded random strings;
+#     (language tables, language detection, python_json, tokenizer ids, decode text, sequences,
+#     decoded answers, window plans) into a scratch directory with --strict, so a checkpoint that
+#     failed to download is an error and not a skip marker;
+#   * laya-go/scripts/gen_go_fixtures.py records the family only this port needs, which holds
+#     what the reference answers over every code point and over seeded random strings, every
+#     question refusal with its text, and round(x, 4);
 #   * LAYA_GO_FIXTURES points the tests at that scratch directory, so the committed copies are
 #     never read.
 #
@@ -66,12 +67,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: laya-dotnet/tools/requirements-regen.txt
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: "1.27.1"
           cache: false
@@ -101,6 +102,10 @@ jobs:
           python laya-java/scripts/gen_fixtures.py --strict --out "$GOLDENS"
           --only lang_tables.json --only lang_detect.json --only python_json.json
           --only tokenizer_ids.json --only decode_text.json
+          --only sequences.json --only decode.json --only window_plan.json
+          --only predict_long.json --only confidence_gate.json --only hooks.json
+          --only presets.json --only shortlist.json
+          --only email.json
       - name: Regenerate laya-go's own golden from Python
         env:
           LAYA_FIXTURE_CHECKPOINTS: ${{ github.workspace }}/laya-java/.work/checkpoints
@@ -125,11 +130,12 @@ jobs:
           LAYA_GO_FIXTURES: ${{ github.workspace }}/.go-goldens
           LAYA_CHECKPOINTS: ${{ github.workspace }}/laya-java/.work/checkpoints
         run: go test -race -count=1 -json ./... > "$RUNNER_TEMP/go-test.json"
-      # Exactly the measured count (528 tests and subtests, on both Go versions): dropping a
-      # case fails here, and adding one means raising this number.
+      # A FLOOR, not the exact count. 6195 is what this lane reports with the router digest pins on
+      # top of the router lifecycle (go 1.27.1, go 1.22.12 and the committed goldens), so it also catches a
+      # package going missing. Restore "exactly" on the next green run.
       - name: No test was skipped
         if: ${{ !cancelled() }}
-        run: python laya-go/scripts/check_test_json.py "$RUNNER_TEMP/go-test.json" --min-tests 530
+        run: python laya-go/scripts/check_test_json.py "$RUNNER_TEMP/go-test.json" --min-tests 6195
 
       # go.mod declares go 1.22, so that is what a consumer may build with.
       - name: Run the tests on the oldest supported Go
@@ -141,7 +147,7 @@ jobs:
         run: go test -count=1 -json ./... > "$RUNNER_TEMP/go-test-oldest.json"
       - name: No test was skipped on the oldest Go either
         if: ${{ !cancelled() }}
-        run: python laya-go/scripts/check_test_json.py "$RUNNER_TEMP/go-test-oldest.json" --min-tests 530
+        run: python laya-go/scripts/check_test_json.py "$RUNNER_TEMP/go-test-oldest.json" --min-tests 6195
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() }}
@@ -152,6 +158,109 @@ jobs:
             ${{ runner.temp }}/go-test.json
             ${{ runner.temp }}/go-test-oldest.json
 
+  onnx:
+    name: go onnx parity
+    runs-on: ubuntu-latest
+    continue-on-error: true   # advisory: see the header
+    timeout-minutes: 75
+    env:
+      ONNX_GRAPH: ${{ github.workspace }}/laya-java/.work/onnx/multilingual/laya.onnx
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: laya-dotnet/tools/requirements-regen.txt
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: "1.27.1"
+          cache: false
+      # requirements-regen.txt pins onnxruntime, which also supplies libonnxruntime.so.*: nothing
+      # else is downloaded.
+      - name: Install the Python toolchain the goldens are recorded with
+        run: |
+          python -m pip install --upgrade pip
+          pip install "torch==2.14.0" --index-url https://download.pytorch.org/whl/cpu
+          pip install -r laya-dotnet/tools/requirements-regen.txt
+
+      # The key is byte-identical to the multilingual predict cell in java.yml, so both share one
+      # entry. Like Java's, it is blind to model code outside laya/common.py. The key hashes
+      # prepare_checkpoint.py, which holds HF_REVISION, so a revision bump misses the cache.
+      - name: Cache the exported graph
+        id: graph
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: laya-java/.work/onnx
+          key: laya-java-onnx-${{ runner.os }}-multilingual-${{ hashFiles('laya-java/scripts/prepare_checkpoint.py', 'scripts/export_onnx.py', 'laya/common.py', 'laya-dotnet/tools/requirements-regen.txt') }}
+
+      # HF_TOKEN is scoped to this step, as in java.yml: no other step needs the credential.
+      - name: Prepare the multilingual checkpoint and its graph
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          CACHE_HIT: ${{ steps.graph.outputs.cache-hit }}
+        run: |
+          if [ "$CACHE_HIT" = "true" ]; then
+            python laya-java/scripts/prepare_checkpoint.py --checkpoint multilingual --no-graph
+          else
+            python laya-java/scripts/prepare_checkpoint.py --checkpoint multilingual
+          fi
+          for f in laya.onnx laya.onnx.data laya.onnx.laya-revision; do
+            test -s "laya-java/.work/onnx/multilingual/$f" || { echo "::error::missing $f"; exit 1; }
+          done
+
+      - name: Regenerate predict.json from Python
+        env:
+          LAYA_FIXTURE_CHECKPOINTS: ${{ github.workspace }}/laya-java/.work/checkpoints
+          LAYA_ONNX_GRAPH: ${{ env.ONNX_GRAPH }}
+          LAYA_PREDICT_MODEL: multilingual
+          PYTHONPATH: ${{ github.workspace }}
+        run: python laya-java/scripts/gen_fixtures.py --strict --out "$GOLDENS" --only predict.json
+
+      - name: Locate the ONNX Runtime library
+        run: |
+          python - <<'PY'
+          import glob, os, sys, onnxruntime
+          found = glob.glob(os.path.join(os.path.dirname(onnxruntime.__file__), "capi", "libonnxruntime.so.*"))
+          if len(found) != 1:
+              sys.exit("expected exactly one libonnxruntime.so.*, found %r" % (found,))
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write("LAYA_ONNXRUNTIME_LIBRARY=%s\n" % found[0])
+          PY
+
+      - name: Run the onnx tests against the fresh goldens
+        working-directory: laya-go/onnx
+        env:
+          LAYA_GO_FIXTURES: ${{ github.workspace }}/.go-goldens
+          LAYA_CHECKPOINTS: ${{ github.workspace }}/laya-java/.work/checkpoints
+          LAYA_ONNX_GRAPH: ${{ env.ONNX_GRAPH }}
+        run: go test -race -count=1 -json ./... > "$RUNNER_TEMP/go-onnx.json"
+      - name: No onnx test was skipped
+        if: ${{ !cancelled() }}
+        run: python laya-go/scripts/check_test_json.py "$RUNNER_TEMP/go-onnx.json" --min-tests 72
+
+      # go.mod declares go 1.22, so that is what a consumer may build with.
+      - name: Run the onnx tests on the oldest supported Go
+        working-directory: laya-go/onnx
+        env:
+          GOTOOLCHAIN: go1.22.12
+          LAYA_GO_FIXTURES: ${{ github.workspace }}/.go-goldens
+          LAYA_CHECKPOINTS: ${{ github.workspace }}/laya-java/.work/checkpoints
+          LAYA_ONNX_GRAPH: ${{ env.ONNX_GRAPH }}
+        run: go test -count=1 -json ./... > "$RUNNER_TEMP/go-onnx-oldest.json"
+      - name: No onnx test was skipped on the oldest Go either
+        if: ${{ !cancelled() }}
+        run: python laya-go/scripts/check_test_json.py "$RUNNER_TEMP/go-onnx-oldest.json" --min-tests 72
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ failure() }}
+        with:
+          name: go-onnx-diagnostics
+          path: |
+            .go-goldens
+            ${{ runner.temp }}/go-onnx.json
+            ${{ runner.temp }}/go-onnx-oldest.json
+
   static:
     name: go static checks
     runs-on: ubuntu-latest
@@ -159,7 +268,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: "1.27.1"
           cache: false
@@ -180,6 +289,24 @@ jobs:
         run: |
           go install "honnef.co/go/tools/cmd/staticcheck@$STATICCHECK_VERSION"
           "$(go env GOPATH)/bin/staticcheck" ./...
+      # The onnx module is nested, so the steps above do not see it. It needs cgo for the real
+      # session and must also build and test without it.
+      - name: onnx go vet
+        working-directory: laya-go/onnx
+        run: go vet ./...
+      - name: onnx staticcheck
+        working-directory: laya-go/onnx
+        run: |
+          go install "honnef.co/go/tools/cmd/staticcheck@$STATICCHECK_VERSION"
+          "$(go env GOPATH)/bin/staticcheck" ./...
+      - name: samples staticcheck
+        working-directory: laya-go/samples
+        run: |
+          go install "honnef.co/go/tools/cmd/staticcheck@$STATICCHECK_VERSION"
+          "$(go env GOPATH)/bin/staticcheck" ./...
+      - name: onnx builds and tests without cgo
+        working-directory: laya-go/onnx
+        run: CGO_ENABLED=0 go build ./... && CGO_ENABLED=0 go test ./...
 
   security:
     name: go security scan
@@ -187,10 +314,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: "1.27.1"
           cache: false
@@ -201,6 +328,18 @@ jobs:
 
       - name: govulncheck
         working-directory: laya-go
+        run: |
+          go install "golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION"
+          "$(go env GOPATH)/bin/govulncheck" ./...
+
+      - name: govulncheck (onnx module)
+        working-directory: laya-go/onnx
+        run: |
+          go install "golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION"
+          "$(go env GOPATH)/bin/govulncheck" ./...
+
+      - name: govulncheck (samples module)
+        working-directory: laya-go/samples
         run: |
           go install "golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION"
           "$(go env GOPATH)/bin/govulncheck" ./...

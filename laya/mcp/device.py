@@ -12,6 +12,12 @@ handler, after the server started healthily and ``laya_status`` reported the str
 device in use. `env_device` therefore parses the value it is about to return with
 ``torch.device`` and raises a named ``ValueError`` for one torch cannot read, so the typo is
 attributed to the variable at the point the process reads it.
+
+Parsing is only half of what "the same string" has to mean. ``cuda:258`` is perfectly
+readable, and torch builds ``cuda:2`` from it, because an index torch cannot keep is read back
+as a different one -- so the string the client was told and the device asked of torch would
+name two GPUs. `env_device` therefore also refuses a value whose parsed device is not the
+device the string names.
 `resolve_device` is a best-effort label of the *configured preference*
 (LAYA_DEVICE or torch auto-detection), not of the device a loaded checkpoint
 actually runs on. For the real device read ``Agent.device`` via
@@ -45,7 +51,9 @@ def env_device() -> str | None:
     cannot read raises ``ValueError`` naming ``LAYA_DEVICE``, before the string can reach
     ``Router(device=...)`` or be reported as the device in use. ``cuda:`` (trailing colon),
     ``gpu`` and ``cuda: 0`` (space after the colon) are the common typos; ``CUDA:0`` is not
-    one, because it is normalised first.
+    one, because it is normalised first. ``cuda:258`` is a second shape of the same failure:
+    torch reads it, and reads it as ``cuda:2``, so a value whose parsed device is not the
+    device it names raises the same way.
     """
     value = os.environ.get(_ENV_KEY)
     if value is None:
@@ -61,24 +69,36 @@ def env_device() -> str | None:
 
 
 def _check_torch_device(value: str) -> None:
-    """Raise a named ValueError for a device string ``torch.device`` refuses.
+    """Raise a named ValueError for a device string ``torch.device`` refuses, or rewrites.
 
     ``torch.device`` is used as the parser itself rather than a lookalike of it: devices
     this module has never heard of (``meta``, ``privateuseone:1``) keep working, and a
     torch that cannot be imported leaves the value alone, because nothing downstream
     could have used it anyway.
+
+    That torch accepts the string is not the whole contract. torch reads an index it cannot
+    keep back as a different one -- on torch 2.6.0 the index survives only in its low 8 bits,
+    so ``cuda:258`` parses happily and asks for GPU 2, and ``cuda:128`` asks for ``cuda:-128``.
+    The value is therefore refused unless the device torch parses is the device the string
+    names. Every ordinary spelling satisfies that: measured over all twenty device types torch
+    names, with and without an index, ``str(torch.device(v)) == v``.
     """
     try:
         import torch
     except Exception:  # pragma: no cover - torch is a hard dependency of the package
         return
     try:
-        torch.device(value)
+        parsed = torch.device(value)
     except Exception as exc:
         raise ValueError(
             "%s=%r is not a torch device: %s -- use a device such as 'cpu', 'cuda', "
             "'cuda:0' or 'mps'" % (_ENV_KEY, value, exc)
         ) from exc
+    if str(parsed) != value:
+        raise ValueError(
+            "%s=%r is not the device torch asks for: torch reads it as %r -- use a device such "
+            "as 'cpu', 'cuda', 'cuda:0' or 'mps'" % (_ENV_KEY, value, str(parsed))
+        )
 
 
 def resolve_device(force: str | None = None) -> str:
@@ -94,10 +114,11 @@ def resolve_device(force: str | None = None) -> str:
     computes on: use ``agent_device`` for the real device (a GPU -> CPU
     fallback happens silently at agent build time).
 
-    A ``LAYA_DEVICE`` value torch cannot parse raises here too (see
+    A ``LAYA_DEVICE`` value torch cannot parse -- or can parse into some other device, the
+    way ``cuda:258`` builds ``cuda:2`` -- raises here too (see
     ``env_device``), and the auto-detected labels are device types torch names,
     so neither the environment nor the availability chain can label a device
-    torch would refuse. ``force`` is the exception, on purpose: it is returned
+    torch would refuse or rewrite. ``force`` is the exception, on purpose: it is returned
     verbatim, exactly like the CLI ``--device`` flag, so a test can ask what a
     given preference would be reported as -- including a preference torch
     refuses, which then fails where it is used rather than here.

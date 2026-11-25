@@ -1,0 +1,19 @@
+torch 2.15.0 | cpu threads 4 | mps available True
+
+checkpoint       device  median ms     min ms  ms/question
+W1105 14:59:48.392000 96486 torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+<checkout>/laya/agent.py:2255: RuntimeWarning: laya: this checkpoint ships invalid temperatures or values outside [0.5, 5]; using choice:11+=0.10058280825614929 -> 0.5. Treat confidence from the affected entries as uncalibrated.
+  return Agent(model_id_or_path, device=device, token=token, subfolder=subfolder, fast=fast,
+english          cpu           245        237           61
+multilingual     cpu            96         91           24
+typed-decisions  cpu           252        237           63
+english          mps            72         38           18
+multilingual     mps            22         20            5
+typed-decisions  mps            70         43           17
+
+CPU thread scaling (english, median of 10)
+   threads=4   median    242 ms  min    238 ms
+   threads=8   median    251 ms  min    247 ms
+   threads=16  median    296 ms  min    262 ms
+   threads=28  median    324 ms  min    299 ms
+   threads=56  median    350 ms  min    346 ms

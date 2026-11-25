@@ -43,7 +43,10 @@ uv pip install -e ".[mcp]"
 ```
 
 The server and ONNX paths are exercised by `tests/test_serve.py` and `tests/test_onnx.py`, which
-skip when their extras are not installed.
+skip when their extras are not installed -- `tests/test_serve.py` skips every test it has on one
+line of output, so the install decides whether the server checks ran or quietly did not.
+`tests/test_audit_regressions.py` reaches the same server path from five tests that do not skip:
+without the `serve` extra they fail with `ModuleNotFoundError: No module named 'fastapi'`.
 
 ## Running the tests
 
@@ -69,6 +72,22 @@ does not execute a pytest suite -- it defines the test functions and exits 0, ha
 `PYTEST_SUITES` are collected and run by pytest in a single invocation. Some lanes still name their own
 suites inline under `.github/workflows/`, and `tests/test_packaging.py` fails if a suite ends up in
 neither the shared list nor any workflow.
+
+That list takes the extras the CI `test` job installs, not `mcp` alone: `serve` for `laya.serve`
+and `langchain` for the real `Runnable` base class. Two more are not in any extra -- `pytest`, for
+the `PYTEST_SUITES` half, and `httpx`, which `fastapi.testclient` imports and `serve` does not
+declare (it arrives with `langchain-core` here, which is not a dependency to lean on). Installing
+what that job installs is what makes a local run mean the same thing as the gate:
+
+```bash
+pip install -e ".[mcp,serve,langchain]" pytest httpx
+python scripts/test_suites.py
+```
+
+With `mcp` alone the list is not green, and what it loses is not all visible in the failures:
+`tests/test_langchain_real_mode.py` fails by design, which is how a lane that runs this list is
+told to install the extra, the five server tests in `tests/test_audit_regressions.py` fail with
+`ModuleNotFoundError`, and `tests/test_serve.py` skips its whole file without failing anything.
 
 The suites that need hardware, a compiler or local weights are not part of the PR `test` job:
 

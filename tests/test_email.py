@@ -23,10 +23,16 @@ in `laya/presets.py`, and `laya/__init__.py` re-exports the `presets` one. Editi
 `laya/email.py` moved `laya.email.email_questions` and left `laya.email_questions` where it was,
 with no test and no lint failing.
 
-The block at the end is the same shape again: `clean_email_body` takes a `max_chars` budget and
-`email_state` cut every body to its default, so a request in the last paragraphs of a long email was
-deleted before the model saw it -- while the keyword a caller would use to stop that,
-`email_state(..., max_chars=8000)`, fell into `**extra` and became a field of the state instead.
+The `edges/` block at the end is the same shape again: `clean_email_body` takes a `max_chars` budget
+and `email_state` cut every body to its default, so a request in the last paragraphs of a long email
+was deleted before the model saw it -- while the keyword a caller would use to stop that,
+`email_state(..., max_chars=8000)`, fell into `**extra` and became a field of the state instead. The
+`budget/` block above pins that repair; what it did not cover were the budget's other two arms, and
+they are the opposite of what "budget" suggests. `max_chars=0` returns an empty body, a negative one
+trims the tail, and the `max_chars * 4` pre-cut runs before the regexes, so a footer past the window
+is never seen. The first two are the answers `laya-java/fixtures/email.json` records for the ports,
+so `edges/` pins them from that oracle rather than from expectations typed here; the third is not in
+the fixture as a positive case, so it is pinned by two bodies placed on either side of `4 * max_chars`.
 """
 import inspect
 import os
@@ -851,6 +857,126 @@ check(
     "state/a keyword with a value does reach the serialized state",
     '"thread_id": "t-9"' in serialize_state(email_state("Billing", "Short body", thread_id="t-9")),
     True,
+)
+
+
+# --------------------------------- edges/ what a budget of 0 or a negative one actually does
+# `max_chars` is used as a slice index twice -- `text[:max_chars * 4]` to bound the regex work and
+# `text[:max_chars]` to return the result -- so it is a budget in the slicing sense, not a floor.
+# That means `0` produces an empty body and a negative value trims from the END, the opposite of
+# "at most this much is kept" that the word suggests. It is specified behaviour, not a bug:
+# `laya-java/fixtures/email.json` carries `budget-zero` and four `budget-negative-*` cases as the
+# reference answers the Java and TypeScript ports are tested against, and the generator's own
+# comment says the Java port used to answer with nothing where Python answers with a tail-trimmed
+# body. Nothing in Python pinned those five answers, which is how a `ValueError` for
+# `max_chars < 1` could look like a defensive fix while deleting a three-port contract (PR #1237,
+# closed here). These checks are the guard against repeating that: they reproduce the committed
+# oracle, and they fail the moment the budget stops being a slice.
+EDGE_Q = "I cannot log in and need a password reset."
+EDGE_ASTRAL = "\U0001D400" * 20
+EDGE_X = "x" * 60
+
+# Transcribed from laya-java/fixtures/email.json, `budgets`, the cases whose max_chars <= 0.
+for edge_name, edge_body, edge_n, edge_want in [
+    ("budget-zero", EDGE_Q, 0, ""),
+    ("budget-negative-small", EDGE_Q, -5, "I cannot log in a"),
+    ("budget-negative-one", EDGE_Q, -1, "I cannot log in and need a password r"),
+    ("budget-negative-astral", EDGE_ASTRAL, -2, "\U0001D400" * 10),
+    ("budget-negative-empties", EDGE_X, -12, ""),
+]:
+    check("edges/%s reproduces the committed Java answer" % edge_name,
+          clean_email_body(edge_body, edge_n), edge_want)
+
+# The rule those five are an instance of: for a negative budget the pre-cut's length test is against
+# a negative number, so it always fires and removes `4 * |n|`, and the final slice removes `|n|` more
+# -- `5 * |n|` off the end of a body the regexes have no marker to find, and empty once that reaches
+# the length.
+for n in (-1, -2, -5, -12):
+    check("edges/n=%d trims 5 * abs(n) off a body nothing is stripped from" % n,
+          clean_email_body(EDGE_X, n), EDGE_X[:n * 4][:n])
+check("edges/60 chars and n=-12 land exactly on empty", len(EDGE_X), 5 * 12)
+
+# And 0 is an answer, not an error -- the arm a caller computing `len(x) - used` reaches by
+# accident, and the one that must keep returning a string for the ports.
+def edge_raises(fn, *args, **kwargs):
+    """(type, message) for what `fn` raises, or (None, returned) when it does not."""
+    try:
+        return None, fn(*args, **kwargs)
+    except BaseException as exc:  # noqa: BLE001 - the point is which type escaped
+        return type(exc), str(exc)
+
+
+for edge_n in (0, -1, -5):
+    kind, _ = edge_raises(clean_email_body, EDGE_Q, edge_n)
+    check("edges/max_chars=%r is not refused" % edge_n, kind, None)
+
+# `email_state` forwards the budget, so the same two arms reach the model's input: an empty body,
+# and a body whose END is what is missing. Both are the shape this file exists to guard against --
+# a request that never arrives, with no error to say so.
+check("edges/email_state forwards a zero budget to an empty body",
+      email_state("Access", EDGE_Q, max_chars=0)["body"], "")
+check("edges/email_state forwards a negative budget unchanged",
+      email_state("Access", EDGE_Q, max_chars=-1)["body"], clean_email_body(EDGE_Q, -1))
+check_true(
+    "edges/a negative budget drops the tail of the message, where the ask is",
+    email_state("Access", EDGE_Q, max_chars=-5)["body"] == "I cannot log in a"
+    and "password reset" not in email_state("Access", EDGE_Q, max_chars=-5)["body"],
+    "got %r" % email_state("Access", EDGE_Q, max_chars=-5)["body"],
+)
+check("edges/a budget larger than the body is the way to mean no limit",
+      clean_email_body(EDGE_Q, len(EDGE_Q) + 1), EDGE_Q)
+
+# The pre-cut's WIDTH is the last thing these can say, and it is not a margin the result could do
+# without: the cut runs before every regex, so the cleaning sees only the first `4 * max_chars`
+# characters. Two bodies one paragraph apart at that edge answer differently. `EDGE_DISC` begins at
+# exactly `4 * 30` here, so it is chopped away whole and its paragraph -- request included --
+# survives; move it inside the window and the disclaimer rule drops the paragraph, which is the
+# same rule that made the footer tests above delete text. Widening `4` to `8` turns the first into
+# the second; narrowing it to `2` turns the second into the first; deleting the pre-cut turns the
+# first into the second.
+EDGE_DISC = "This email is confidential and intended solely for the addressee."
+check("edges/a footer starting past 4 * max_chars is never seen",
+      clean_email_body("word " * 24 + EDGE_DISC, 30), "word word word word word word ")
+check("edges/the same footer inside 4 * max_chars takes its paragraph with it",
+      clean_email_body("word " * 8 + EDGE_DISC, 30), "")
+check_true("edges/the two bodies straddle the 4 * max_chars edge",
+           len("word " * 24) == 4 * 30 and len("word " * 8 + EDGE_DISC) < 4 * 30,
+           "got %d and %d against a window of %d; neither case tests the width any more"
+           % (len("word " * 24), len("word " * 8 + EDGE_DISC), 4 * 30))
+
+# Both docstrings now teach this, and the prose is only honest if the arithmetic it states is the
+# arithmetic the code runs. These tie the paragraph to the two slice sites and to the fixture. The
+# code is read from after the docstring, because the paragraph itself quotes both slices.
+edge_source = inspect.getsource(clean_email_body)
+edge_parts = edge_source.split('"""')
+check_true("edges/the docstring is the first triple-quoted block",
+           edge_parts[0].startswith("def clean_email_body")
+           and edge_parts[1].lstrip().startswith("Remove quoted"),
+           "the split below no longer separates prose from code")
+edge_code = edge_parts[2]
+check_true("edges/the body is sliced exactly twice",
+           edge_code.count("[:max_chars") == 2,
+           "found %d `[:max_chars` slices in the code; the docstring says twice"
+           % edge_code.count("[:max_chars"))
+check_true("edges/the pre-cut is four times the budget",
+           "max_chars * 4" in edge_code,
+           "the `4 * |max_chars|` half of the stated arithmetic is not in the code")
+for edge_fn, edge_phrase in [
+    (clean_email_body, "slice budget"),
+    (clean_email_body, "laya-java/fixtures/email.json"),
+    (clean_email_body, "5 * |max_chars|"),
+    (clean_email_body, "never recognized"),
+    (email_state, "slice budget"),
+    (email_state, "laya-java/fixtures/email.json"),
+]:
+    edge_doc = " ".join((inspect.getdoc(edge_fn) or "").split())
+    check_true("edges/doc/%s says %r" % (edge_fn.__name__, edge_phrase),
+               edge_phrase in edge_doc,
+               "the paragraph no longer states the rule the checks above pin")
+check_true(
+    "edges/doc/email_state warns against 0 and a negative by name",
+    "never `0` or a negative" in " ".join((inspect.getdoc(email_state) or "").split()),
+    "the sentence that tells a caller how to mean `no limit` has been reworded away",
 )
 
 

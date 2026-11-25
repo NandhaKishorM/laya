@@ -50,6 +50,8 @@ func TestPredicatesMatchCPythonEverywhere(t *testing.T) {
 		"upper":     IsUpper,
 		"lower":     IsLower,
 		"space":     IsSpace,
+		"mark":      IsMark,
+		"initial":   IsInitial,
 	} {
 		t.Run(name, func(t *testing.T) {
 			want := fixtures.Str(t, d.Must(name))

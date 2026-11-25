@@ -1,0 +1,80 @@
+[workspace]
+members = ["samples/laya-sample", "samples/laya-benchmark", "samples/laya-routing"]
+
+[package]
+# Published on crates.io as `laya-onnx`; the library itself is still
+# imported as `laya` (see `[lib]`), so `use laya::...` works unchanged.
+name = "laya-onnx"
+version = "0.1.0"
+edition = "2024"
+description = "Rust port of the Laya Python SDK: run Laya decision models locally on ONNX Runtime"
+license = "Apache-2.0"
+repository = "https://github.com/NandhaKishorM/laya"
+homepage = "https://github.com/NandhaKishorM/laya/tree/main/laya-rust"
+documentation = "https://docs.rs/laya-onnx"
+readme = "README.md"
+keywords = ["laya", "onnx", "nlp", "decision", "inference"]
+categories = ["science", "text-processing"]
+# Ship only the library sources and docs. The golden vectors (tests/golden), the Python tools,
+# the samples and any model artifacts stay in the repository.
+include = ["/src/**/*.rs", "/Cargo.toml", "/README.md", "/MODELS.md"]
+
+[lib]
+name = "laya"
+path = "src/lib.rs"
+
+[dependencies]
+serde = "1"
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+indexmap = "2"
+thiserror = "2"
+ureq = { version = "3", optional = true }
+# `tokenizers`: keep `onig` as the regex backend (matches the Python wheel) but drop the default
+# `esaxx_fast` feature — its C++ helper is built with a static MSVC CRT (/MT) that link-conflicts
+# with `ort-sys`'s prebuilt ONNX Runtime binaries (/MD) on Windows. `esaxx_fast` only accelerates
+# the BPE trainer/encoder; dropping it changes performance, not tokenization output.
+tokenizers = { version = "0.23", default-features = false, features = ["onig", "progressbar"] }
+# `ort`: exactly 2.0.0-rc.13 (still pre-1.0 upstream). The `=` matters: Cargo reads a plain
+# "2.0.0-rc.13" as "rc.13 or any later rc", and rc.15 changed `Session::builder()` to take an
+# `Environment`, so a fresh resolve without this lock file did not compile (#1527).
+# Defaults are off so the prebuilt-binary download can be declined. The features here are
+# ort's other defaults (`std`, `ndarray`,
+# `tracing`, `api-27`). Linking (`download-binaries`, `tls-native`, `copy-dylibs`) is this
+# crate's default `download-binaries` feature, so a default build still fetches a prebuilt
+# CPU ONNX Runtime and needs no system install.
+ort = { version = "=2.0.0-rc.13", default-features = false, features = ["std", "ndarray", "tracing", "api-27"] }
+# Routing port (`language_detection.rs`): Python's `str.isalpha()` is Unicode general category
+# L* only, which `char::is_alphabetic` does not match (it also accepts combining marks). This
+# crate gives a direct category lookup instead of hand-rolling Unicode tables.
+unicode-general-category = "1.1.0"
+# Routing port (`language_detection.rs`): `unicodedata.combining` (canonical combining class) decides
+# which characters never split a non-Latin word, and it is not derivable from the general category.
+unicode-normalization = "0.1"
+# Routing port (`laya_email.rs`): quote-header, signature and disclaimer detection. `regex` has no
+# lookbehind, so `email.py`'s one lookbehind pattern (`_SENTENCE`) is hand-written instead of
+# pulling in a second, heavier engine (`fancy-regex`) for a single pattern.
+regex = "1.13.1"
+# `predict_long` warnings (window capped, stride reduced): Python's `warnings.warn` text, sent to the
+# `log` facade at `warn` level with target `laya`. The facade only; no backend is linked, so a
+# program that installs none sees nothing. Already in the dependency tree through `ort`/`tokenizers`.
+log = "0.4"
+
+[dev-dependencies]
+proptest = "1"
+tempfile = "3"
+
+[features]
+# Opt-in artifact download (HuggingFace Hub), via `ureq` (TLS through its default `rustls`
+# feature, so no system OpenSSL is needed). On by default, together with `download-binaries`,
+# which is the prebuilt ONNX Runtime fetch — the same two things a default build did before
+# linking was optional.
+default = ["download", "download-binaries"]
+download = ["dep:ureq"]
+# ort 2.0.0-rc.13's linking defaults, as one feature. Opt out with `--no-default-features`.
+download-binaries = ["ort/download-binaries", "ort/tls-native", "ort/copy-dylibs"]
+# Load the ONNX Runtime shared library at runtime (`ORT_DYLIB_PATH`) instead of linking one.
+# Use with default features off: `--no-default-features --features load-dynamic`.
+load-dynamic = ["ort/load-dynamic"]
+# GPU execution providers, forwarded to `ort`'s own features of the same name.
+cuda = ["ort/cuda"]
+directml = ["ort/directml"]

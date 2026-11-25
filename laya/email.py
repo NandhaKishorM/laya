@@ -233,6 +233,18 @@ def clean_email_body(body: str, max_chars: int = 3000) -> str:
 
     `max_chars` is the length the result is cut to, 3000 characters unless raised -- see
     `email_state`, which takes the same budget and passes it through.
+
+    It is a slice budget, not a floor, and it is applied twice: as the `max_chars * 4` pre-cut
+    that bounds the regex work below, and as the `text[:max_chars]` that returns the result. The
+    pre-cut runs first, so the quote, signature and disclaimer rules see only the first
+    `4 * max_chars` characters -- a footer that begins past that window is never recognized, and
+    the paragraph holding it survives to the final cut. So `0` answers with the empty string, and a
+    negative value trims from the end: its length test is against a negative number, so the pre-cut
+    always fires and removes `4 * |max_chars|`, and the final slice removes `|max_chars|` more,
+    which is `5 * |max_chars|` off the body and empty once that reaches the body's length. That is
+    specified behaviour, recorded by the `budget-zero` and `budget-negative-*` cases of
+    `laya-java/fixtures/email.json` that the Java and TypeScript ports are tested against, so "no
+    limit" means a budget larger than the body -- never `0` and never negative.
     """
     text = (body or "").replace("\r\n", "\n").replace("\r", "\n").replace("\\n", "\n")
     # Bound regex work before the expensive patterns below: _DISCLAIMER uses
@@ -276,8 +288,13 @@ def email_state(subject: str, body: str, sender: Optional[str] = None, clean: bo
     `max_chars` is the budget `clean_email_body` cuts the body to, and it is worth raising for a
     long message: at the default the body stops after 3000 characters, so a request that arrives in
     the last paragraphs never reaches the model -- including through `predict_long`, which scans a
-    state in windows precisely so it can read past one window's worth. Ignored when `clean=False`,
-    which passes the body through whole.
+    state in windows precisely so it can read past one window's worth. Lowering it does the same
+    thing more surely: it is a slice budget, so `0` gives the model a subject and an empty body, and
+    a negative value cuts from the end, which is where that late request lives. `clean_email_body`
+    states the arithmetic, and the `budget-zero` and `budget-negative-*` cases of
+    `laya-java/fixtures/email.json` pin it for every port, so it is behaviour rather than an error --
+    pass a budget larger than the body when the message is long, never `0` or a negative to mean "no
+    limit". Ignored when `clean=False`, which passes the body through whole.
 
     Any other keyword becomes a field of the state, so it is read by the model; a typo here is an
     input mutation, not an error. The exception is a keyword whose value is exactly ``None``: it is

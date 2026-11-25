@@ -1,0 +1,94 @@
+{
+  "name": "long_clamp",
+  "state": "Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Normal account activity. Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today"
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    }
+  },
+  "options": {
+    "window": 4096,
+    "stride": 2048,
+    "batch_size": 2
+  },
+  "state_tokens": 856,
+  "effective_window": 990,
+  "effective_stride": 495,
+  "effective_room": 990,
+  "windows": [],
+  "result": {
+    "model": "laya-rl-agent-onnx",
+    "answers": {
+      "topic": {
+        "type": "choice",
+        "choice": "refund",
+        "probabilities": {
+          "refund": 0.8343,
+          "technical": 0.0249,
+          "other": 0.1408
+        },
+        "confidence": 0.5275,
+        "answer_confidence": 0.8343,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "urgency": {
+        "type": "score",
+        "score": 1.4964,
+        "legend": {
+          "0": "not urgent",
+          "1": "this week",
+          "2": "today"
+        },
+        "probabilities": {
+          "0": 0.0886,
+          "1": 0.3263,
+          "2": 0.585
+        },
+        "confidence": 0.1864,
+        "answer_confidence": 0.585,
+        "action": {
+          "act_probability": 1.0
+        }
+      },
+      "cancel": {
+        "type": "noul",
+        "noul": 1.0,
+        "confidence": 1.0,
+        "answer_confidence": 1.0,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 2664,
+      "output_tokens": 0,
+      "state_tokens": 856,
+      "state_tokens_dropped": 0,
+      "truncated": false,
+      "truncated_questions": [],
+      "windows": 1
+    }
+  }
+}

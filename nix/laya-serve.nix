@@ -72,13 +72,13 @@ in
         `laya.agent`, not here: `tests/test_packaging.py` reads them out of the
         runtime and fails if this text drifts from it, which is why there is no
         `enum` on this option. The recognised spellings are `fp16`, `float16`,
-        `bf16` and `bfloat16` — the first two name one dtype and the last two
-        another. Anything else is ignored rather than an error, and the
-        checkpoint's own choice stays in force.
+        `bf16`, `bfloat16`, `fp32` and `float32` — each pair names one dtype,
+        and `fp32`/`float32` turn autocast off. Anything else is an error: the
+        service fails at load instead of serving the checkpoint's own choice.
 
-        The type allows any single token but refuses whitespace, which is not
-        style: the runtime lower-cases the value and then compares it without
-        trimming, so a trailing space keeps full precision and says nothing.
+        The type allows any single token but refuses whitespace. The runtime
+        trims and lower-cases the value, so a stray space would change nothing;
+        the type keeps what this module writes identical to what it reads.
         null leaves every CUDA checkpoint on its own `amp_dtype`.
       '';
     };
@@ -215,6 +215,22 @@ in
       '';
     };
 
+    bodyReadTimeout = lib.mkOption {
+      type = lib.types.nullOr lib.types.numbers.positive;
+      default = null;
+      example = 30;
+      description = ''
+        Seconds a request may spend delivering its body (sets
+        `LAYA_BODY_READ_TIMEOUT`). Admission is taken before the body is read, so
+        a client that opens a connection, sends a request head and then stops
+        writing holds one of `maxConcurrent`'s slots for as long as it stays
+        connected; past this deadline the server answers 408 and gives the slot
+        back. Raise it for clients on links slower than a few kilobytes a second,
+        lower it to turn a stalled upload into a refusal faster. null leaves the
+        server's own default (10 seconds).
+      '';
+    };
+
     maxLoaded = lib.mkOption {
       type = lib.types.nullOr lib.types.ints.positive;
       default = null;
@@ -257,10 +273,11 @@ in
       example = 16;
       description = ''
         Answer a `choice` with more options than this by elimination, in groups
-        of this size, on /v1/systemone (sets `LAYA_TOURNAMENT_GROUP`), and raise
-        its option cap from 100 to 255. Every option still comes back in
-        `probabilities`; one eliminated in an earlier round carries 0.0. null
-        leaves it off, so every choice is read in one pass as before.
+        of this size, on /v1/systemone and /v1/systemone/batch (sets
+        `LAYA_TOURNAMENT_GROUP`), and raise their option cap from 100 to 255.
+        Every option still comes back in `probabilities`; one eliminated in an
+        earlier round carries 0.0. null leaves it off, so every choice is read
+        in one pass as before.
       '';
     };
 
@@ -380,6 +397,8 @@ in
         LAYA_LOG_LEVEL = cfg.logLevel;
       } // lib.optionalAttrs (cfg.maxConcurrent != null) {
         LAYA_MAX_CONCURRENT = toString cfg.maxConcurrent;
+      } // lib.optionalAttrs (cfg.bodyReadTimeout != null) {
+        LAYA_BODY_READ_TIMEOUT = toString cfg.bodyReadTimeout;
       } // lib.optionalAttrs (cfg.cudaAmp != null) {
         LAYA_CUDA_AMP = cfg.cudaAmp;
       } // lib.optionalAttrs (cfg.cpuAmp != null) {

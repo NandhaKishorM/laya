@@ -37,6 +37,18 @@ function normaliseDigestPath(rel: string): string {
   return norm;
 }
 
+/**
+ * Refuse a pin that could never verify anything. A number, boolean, bare digest string or
+ * array reads back no artifact keys, so the loaders below would silently skip the integrity
+ * check they were asked to perform. `undefined`/`null` stays the documented "not asked for".
+ */
+function assertDigestMap(expected: unknown): void {
+  if (expected === undefined || expected === null) return;
+  if (typeof expected !== "object" || Array.isArray(expected)) {
+    throw new Error("laya-ts: expected_sha256 must be a mapping of artifact paths to digests");
+  }
+}
+
 /** Verify `data` against expectedSha256[rel]; artifacts not listed are left unchecked. */
 async function expectDigest(
   rel: string,
@@ -304,6 +316,7 @@ export async function loadNodeBundle(
     onProgress?: ((done: number, total: number, file: string) => void) | null;
   },
 ): Promise<NodeBundle> {
+  assertDigestMap(opts?.expectedSha256);
   const fs: typeof import("node:fs/promises") = await import("node:fs/promises");
   const path: typeof import("node:path") = await import("node:path");
   const os: typeof import("node:os") = await import("node:os");
@@ -443,6 +456,7 @@ export async function loadWebBundle(
     onProgress?: ((done: number, total: number, file: string) => void) | null;
   },
 ): Promise<WebBundle> {
+  assertDigestMap(opts?.expectedSha256);
   const revision = resolveRevision(repoOrUrl, opts?.revision);
   const base = baseUrlFor(repoOrUrl, opts?.subfolder ?? null, revision);
   let reportedRevision = revision;
@@ -484,6 +498,7 @@ export async function createNodeProvider(
   modelDir: string,
   opts?: ProviderOptions,
 ): Promise<SessionProvider> {
+  assertDigestMap(opts?.expectedSha256);
   const fs: typeof import("node:fs/promises") = await import("node:fs/promises");
   const path: typeof import("node:path") = await import("node:path");
   // Verify the artifacts and their digests BEFORE importing the native runtime. `onnxruntime-node`
@@ -593,6 +608,7 @@ export async function createWebProvider(
   modelUrl: string,
   opts?: ProviderOptions,
 ): Promise<SessionProvider> {
+  assertDigestMap(opts?.expectedSha256);
   const spec = "onnxruntime-" + "web";
   const ort: any = await import(/* @vite-ignore */ spec);
   applyNumThreads(ort, opts?.numThreads);

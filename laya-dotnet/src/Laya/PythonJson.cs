@@ -120,15 +120,15 @@ public static class PythonJson
         v is IDictionary or IEnumerable<KeyValuePair<string, object?>>;
 
     private static bool IsListLike(object? v) =>
-        v is IEnumerable and not string && !IsDictLike(v);
+        v is IList or System.Runtime.CompilerServices.ITuple && !IsDictLike(v);
 
     /// <summary>
     /// Whether <paramref name="value"/> is the .NET analogue of Python's <c>isinstance(state,
-    /// list)</c>: any non-string, non-dict-like enumerable. There is no exact "list vs. tuple"
-    /// distinction on this side, so anything <see cref="Dumps"/> would render as a JSON array
-    /// counts, matching how <c>serialize_state</c> already treats the value.
+    /// list)</c>, which decides left truncation: an array or an <see cref="IList"/> that is not
+    /// dictionary-like. A tuple (<c>ITuple</c>) is still rendered as a JSON array but is not a list,
+    /// so it is truncated from the right, as Python truncates a tuple.
     /// </summary>
-    public static bool IsListState(object? value) => IsListLike(value);
+    public static bool IsListState(object? value) => value is IList && !IsDictLike(value);
 
     private static void WriteValue(
         StringBuilder sb, object? value,
@@ -183,6 +183,12 @@ public static class PythonJson
                 sb.Append(Repr((double)dec));
                 break;
 
+            // Python's bytes/bytearray are not JSON serializable (TypeError); a state that is bytes can be
+            // routed (lang.py decodes it) but never predicted on. Under default=str Python writes str(b"..."),
+            // which is not ported, so that path keeps the array rendering.
+            case byte[] when !fallbackToStr:
+                throw new JsonException("Object of type bytes is not JSON serializable");
+
             // Dictionaries: more-specific IEnumerable<KVP> before general IDictionary before general IEnumerable.
             case IEnumerable<KeyValuePair<string, object?>> kvpEnum:
                 WriteKvpSequence(sb, kvpEnum, escapeNonAscii, fallbackToStr, seen);
@@ -192,8 +198,14 @@ public static class PythonJson
                 WriteGenericDict(sb, dict, escapeNonAscii, fallbackToStr, seen);
                 break;
 
-            case IEnumerable seq:
+            // Only a list or tuple is a JSON array. A set, a generator and the like are not serializable in Python
+            // (TypeError), so they fall through to the default branch below.
+            case IList seq:
                 WriteArray(sb, seq, escapeNonAscii, fallbackToStr, seen);
+                break;
+
+            case System.Runtime.CompilerServices.ITuple tuple:
+                WriteArray(sb, Enumerable.Range(0, tuple.Length).Select(i => tuple[i]).ToList(), escapeNonAscii, fallbackToStr, seen);
                 break;
 
             default:

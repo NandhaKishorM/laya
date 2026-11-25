@@ -51,6 +51,34 @@ public sealed class RouterEndToEndTests
         AssertRoutesAndMatchesGolden(router, LayaCheckpoint.Multilingual, "case_sample_app_hindi.json");
     }
 
+    [Fact]
+    public void DefaultOptionsAlternateTwoLanguagesWithoutReloading()
+    {
+        RequireEnglishAndMultilingual();
+        // Python's Router(max_loaded=2): with default options, switching back and forth between
+        // an English and a Hindi request builds each checkpoint once and keeps both resident.
+        var builds = new System.Collections.Concurrent.ConcurrentDictionary<LayaCheckpoint, int>();
+        using var router = new LayaRouter(new LayaRouterOptions(), checkpoint =>
+        {
+            builds.AddOrUpdate(checkpoint, 1, (_, n) => n + 1);
+            return LayaEngine.Create(new LayaOptions
+            {
+                Checkpoint = checkpoint,
+                ModelDirectory = TestArtifacts.For(checkpoint).Directory,
+            });
+        });
+
+        for (var round = 0; round < 2; round++)
+        {
+            AssertRoutesAndMatchesGolden(router, LayaCheckpoint.English, "case_sample_app_english.json");
+            AssertRoutesAndMatchesGolden(router, LayaCheckpoint.Multilingual, "case_sample_app_hindi.json");
+        }
+
+        Assert.Equal(1, builds[LayaCheckpoint.English]);
+        Assert.Equal(1, builds[LayaCheckpoint.Multilingual]);
+        Assert.Equal(2, router.Loaded.Count);
+    }
+
     private static void AssertRoutesAndMatchesGolden(LayaRouter router, LayaCheckpoint expectedCheckpoint, string file)
     {
         var golden = GoldenData.For(expectedCheckpoint);

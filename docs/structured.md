@@ -85,6 +85,7 @@ A schema that cannot be answered from a fixed option set raises `laya.structured
 | `{"$ref": "#/definitions/node"}` | `properties.name: $ref '#/definitions/node' does not resolve to an entry of this schema's '$defs' or 'definitions'` |
 | `{"enum": [1, "1"]}` | `properties.name: enum values produce duplicate choice labels` |
 | `{"enum": []}` | `properties.name: 'enum' must not be empty` |
+| `{"enum": "abc"}` | `properties.name: 'enum' must be an array of values, got str` |
 | `{"type": "number"}` | `properties.name: a numeric field needs integer 'minimum' and 'maximum' to become a score` |
 | `{"type": "integer", "minimum": 5, "maximum": 2}` | `properties.name: 'maximum' 2 is below 'minimum' 5` |
 | `{"type": "integer", "minimum": 0, "maximum": 10}` | `properties.name: 11 levels exceeds MAX_SCORE_LEVELS=10; narrow the range or use an enum` |

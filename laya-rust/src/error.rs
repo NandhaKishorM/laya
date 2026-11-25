@@ -1,0 +1,155 @@
+//! [`LayaError`], the one error type every fallible operation in this crate returns.
+
+use std::path::PathBuf;
+
+/// The crate-wide result alias.
+pub type Result<T> = std::result::Result<T, LayaError>;
+
+/// Everything that can go wrong building, configuring, or running a Laya engine.
+///
+/// Kept as one flat enum (rather than one type per module) so a caller can match on it without
+/// chasing error types across `questions`, `config`, `artifacts`, and so on.
+#[derive(Debug, thiserror::Error)]
+pub enum LayaError {
+    /// A filesystem operation failed (reading a config, a tokenizer file, an artifact, ...).
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+
+    /// A JSON document could not be parsed or did not have the expected shape.
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+
+    /// No artifact directory was found after trying every resolution step.
+    #[error("Laya model artifact (~1.3 GB) not found. Tried:\n{}", .tried.join("\n"))]
+    ArtifactsNotFound {
+        /// One line per location that was tried, in resolution order.
+        tried: Vec<String>,
+    },
+
+    /// The resolved artifact directory does not exist.
+    #[error(
+        "Laya artifact directory does not exist.{}\nResolved  : {}\n\n\
+         If the resolved path does not look like what you typed, quote it: an unquoted \
+         Windows path loses its backslashes in a POSIX shell. Forward slashes also work.",
+        .requested.as_ref().map(|r| format!("\nRequested : {}", r.display())).unwrap_or_default(),
+        .resolved.display()
+    )]
+    DirectoryNotFound {
+        /// The path exactly as given, when it differs from `resolved`.
+        requested: Option<PathBuf>,
+        /// The requested path after normalization to an absolute path.
+        resolved: PathBuf,
+    },
+
+    /// A required artifact file (`model.onnx`, `model.onnx.data`, ...) is missing.
+    #[error(
+        "Missing artifact file: {}{}",
+        .path.display(),
+        .hint.as_deref().map(|h| format!("\n{h}")).unwrap_or_default()
+    )]
+    MissingFile {
+        /// The absolute path that was checked.
+        path: PathBuf,
+        /// An optional extra hint about why this file matters.
+        hint: Option<String>,
+    },
+
+    /// Fetching an artifact from HuggingFace Hub failed.
+    #[error("{0}")]
+    Download(String),
+
+    /// The tokenizer could not be loaded or used.
+    #[error("{0}")]
+    Tokenizer(String),
+
+    /// The ONNX Runtime session could not be built or run.
+    #[error("{0}")]
+    Onnx(String),
+
+    /// A `Question` or `QuestionSet` was constructed with invalid data (duplicate ids or
+    /// labels, zero options, ...).
+    #[error("{0}")]
+    InvalidQuestion(String),
+
+    /// `rl_agent_config.json` could not be interpreted.
+    #[error("{0}")]
+    InvalidConfig(String),
+
+    /// The loaded checkpoint's encoder family does not match what the caller asked for.
+    #[error("{0}")]
+    CheckpointMismatch(String),
+
+    /// One or more of a question's option markers were truncated away by `max_len`, so the
+    /// question cannot be answered without silently scoring fewer options than it was given.
+    /// Ports the "silently answering a truncated question" failure mode called out in
+    /// `sequence-construction.md`, and matches Python's wording exactly (parity tests compare
+    /// this text against golden `error_message` values byte-for-byte).
+    #[error(
+        "question {}: only {actual_markers} of its {expected_markers} option markers fit in \
+         max_len={max_len} with head_max_len={head_max_len} spent on the question; \
+         lower head_max_len, raise max_len, or use fewer options",
+        crate::laya_router::python_repr_str(.id)
+    )]
+    NoMarkers {
+        /// The question id that lost one or more markers.
+        id: String,
+        /// The head budget the question's options did not fit within: the configured one, or a
+        /// per-call override. Signed because Python does not validate an override, so a negative
+        /// one is reported as written.
+        head_max_len: i64,
+        /// Markers that survived the total sequence budget.
+        actual_markers: usize,
+        /// Markers requested by the question.
+        expected_markers: usize,
+        /// The total sequence budget: the configured one, or a per-call override (signed, as
+        /// `head_max_len`).
+        max_len: i64,
+    },
+
+    /// A state or request was refused before any inference: a `null` state, which Python rejects
+    /// with a `TypeError` instead of answering a decision about the text `"null"`.
+    #[error("{0}")]
+    InvalidState(String),
+
+    /// `predict_long` was given an aggregation mode other than `"auto"`.
+    #[error("predict_long: only aggregate='auto' is supported")]
+    UnsupportedAggregate(String),
+
+    /// The scan window or stride cannot cover the state (no room for the state, or a stride that
+    /// would leave tokens between windows unread). The text matches Python's `ValueError`.
+    #[error("{0}")]
+    InvalidWindow(String),
+
+    /// The chosen predictor does not support the requested operation (a `predict_long` through a
+    /// router whose predictor has no scan capability).
+    #[error("{0}")]
+    NotSupported(String),
+
+    /// A `min_confidence` threshold or per-bucket map that Python's `check_min_confidence` would
+    /// reject with a `ValueError`: out of `[0.0, 1.0]`, NaN, an empty map, or a key that is not a
+    /// bucket. The text is Python's, with `%r` rendered as Python's `repr`.
+    #[error("{0}")]
+    InvalidMinConfidence(String),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LayaError;
+
+    #[test]
+    fn marker_truncation_error_matches_python_and_quotes_question_ids() {
+        let error = LayaError::NoMarkers {
+            id: "user's question".to_string(),
+            head_max_len: 192,
+            actual_markers: 125,
+            expected_markers: 300,
+            max_len: 512,
+        };
+        assert_eq!(
+            error.to_string(),
+            "question \"user's question\": only 125 of its 300 option markers fit in max_len=512 \
+             with head_max_len=192 spent on the question; lower head_max_len, raise max_len, or \
+             use fewer options"
+        );
+    }
+}

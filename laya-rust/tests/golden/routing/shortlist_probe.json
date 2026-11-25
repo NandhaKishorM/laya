@@ -1,0 +1,790 @@
+[
+  {
+    "label": "tie_cosine_keeps_earlier_label",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": "",
+      "gamma": "mid",
+      "delta": "same"
+    },
+    "k": 2,
+    "instructions": null,
+    "vectors": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.6,
+        0.8
+      ],
+      [
+        1.0,
+        0.0
+      ]
+    ],
+    "labels": [
+      "alpha",
+      "delta"
+    ],
+    "scores": [
+      1.0,
+      1.0
+    ],
+    "passthrough": false,
+    "n": 4
+  },
+  {
+    "label": "k1_is_earliest_max",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": "",
+      "gamma": "mid",
+      "delta": "same"
+    },
+    "k": 1,
+    "instructions": null,
+    "vectors": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.6,
+        0.8
+      ],
+      [
+        1.0,
+        0.0
+      ]
+    ],
+    "labels": [
+      "alpha"
+    ],
+    "scores": [
+      1.0
+    ],
+    "passthrough": false,
+    "n": 4
+  },
+  {
+    "label": "k3_appends_next_cosine",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": "",
+      "gamma": "mid",
+      "delta": "same"
+    },
+    "k": 3,
+    "instructions": null,
+    "vectors": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.6,
+        0.8
+      ],
+      [
+        1.0,
+        0.0
+      ]
+    ],
+    "labels": [
+      "alpha",
+      "delta",
+      "gamma"
+    ],
+    "scores": [
+      1.0,
+      1.0,
+      0.6
+    ],
+    "passthrough": false,
+    "n": 4
+  },
+  {
+    "label": "zero_query_keeps_original_order",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": "",
+      "gamma": "mid",
+      "delta": "same"
+    },
+    "k": 2,
+    "instructions": null,
+    "vectors": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.6,
+        0.8
+      ],
+      [
+        3.0,
+        4.0
+      ]
+    ],
+    "labels": [
+      "alpha",
+      "beta"
+    ],
+    "scores": [
+      0.0,
+      0.0
+    ],
+    "passthrough": false,
+    "n": 4
+  },
+  {
+    "label": "zero_option_vector_loses",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": null,
+      "gamma": null
+    },
+    "k": 2,
+    "instructions": null,
+    "vectors": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    "labels": [
+      "beta",
+      "alpha"
+    ],
+    "scores": [
+      1.0,
+      0.0
+    ],
+    "passthrough": false,
+    "n": 3
+  },
+  {
+    "label": "nan_vector_sorts_behind_finite_match",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": null
+    },
+    "k": 1,
+    "instructions": null,
+    "vectors": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        "nan",
+        "nan"
+      ],
+      [
+        1.0,
+        0.0
+      ]
+    ],
+    "labels": [
+      "beta"
+    ],
+    "scores": [
+      1.0
+    ],
+    "passthrough": false,
+    "n": 2
+  },
+  {
+    "label": "positive_inf_and_negative_inf_both_zeroed",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": null,
+      "gamma": null
+    },
+    "k": 2,
+    "instructions": null,
+    "vectors": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        "inf",
+        "inf"
+      ],
+      [
+        "-inf",
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ]
+    ],
+    "labels": [
+      "gamma",
+      "alpha"
+    ],
+    "scores": [
+      1.0,
+      0.0
+    ],
+    "passthrough": false,
+    "n": 3
+  },
+  {
+    "label": "nan_component_in_query_only_zeroes_that_component",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": null
+    },
+    "k": 1,
+    "instructions": null,
+    "vectors": [
+      [
+        "nan",
+        1.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    "labels": [
+      "beta"
+    ],
+    "scores": [
+      1.0
+    ],
+    "passthrough": false,
+    "n": 2
+  },
+  {
+    "label": "fully_nan_query_falls_back_to_order",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": null
+    },
+    "k": 1,
+    "instructions": null,
+    "vectors": [
+      [
+        "nan",
+        "nan"
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    "labels": [
+      "alpha"
+    ],
+    "scores": [
+      0.0
+    ],
+    "passthrough": false,
+    "n": 2
+  },
+  {
+    "label": "k_equals_n_passthrough",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": "",
+      "gamma": "mid",
+      "delta": "same"
+    },
+    "k": 4,
+    "instructions": null,
+    "vectors": null,
+    "labels": [
+      "alpha",
+      "beta",
+      "gamma",
+      "delta"
+    ],
+    "scores": null,
+    "passthrough": true,
+    "n": 4
+  },
+  {
+    "label": "k_greater_than_n_passthrough",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": "",
+      "gamma": "mid",
+      "delta": "same"
+    },
+    "k": 20,
+    "instructions": null,
+    "vectors": null,
+    "labels": [
+      "alpha",
+      "beta",
+      "gamma",
+      "delta"
+    ],
+    "scores": null,
+    "passthrough": true,
+    "n": 4
+  },
+  {
+    "label": "k_equals_n_single_option_passthrough",
+    "state": "pay me",
+    "criteria": {
+      "solo": "the only choice"
+    },
+    "k": 1,
+    "instructions": null,
+    "vectors": null,
+    "labels": [
+      "solo"
+    ],
+    "scores": null,
+    "passthrough": true,
+    "n": 1
+  },
+  {
+    "label": "list_criteria_topk",
+    "state": "pay me",
+    "criteria": [
+      "alpha",
+      "beta",
+      "gamma"
+    ],
+    "k": 2,
+    "instructions": "Classify",
+    "vectors": [
+      [
+        0.0,
+        1.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        0.2
+      ]
+    ],
+    "labels": [
+      "beta",
+      "gamma"
+    ],
+    "scores": [
+      1.0,
+      1.0
+    ],
+    "passthrough": false,
+    "n": 3
+  },
+  {
+    "label": "list_criteria_passthrough",
+    "state": "hello",
+    "criteria": [
+      "alpha",
+      "beta",
+      "gamma"
+    ],
+    "k": 5,
+    "instructions": "Which?",
+    "vectors": null,
+    "labels": [
+      "alpha",
+      "beta",
+      "gamma"
+    ],
+    "scores": null,
+    "passthrough": true,
+    "n": 3
+  },
+  {
+    "label": "dict_state_query",
+    "state": {
+      "text": "hi"
+    },
+    "criteria": [
+      "alpha",
+      "beta"
+    ],
+    "k": 1,
+    "instructions": "Classify",
+    "vectors": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    "labels": [
+      "alpha"
+    ],
+    "scores": [
+      1.0
+    ],
+    "passthrough": false,
+    "n": 2
+  },
+  {
+    "label": "zero_and_false_criteria_values",
+    "state": "pay me",
+    "criteria": {
+      "zero": 0,
+      "no": false,
+      "bare": null,
+      "named": {
+        "desc": "payments"
+      }
+    },
+    "k": 4,
+    "instructions": null,
+    "vectors": null,
+    "labels": [
+      "zero",
+      "no",
+      "bare",
+      "named"
+    ],
+    "scores": null,
+    "passthrough": true,
+    "n": 4
+  },
+  {
+    "label": "zero_and_false_criteria_ranked",
+    "state": "pay me",
+    "criteria": {
+      "zero": 0,
+      "no": false,
+      "bare": null,
+      "named": {
+        "desc": "payments"
+      }
+    },
+    "k": 2,
+    "instructions": null,
+    "vectors": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.9,
+        0.1
+      ],
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    "labels": [
+      "zero",
+      "bare"
+    ],
+    "scores": [
+      1.0,
+      0.9938837346736189
+    ],
+    "passthrough": false,
+    "n": 4
+  },
+  {
+    "label": "dict_instructions",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": null
+    },
+    "k": 1,
+    "instructions": {
+      "task": "route",
+      "hint": "Müller & co <urgent>"
+    },
+    "vectors": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    "labels": [
+      "alpha"
+    ],
+    "scores": [
+      1.0
+    ],
+    "passthrough": false,
+    "n": 2
+  },
+  {
+    "label": "list_instructions",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": null
+    },
+    "k": 1,
+    "instructions": [
+      "step one",
+      "step two",
+      3
+    ],
+    "vectors": [
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        1.0,
+        0.0
+      ]
+    ],
+    "labels": [
+      "alpha"
+    ],
+    "scores": [
+      1.0
+    ],
+    "passthrough": false,
+    "n": 2
+  },
+  {
+    "label": "numeric_instructions",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": null
+    },
+    "k": 1,
+    "instructions": 42,
+    "vectors": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    "labels": [
+      "alpha"
+    ],
+    "scores": [
+      1.0
+    ],
+    "passthrough": false,
+    "n": 2
+  },
+  {
+    "label": "empty_string_instructions_same_as_none",
+    "state": "pay me",
+    "criteria": {
+      "alpha": null,
+      "beta": null
+    },
+    "k": 1,
+    "instructions": "",
+    "vectors": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    "labels": [
+      "alpha"
+    ],
+    "scores": [
+      1.0
+    ],
+    "passthrough": false,
+    "n": 2
+  },
+  {
+    "label": "many_options_k5_of_10",
+    "state": "I need help exporting invoices to a spreadsheet",
+    "criteria": {
+      "topic_00": "detailed description number 0 for this support topic",
+      "topic_01": "detailed description number 1 for this support topic",
+      "topic_02": "detailed description number 2 for this support topic",
+      "topic_03": "detailed description number 3 for this support topic",
+      "topic_04": "detailed description number 4 for this support topic",
+      "topic_05": "detailed description number 5 for this support topic",
+      "topic_06": "detailed description number 6 for this support topic",
+      "topic_07": "detailed description number 7 for this support topic",
+      "topic_08": "detailed description number 8 for this support topic",
+      "topic_09": "detailed description number 9 for this support topic"
+    },
+    "k": 5,
+    "instructions": "Pick the single best matching category.",
+    "vectors": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        1.0,
+        2.0
+      ],
+      [
+        2.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        1.0,
+        2.0
+      ],
+      [
+        2.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        1.0,
+        2.0
+      ],
+      [
+        2.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    "labels": [
+      "topic_02",
+      "topic_05",
+      "topic_08",
+      "topic_01",
+      "topic_04"
+    ],
+    "scores": [
+      1.0,
+      1.0,
+      1.0,
+      0.4472135954999579,
+      0.4472135954999579
+    ],
+    "passthrough": false,
+    "n": 10
+  }
+]

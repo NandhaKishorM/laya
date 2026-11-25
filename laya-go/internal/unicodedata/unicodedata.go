@@ -59,6 +59,12 @@ func IsLower(r rune) bool { return lookup(&lowerASCII, lower[:], r) }
 // IsSpace is Python's str.isspace() for one character.
 func IsSpace(r rune) bool { return lookup(&spaceASCII, space[:], r) }
 
+// IsMark is Python's unicodedata.category(ch).startswith("M"): the Mn, Mc and Me categories.
+func IsMark(r rune) bool { return lookup(&markASCII, mark[:], r) }
+
+// IsInitial reports category Lu, Lt or Lo: a letter that is not lowercase.
+func IsInitial(r rune) bool { return lookup(&initialASCII, initial[:], r) }
+
 // IsPrintable is Python's str.isprintable() for one character.
 func IsPrintable(r rune) bool { return lookup(&printableASCII, printable[:], r) }
 
@@ -88,9 +94,37 @@ func IsUpperString(s string) bool {
 	return sawCased
 }
 
+// DecimalASCII rewrites every Nd digit to its ASCII digit, as int() and float() read them.
+// Blocks of Nd digits run zero to nine from the start of their range.
+func DecimalASCII(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r >= 0x80 && contains(digit[:], r) {
+			lo, hi := 0, len(digit)/2-1
+			for lo < hi {
+				mid := (lo + hi + 1) / 2
+				if digit[mid*2] <= r {
+					lo = mid
+				} else {
+					hi = mid - 1
+				}
+			}
+			r = '0' + (r-digit[lo*2])%10
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
 // Strip is Python's str.strip() with no argument.
 func Strip(s string) string {
 	return strings.TrimFunc(s, IsSpace)
+}
+
+// StripNumeric trims what int() and float() trim: str.isspace() characters except U+001C to
+// U+001F, which str.isspace() counts and those parsers do not.
+func StripNumeric(s string) string {
+	return strings.TrimFunc(s, func(r rune) bool { return IsSpace(r) && !(0x1c <= r && r <= 0x1f) })
 }
 
 // IsBlank is Python's `not s.strip()`.

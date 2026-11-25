@@ -67,6 +67,8 @@ EXPORT_FUSED = os.path.join(TOOLS, "export_onnx.py")
 EXPORT_SPLIT = os.path.join(REPO, "laya-ts", "scripts", "export_onnx.py")
 DUMP_GOLDEN = os.path.join(TOOLS, "dump_golden.py")
 DUMP_ROUTING = os.path.join(TOOLS, "dump_routing_golden.py")
+DUMP_DIFFERENTIAL = os.path.join(TOOLS, "dump_differential_golden.py")
+DUMP_ROUND4 = os.path.join(TOOLS, "dump_round4_golden.py")
 
 # Everything that decides what an export looks like. Its hash is stored beside each exported
 # directory; a mismatch (or a missing stamp) means the export is stale and is redone.
@@ -277,7 +279,8 @@ def main() -> int:
         choices=CHECKPOINTS + ["routing", "all"],
         metavar="{%s,routing,all}" % ",".join(CHECKPOINTS),
         help="What to regenerate; repeat to combine. 'routing' is the model-free routing/language/"
-             "email/shortlist goldens, 'all' is every checkpoint plus routing (default: all).",
+             "email/shortlist goldens and the round(x, 4) table, 'all' is every checkpoint plus "
+             "routing (default: all).",
     )
     ap.add_argument(
         "--artifacts-root",
@@ -313,6 +316,8 @@ def main() -> int:
         if "routing" in selected:
             print("\n=== routing ===")
             run([sys.executable, DUMP_ROUTING, "--force"])
+            run([sys.executable, DUMP_DIFFERENTIAL])
+            run([sys.executable, DUMP_ROUND4])
     except subprocess.CalledProcessError as e:
         print("\nFAILED (exit %d): %s" % (e.returncode, " ".join(e.cmd)), file=sys.stderr)
         return e.returncode or 1

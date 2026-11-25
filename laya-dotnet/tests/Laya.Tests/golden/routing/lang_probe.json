@@ -1367,7 +1367,7 @@
     "latin_profile": {
       "language": null,
       "english_hits": 0,
-      "diacritic_rate": 0.13333333333333333,
+      "diacritic_rate": 0.23333333333333334,
       "looks_non_english": true
     },
     "analyse": {
@@ -1378,7 +1378,7 @@
       "language": null,
       "is_english": false,
       "language_undecided": true,
-      "diacritic_rate": 0.1333,
+      "diacritic_rate": 0.2333,
       "non_latin_fraction": 0.0,
       "mixed_segment": null
     }
@@ -1717,7 +1717,7 @@
     },
     "latin_profile": {
       "language": "en",
-      "english_hits": 9,
+      "english_hits": 11,
       "diacritic_rate": 0.0,
       "looks_non_english": false
     },
@@ -2380,7 +2380,7 @@
     },
     "latin_profile": {
       "language": "en",
-      "english_hits": 3,
+      "english_hits": 4,
       "diacritic_rate": 0.0,
       "looks_non_english": false
     },
@@ -3246,7 +3246,7 @@
     },
     "latin_profile": {
       "language": "en",
-      "english_hits": 2,
+      "english_hits": 3,
       "diacritic_rate": 0.0,
       "looks_non_english": false
     },
@@ -4228,6 +4228,2582 @@
     "latin_profile": {
       "language": "en",
       "english_hits": 60,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/swedish_sentence",
+    "state": "Hej, jag behöver hjälp med min faktura",
+    "state_text": "Hej, jag behöver hjälp med min faktura",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "sv",
+      "english_hits": 0,
+      "diacritic_rate": 0.05263157894736842,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "sv",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0526,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/swedish_ascii",
+    "state": "jag behover hjalp med min faktura",
+    "state_text": "jag behover hjalp med min faktura",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "sv",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "sv",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/swedish_two_words",
+    "state": "lösenord fel",
+    "state_text": "lösenord fel",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "sv",
+      "english_hits": 0,
+      "diacritic_rate": 0.08333333333333333,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "sv",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0833,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/swedish_one_word",
+    "state": "lösenord",
+    "state_text": "lösenord",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.125,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.125,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/swedish_inte_kan",
+    "state": "kan inte logga in på appen idag",
+    "state_text": "kan inte logga in på appen idag",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "sv",
+      "english_hits": 1,
+      "diacritic_rate": 0.03225806451612903,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "sv",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0323,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/swedish_inte_kan_not_first",
+    "state": "jag vet att kan inte logga in",
+    "state_text": "jag vet att kan inte logga in",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "sv",
+      "english_hits": 1,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "sv",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/nordic_overlap_tack",
+    "state": "tack så mycket",
+    "state_text": "tack så mycket",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.07142857142857142,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0714,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/nordic_overlap_with_english",
+    "state": "hej please send me the invoice",
+    "state_text": "hej please send me the invoice",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 2,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/danish_sentence",
+    "state": "jeg har brug for hjælp til min faktura",
+    "state_text": "jeg har brug for hjælp til min faktura",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "sv",
+      "english_hits": 1,
+      "diacritic_rate": 0.02631578947368421,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "sv",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0263,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/norwegian_sentence",
+    "state": "jeg trenger hjelp med fakturaen min",
+    "state_text": "jeg trenger hjelp med fakturaen min",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/rescue_loanword",
+    "state": "Please send the café menu to the customer today",
+    "state_text": "Please send the café menu to the customer today",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.02127659574468085,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0213,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/rescue_two_accents",
+    "state": "Please send the café and the résumé to the customer today",
+    "state_text": "Please send the café and the résumé to the customer today",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 6,
+      "diacritic_rate": 0.05263157894736842,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0526,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/rescue_vetoed_by_rate",
+    "state": "ñandú ñandú ñandú the please",
+    "state_text": "ñandú ñandú ñandú the please",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 2,
+      "diacritic_rate": 0.21428571428571427,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.2143,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/rescue_name",
+    "state": "Please forward this to José and Zoë at the office",
+    "state_text": "Please forward this to José and Zoë at the office",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 6,
+      "diacritic_rate": 0.04081632653061224,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0408,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/rescue_one_english_word",
+    "state": "Der Kunde hat nicht please",
+    "state_text": "Der Kunde hat nicht please",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 1,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/modifier_letters",
+    "state": "ʰʲʷ hello there",
+    "state_text": "ʰʲʷ hello there",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.7692307692307693,
+      "other": 0.23076923076923078
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.7692307692307693,
+        "other": 0.23076923076923078
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.2308,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/modifier_only",
+    "state": "ʰʲʷ",
+    "state_text": "ʰʲʷ",
+    "detect_script": "other",
+    "script_profile": {
+      "other": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "other",
+      "script_profile": {
+        "other": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/ipa_only",
+    "state": "ɐɑɒɓ",
+    "state_text": "ɐɑɒɓ",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/fullwidth_only",
+    "state": "ＨＥＬＬＯ ｗｏｒｌｄ",
+    "state_text": "ＨＥＬＬＯ ｗｏｒｌｄ",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/bopomofo_only",
+    "state": "ㄅㄆㄇㄈ",
+    "state_text": "ㄅㄆㄇㄈ",
+    "detect_script": "other",
+    "script_profile": {
+      "other": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "other",
+      "script_profile": {
+        "other": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/halfwidth_katakana",
+    "state": "ｱｲｳｴｵ",
+    "state_text": "ｱｲｳｴｵ",
+    "detect_script": "other",
+    "script_profile": {
+      "other": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "other",
+      "script_profile": {
+        "other": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/cjk_extension_b",
+    "state": "𠀀𠀁𠀂",
+    "state_text": "𠀀𠀁𠀂",
+    "detect_script": "other",
+    "script_profile": {
+      "other": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "other",
+      "script_profile": {
+        "other": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/unclaimed_with_latin",
+    "state": "please help ㄅㄆㄇㄈㄉㄊ today",
+    "state_text": "please help ㄅㄆㄇㄈㄉㄊ today",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.7142857142857143,
+      "other": 0.2857142857142857
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 1,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.7142857142857143,
+        "other": 0.2857142857142857
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.2857,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/unclaimed_dominant",
+    "state": "ok ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎ",
+    "state_text": "ok ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎ",
+    "detect_script": "other",
+    "script_profile": {
+      "latin": 0.16666666666666666,
+      "other": 0.8333333333333334
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "other",
+      "script_profile": {
+        "latin": 0.16666666666666666,
+        "other": 0.8333333333333334
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.8333,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/tie_named_vs_latin",
+    "state": "abc αβγ",
+    "state_text": "abc αβγ",
+    "detect_script": "greek",
+    "script_profile": {
+      "latin": 0.5,
+      "greek": 0.5
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "greek",
+      "script_profile": {
+        "latin": 0.5,
+        "greek": 0.5
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.5,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/tie_two_scripts",
+    "state": "αβγ абв",
+    "state_text": "αβγ абв",
+    "detect_script": "greek",
+    "script_profile": {
+      "greek": 0.5,
+      "cyrillic": 0.5
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "greek",
+      "script_profile": {
+        "greek": 0.5,
+        "cyrillic": 0.5
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 1.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/devanagari_matras",
+    "state": "please call मु मु मु मु मु मु now",
+    "state_text": "please call मु मु मु मु मु मु now",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.6842105263157895,
+      "devanagari": 0.3157894736842105
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 1,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "devanagari",
+      "script_profile": {
+        "latin": 0.6842105263157895,
+        "devanagari": 0.3157894736842105
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.3158,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/devanagari_single_letters",
+    "state": "Please call क ख ग घ ङ च छ ज झ ञ now",
+    "state_text": "Please call क ख ग घ ङ च छ ज झ ञ now",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.5652173913043478,
+      "devanagari": 0.43478260869565216
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 1,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.5652173913043478,
+        "devanagari": 0.43478260869565216
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.4348,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/devanagari_danda",
+    "state": "Please read this ।।।।।।।।।।।।",
+    "state_text": "Please read this ।।।।।।।।।।।।",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/cyrillic_combining_name",
+    "state": "Please send it to Влади́мир Петро́вич today",
+    "state_text": "Please send it to Влади́мир Петро́вич today",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.5428571428571428,
+      "cyrillic": 0.45714285714285713
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 3,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.5428571428571428,
+        "cyrillic": 0.45714285714285713
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.4571,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/cyrillic_lower_word",
+    "state": "Please send it to привет мир today ok",
+    "state_text": "Please send it to привет мир today ok",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.7,
+      "cyrillic": 0.3
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 3,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "cyrillic",
+      "script_profile": {
+        "latin": 0.7,
+        "cyrillic": 0.3
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.3,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/arabic_harakat",
+    "state": "Please read مَرْحَبًا بِكُمْ في الموقع today",
+    "state_text": "Please read مَرْحَبًا بِكُمْ في الموقع today",
+    "detect_script": "arabic",
+    "script_profile": {
+      "latin": 0.4838709677419355,
+      "arabic": 0.5161290322580645
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 1,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "arabic",
+      "script_profile": {
+        "latin": 0.4838709677419355,
+        "arabic": 0.5161290322580645
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.5161,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/thai_tone_marks",
+    "state": "Please read สวัสดีครับ ขอบคุณมาก today",
+    "state_text": "Please read สวัสดีครับ ขอบคุณมาก today",
+    "detect_script": "thai",
+    "script_profile": {
+      "latin": 0.5,
+      "thai": 0.5
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 1,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "thai",
+      "script_profile": {
+        "latin": 0.5,
+        "thai": 0.5
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.5,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/vietnamese_combining",
+    "state": "Xin chào, tôi can̂ giúp đỡ về hoá đơn",
+    "state_text": "Xin chào, tôi can̂ giúp đỡ về hoá đơn",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 3,
+      "diacritic_rate": 0.1794871794871795,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.1795,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/greek_final_sigma",
+    "state": "Please check ΟΔΥΣΣΕΥΣ today",
+    "state_text": "Please check ΟΔΥΣΣΕΥΣ today",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.6666666666666666,
+      "greek": 0.3333333333333333
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 1,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.6666666666666666,
+        "greek": 0.3333333333333333
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.3333,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/non_latin_promotion_min_letters",
+    "state": "ok xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ありがとうございます",
+    "state_text": "ok xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ありがとうございます",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.8913043478260869,
+      "kana": 0.10869565217391304
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "kana",
+      "script_profile": {
+        "latin": 0.8913043478260869,
+        "kana": 0.10869565217391304
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.1087,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/non_latin_fraction_edge",
+    "state": "Please яя aaaaaaaa",
+    "state_text": "Please яя aaaaaaaa",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.875,
+      "cyrillic": 0.125
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.875,
+        "cyrillic": 0.125
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.125,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/identifier_domains",
+    "state": "github.com acme.com v1.2.3 la o e un user@acme.com",
+    "state_text": "github.com acme.com v1.2.3 la o e un user@acme.com",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/identifier_trailing_dot",
+    "state": "arrivato. la fattura. non e arrivata ancora.",
+    "state_text": "arrivato. la fattura. non e arrivata ancora.",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "it",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "it",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/identifier_double_dot",
+    "state": "a..b la fattura non arrivata",
+    "state_text": "a..b la fattura non arrivata",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "it",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "it",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/identifier_leading_at",
+    "state": "@home la fattura non e arrivata ancora",
+    "state_text": "@home la fattura non e arrivata ancora",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "it",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "it",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/identifier_hyphen",
+    "state": "e-mail la fattura non e arrivata ancora x-y.z",
+    "state_text": "e-mail la fattura non e arrivata ancora x-y.z",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "it",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "it",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/dotted_I",
+    "state": "İstanbul'da bir sorun var ve yardım istiyorum",
+    "state_text": "İstanbul'da bir sorun var ve yardım istiyorum",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "az",
+      "english_hits": 0,
+      "diacritic_rate": 0.021739130434782608,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "az",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0217,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/dotted_I_english",
+    "state": "I am in İstanbul and please send the receipt",
+    "state_text": "I am in İstanbul and please send the receipt",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 5,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/code_line_state",
+    "state": "x = 5 el la los las para que no",
+    "state_text": "x = 5 el la los las para que no",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "es",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/call_syntax_state",
+    "state": "foo(bar) para que no el la los",
+    "state_text": "foo(bar) para que no el la los",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "es",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/titlecase_digraph",
+    "state": "ǅungla and the please are here",
+    "state_text": "ǅungla and the please are here",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 5,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/shouted_acronyms",
+    "state": "MON DES EST LA",
+    "state_text": "MON DES EST LA",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/shouted_acronyms_under_english",
+    "state": "Please look at this\nMON DES EST LA",
+    "state_text": "Please look at this\nMON DES EST LA",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 3,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/shouted_acronyms_two_english_lines",
+    "state": "Please look at this\nand send me the details.\nMON DES EST LA",
+    "state_text": "Please look at this\nand send me the details.\nMON DES EST LA",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 5,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/shouted_address",
+    "state": "STORES LOS ANGELES LAS VEGAS EL PASO CLOSED",
+    "state_text": "STORES LOS ANGELES LAS VEGAS EL PASO CLOSED",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "es",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/shouted_german_umlaut",
+    "state": "WIE SPÄT IST ES IN KÖLN",
+    "state_text": "WIE SPÄT IST ES IN KÖLN",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "de",
+      "english_hits": 1,
+      "diacritic_rate": 0.08695652173913043,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.087,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/shouted_german_ascii",
+    "state": "WIE SPAET IST ES IN KOELN",
+    "state_text": "WIE SPAET IST ES IN KOELN",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "de",
+      "english_hits": 1,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/shouted_portuguese_prose",
+    "state": "EU NAO CONSIGO ENTRAR NA MINHA CONTA",
+    "state_text": "EU NAO CONSIGO ENTRAR NA MINHA CONTA",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "pt",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "pt",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/shouted_german_prose",
+    "state": "ICH HABE MEIN PAKET NOCH NICHT BEKOMMEN",
+    "state_text": "ICH HABE MEIN PAKET NOCH NICHT BEKOMMEN",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "de",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "de",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/shouted_french_prose",
+    "state": "JE VOUDRAIS UN REMBOURSEMENT POUR LA COMMANDE",
+    "state_text": "JE VOUDRAIS UN REMBOURSEMENT POUR LA COMMANDE",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "fr",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/shouted_cyrillic_acronyms",
+    "state": "ПРИВЕТ MON DES EST LA",
+    "state_text": "ПРИВЕТ MON DES EST LA",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.6470588235294118,
+      "cyrillic": 0.35294117647058826
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.6470588235294118,
+        "cyrillic": 0.35294117647058826
+      },
+      "language": "fr",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.3529,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/emphasis_german",
+    "state": "sag mir das HEUTIGE DATUM",
+    "state_text": "sag mir das HEUTIGE DATUM",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "de",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "de",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/emphasis_spanish",
+    "state": "quiero cancelar mi PEDIDO POR FAVOR",
+    "state_text": "quiero cancelar mi PEDIDO POR FAVOR",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "es",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/emphasis_acronym_mixed",
+    "state": "quero cancelar o pedido MON DES EST LA por favor",
+    "state_text": "quero cancelar o pedido MON DES EST LA por favor",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "pt",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/emphasis_long_run",
+    "state": "please cancel the order and send a REFUND for it",
+    "state_text": "please cancel the order and send a REFUND for it",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 5,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/caseless_with_caps",
+    "state": "ありがとう MON DES EST LA",
+    "state_text": "ありがとう MON DES EST LA",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.6875,
+      "kana": 0.3125
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "kana",
+      "script_profile": {
+        "latin": 0.6875,
+        "kana": 0.3125
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.3125,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/hindi_caps",
+    "state": "मुझे MON DES EST LA चाहिए",
+    "state_text": "मुझे MON DES EST LA चाहिए",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.6875,
+      "devanagari": 0.3125
+    },
+    "latin_profile": {
+      "language": "fr",
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "devanagari",
+      "script_profile": {
+        "latin": 0.6875,
+        "devanagari": 0.3125
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.3125,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/shouted_english",
+    "state": "PLEASE SEND ME THE RECEIPT FOR THE ORDER",
+    "state_text": "PLEASE SEND ME THE RECEIPT FOR THE ORDER",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/segment_after_cap",
+    "state": "Please review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nEu nao consigo entrar na minha conta.",
+    "state_text": "Please review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and sen",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 327,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/segment_within_cap",
+    "state": "Please review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nEu nao consigo entrar na minha conta.",
+    "state_text": "Please review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nPlease review the error and send me the details.\nEu nao consigo entrar na minha conta.",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 40,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "pt",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": "Eu nao consigo entrar na minha conta."
+    }
+  },
+  {
+    "label": "p0411/segment_shouted_foreign",
+    "state": "Please review the error and send me the details.\nEU NAO CONSIGO ENTRAR NA MINHA CONTA",
+    "state_text": "Please review the error and send me the details.\nEU NAO CONSIGO ENTRAR NA MINHA CONTA",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "pt",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": "EU NAO CONSIGO ENTRAR NA MINHA CONTA"
+    }
+  },
+  {
+    "label": "p0411/segment_acronym_line",
+    "state": "Please review the error and send me the details.\nMON DES EST LA",
+    "state_text": "Please review the error and send me the details.\nMON DES EST LA",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/segment_joined_tokens",
+    "state": "Please review the error and send me the details.\nNav/Com OS/2 ESA/UN C:\\DOS\\mode radio listing",
+    "state_text": "Please review the error and send me the details.\nNav/Com OS/2 ESA/UN C:\\DOS\\mode radio listing",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/segment_two_same_word",
+    "state": "Please review the error and send me the details.\ncom com com com com com",
+    "state_text": "Please review the error and send me the details.\ncom com com com com com",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "pt",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "pt",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/segment_call_syntax",
+    "state": "Please review the error and send me the details.\nround(el, 2) para que no tengo el",
+    "state_text": "Please review the error and send me the details.\nround(el, 2) para que no tengo el",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/segment_list_state",
+    "state": [
+      "Please review the error and send me the details.",
+      "Quiero cancelar mi pedido por favor ahora mismo"
+    ],
+    "state_text": "Please review the error and send me the details. Quiero cancelar mi pedido por favor ahora mismo",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": "Quiero cancelar mi pedido por favor ahora mismo"
+    }
+  },
+  {
+    "label": "p0411/segment_nested_dict",
+    "state": {
+      "ticket": {
+        "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+        "customer": {
+          "msg": "ich habe mein paket noch nicht bekommen"
+        }
+      }
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details.  ich habe mein paket noch nicht bekommen",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 12,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "de",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": "ich habe mein paket noch nicht bekommen"
+    }
+  },
+  {
+    "label": "p0411/segment_too_deep",
+    "state": {
+      "a": {
+        "b": {
+          "c": {
+            "d": {
+              "e": {
+                "f": {
+                  "g": "ich habe mein paket noch nicht bekommen"
+                }
+              }
+            }
+          }
+        }
+      },
+      "n": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. "
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 12,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/segment_unicode_strip",
+    "state": "Please review the error and send me the details.\n  Eu nao consigo entrar na minha conta. ",
+    "state_text": "Please review the error and send me the details.\n  Eu nao consigo entrar na minha conta. ",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "pt",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": "Eu nao consigo entrar na minha conta."
+    }
+  },
+  {
+    "label": "p0411/leaf_name_field",
+    "state": {
+      "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+      "name": "José"
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details.  José",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 20,
+      "diacritic_rate": 0.004,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.004,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/leaf_short_value",
+    "state": {
+      "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+      "x": "žluť"
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details.  žluť",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 20,
+      "diacritic_rate": 0.008,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.008,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/leaf_nonlatin_short",
+    "state": {
+      "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+      "x": "你好吗"
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details.  你好吗",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.9848484848484849,
+      "han": 0.015151515151515152
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 20,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.9848484848484849,
+        "han": 0.015151515151515152
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0152,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/leaf_nonlatin_ten",
+    "state": {
+      "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+      "x": "我的账户无法登录请帮助我吧"
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details.  我的账户无法登录请帮助我吧",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.9375,
+      "han": 0.0625
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 20,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.9375,
+        "han": 0.0625
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0625,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/leaf_cyrillic_name",
+    "state": {
+      "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+      "x": "Дмитрий Петрович Савицкий"
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details.  Дмитрий Петрович Савицкий",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 0.8944954128440367,
+      "cyrillic": 0.10550458715596331
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 20,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 0.8944954128440367,
+        "cyrillic": 0.10550458715596331
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.1055,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/leaf_code_value",
+    "state": {
+      "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+      "x": "x = żółć żółć żółć żółć"
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details.  x = żółć żółć żółć żółć",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 20,
+      "diacritic_rate": 0.05947955390334572,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0595,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/leaf_diacritics_four_words",
+    "state": {
+      "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+      "x": "żółć gęślą jaźń łódź"
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details.  żółć gęślą jaźń łódź",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 20,
+      "diacritic_rate": 0.045112781954887216,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 0.0451,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/leaf_two_candidates",
+    "state": {
+      "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+      "a": "Quiero cancelar mi pedido por favor",
+      "b": "Ich habe mein Paket noch nicht bekommen und möchte es zurück"
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details.  Quiero cancelar mi pedido por favor Ich habe mein Paket noch nicht bekommen und möchte es zurück",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 20,
+      "diacritic_rate": 0.005847953216374269,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0058,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": "Quiero cancelar mi pedido por favor"
+    }
+  },
+  {
+    "label": "p0411/leaf_shouted_foreign",
+    "state": {
+      "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+      "x": "EU NAO CONSIGO ENTRAR NA MINHA CONTA"
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details.  EU NAO CONSIGO ENTRAR NA MINHA CONTA",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 20,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "pt",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": "EU NAO CONSIGO ENTRAR NA MINHA CONTA"
+    }
+  },
+  {
+    "label": "p0411/leaf_shouted_acronyms",
+    "state": {
+      "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+      "x": "MON DES EST LA"
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details.  MON DES EST LA",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 20,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/leaf_number_and_none",
+    "state": {
+      "n": 5,
+      "m": null,
+      "t": true,
+      "s": "Please review the error and send me the details."
+    },
+    "state_text": "Please review the error and send me the details.",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 4,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "en",
+      "is_english": true,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/leaf_long_second_field",
+    "state": {
+      "a": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+      "b": "Quiero cancelar mi pedido por favor ahora mismo"
+    },
+    "state_text": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and sen",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 327,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": "es",
+      "is_english": false,
+      "language_undecided": false,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/empty_string",
+    "state": "",
+    "state_text": "",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/whitespace_only",
+    "state": " \n\t ",
+    "state_text": " \n\t ",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/digits_only",
+    "state": "12345 67890",
+    "state_text": "12345 67890",
+    "detect_script": "unknown",
+    "script_profile": {},
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 0.0,
+      "looks_non_english": false
+    },
+    "analyse": {
+      "script": "unknown",
+      "script_profile": {},
+      "language": null,
+      "is_english": true,
+      "language_undecided": true,
+      "diacritic_rate": 0.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/state_text_cap_multibyte",
+    "state": "çççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççç",
+    "state_text": "çççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççç",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": null,
+      "english_hits": 0,
+      "diacritic_rate": 1.0,
+      "looks_non_english": true
+    },
+    "analyse": {
+      "script": "latin",
+      "script_profile": {
+        "latin": 1.0
+      },
+      "language": null,
+      "is_english": false,
+      "language_undecided": true,
+      "diacritic_rate": 1.0,
+      "non_latin_fraction": 0.0,
+      "mixed_segment": null
+    }
+  },
+  {
+    "label": "p0411/roman_numerals",
+    "state": "Ⅳ Ⅴ Ⅵ Ⅶ please",
+    "state_text": "Ⅳ Ⅴ Ⅵ Ⅶ please",
+    "detect_script": "latin",
+    "script_profile": {
+      "latin": 1.0
+    },
+    "latin_profile": {
+      "language": "en",
+      "english_hits": 1,
       "diacritic_rate": 0.0,
       "looks_non_english": false
     },

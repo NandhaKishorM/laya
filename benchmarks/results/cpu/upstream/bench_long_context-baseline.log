@@ -1,0 +1,12 @@
+W1105 15:03:42.367000 97143 torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+pad     0  limit  1024  accuracy 19/20  median 0.035s  tokens read 61
+pad     0  limit  8192  accuracy 19/20  median 0.035s  tokens read 61
+pad  1000  limit  1024  accuracy 13/20  median 0.454s  tokens read 1024
+pad  1000  limit  8192  accuracy 16/20  median 0.470s  tokens read 1032
+pad  2000  limit  1024  accuracy  7/20  median 0.453s  tokens read 1024
+pad  2000  limit  8192  accuracy 17/20  median 1.218s  tokens read 2040
+pad  4000  limit  1024  accuracy  7/20  median 0.476s  tokens read 1024
+pad  4000  limit  8192  accuracy 18/20  median 4.053s  tokens read 3972
+pad  7000  limit  1024  accuracy  7/20  median 0.558s  tokens read 1024
+pad  7000  limit  8192  accuracy  8/20  median 10.787s  tokens read 6912
+wrote <output>/bench_long_context-baseline.json

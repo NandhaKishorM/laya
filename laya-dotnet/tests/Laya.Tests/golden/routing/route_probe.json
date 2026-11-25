@@ -2036,5 +2036,1416 @@
       },
       "workflow": null
     }
+  },
+  {
+    "label": "p0411/lang_blank",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Hello there",
+      "lang": ""
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_blank_foreign_text",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Hindi मुझसे दो बार शुल्क लिया गया",
+      "lang": "   "
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (devanagari, 72% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "devanagari",
+        "script_profile": {
+          "latin": 0.2777777777777778,
+          "devanagari": 0.7222222222222222
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.7222,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_C",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Hello there my friend",
+      "lang": "C"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_C_UTF8",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Hello there my friend",
+      "lang": "C.UTF-8"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_POSIX",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "二重に請求されました",
+      "lang": "POSIX"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (kana, 100% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "kana",
+        "script_profile": {
+          "han": 0.4,
+          "kana": 0.6
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 1.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_und",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Hello there my friend",
+      "lang": "und"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_zxx",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Hello there my friend",
+      "lang": "zxx"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_mul",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Hello there my friend",
+      "lang": "mul"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_only_dot",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Hello there my friend",
+      "lang": "."
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_posix_underscore",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "hola",
+      "lang": "en_US"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit lang='en_US'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_posix_encoding",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "hola",
+      "lang": "en_US.UTF-8"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit lang='en_US.UTF-8'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_en_dot_encoding",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "hola",
+      "lang": "en.UTF-8"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit lang='en.UTF-8'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_uppercase_spaces",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "hola",
+      "lang": "  EN  "
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit lang='  EN  '",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_zh_CN",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "hello",
+      "lang": "zh_CN"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "explicit lang='zh_CN'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_unknown_code",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "hello",
+      "lang": "qq"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "explicit lang='qq'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_quote_in_code",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "hello",
+      "lang": "it's"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "explicit lang=\"it's\"",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_nonprintable_code",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "hello",
+      "lang": "x​y"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "explicit lang='x\\u200by'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_beats_lang_guess",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "hello",
+      "lang": "en",
+      "lang_guess": "ro"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit lang='en'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_blank_then_guess",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "hello",
+      "lang": "",
+      "lang_guess": "ro"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "lang_guess: the caller identified this as non-English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/lang_C_then_guess",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "hello",
+      "lang": "C",
+      "lang_guess": "ro"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "lang_guess: the caller identified this as non-English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/typed_workflow_beats_lang_guess",
+    "router_kwargs": {
+      "auto_task_detection": true
+    },
+    "route_kwargs": {
+      "state": "x",
+      "questions": {
+        "action": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "category": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "churn_risk": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "needs_human": {
+          "type": "noul",
+          "instructions": "x"
+        },
+        "urgency": {
+          "type": "noul",
+          "instructions": "x"
+        }
+      },
+      "lang_guess": "ro"
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "question ids match the 'customer_service' typed-decisions workflow",
+      "detection": null,
+      "workflow": "customer_service"
+    }
+  },
+  {
+    "label": "p0411/task_beats_lang_guess",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "task": "typed_decisions",
+      "lang_guess": "ro"
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "explicit task='typed_decisions'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/model_beats_lang_guess",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "x",
+      "model": "english",
+      "lang_guess": "ro"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit model='english'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_ro",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "ro"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "lang_guess: the caller identified this as non-English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_en",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "en"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "lang_guess: the caller identified this as English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_en_US",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "en_US"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "lang_guess: the caller identified this as English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_en_UTF8",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "en_US.UTF-8"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "lang_guess: the caller identified this as English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_de_DE",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "de-DE"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "lang_guess: the caller identified this as non-English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_RO_upper",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "RO"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "lang_guess: the caller identified this as non-English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_spaces_en",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "  en  "
+    },
+    "decision": {
+      "model": "english",
+      "reason": "lang_guess: the caller identified this as English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_unknown_code",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "qq"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "lang_guess: the caller identified this as non-English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_blank_abstains",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": ""
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_spaces_abstain",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "   "
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_C_abstains",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "C"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_CUTF8_abstains",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "C.UTF-8"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_POSIX_abstains",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "POSIX"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_und_abstains",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Hindi मुझसे दो बार",
+      "lang_guess": "und"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (devanagari, 55% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "devanagari",
+        "script_profile": {
+          "latin": 0.45454545454545453,
+          "devanagari": 0.5454545454545454
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.5455,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_dot_abstains",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "."
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_dot_utf8",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": ".UTF-8"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_overrides_script",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "二重に請求されました",
+      "lang_guess": "en"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "lang_guess: the caller identified this as English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/guess_overrides_default",
+    "router_kwargs": {
+      "default": "english"
+    },
+    "route_kwargs": {
+      "state": "",
+      "lang_guess": "fr"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "lang_guess: the caller identified this as non-English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/installed_guess_ro",
+    "router_kwargs": {
+      "lang_guess": "ro"
+    },
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Router(lang_guess=...): the caller identified this as non-English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/installed_guess_en_script",
+    "router_kwargs": {
+      "lang_guess": "en"
+    },
+    "route_kwargs": {
+      "state": "二重に請求されました"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "Router(lang_guess=...): the caller identified this as English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/installed_guess_C_abstains",
+    "router_kwargs": {
+      "lang_guess": "C"
+    },
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/installed_guess_overridden",
+    "router_kwargs": {
+      "lang_guess": "ro"
+    },
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "en"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "lang_guess: the caller identified this as English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/installed_guess_after_abstaining_call",
+    "router_kwargs": {
+      "lang_guess": "ro"
+    },
+    "route_kwargs": {
+      "state": "Care este ora in Tokyo?",
+      "lang_guess": "C"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Router(lang_guess=...): the caller identified this as non-English text",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/installed_guess_lang_wins",
+    "router_kwargs": {
+      "lang_guess": "ro"
+    },
+    "route_kwargs": {
+      "state": "hello",
+      "lang": "en"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "explicit lang='en'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/reason_nordic_undecided",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "hej min vän"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, language not identified but 9% non-English letters; not safe for the English checkpoint",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0909,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/reason_undecided_english_default",
+    "router_kwargs": {
+      "default": "english"
+    },
+    "route_kwargs": {
+      "state": "Hello"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "Latin script, language not identified and no non-English letters; using default (english)",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/reason_undecided_multilingual_default",
+    "router_kwargs": {
+      "default": "multilingual"
+    },
+    "route_kwargs": {
+      "state": "Hello"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/reason_unknown_default_english",
+    "router_kwargs": {
+      "default": "english"
+    },
+    "route_kwargs": {
+      "state": "12345"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "no letters detected in state; using default (english)",
+      "detection": {
+        "script": "unknown",
+        "script_profile": {},
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/reason_unknown_default_typed",
+    "router_kwargs": {
+      "default": "typed-decisions"
+    },
+    "route_kwargs": {
+      "state": "12345"
+    },
+    "decision": {
+      "model": "typed-decisions",
+      "reason": "no letters detected in state; using default (typed-decisions)",
+      "detection": {
+        "script": "unknown",
+        "script_profile": {},
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/reason_shouted_acronyms",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "MON DES EST LA"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, language not identified and no non-English letters; using default (multilingual)",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/reason_unidentified_latin",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "žluťoučký kůň úpěl ďábelské ódy"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, language not identified but 39% non-English letters; not safe for the English checkpoint",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.3871,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/reason_percent_rounding",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "ok ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎ"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (other, 83% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "other",
+        "script_profile": {
+          "latin": 0.16666666666666666,
+          "other": 0.8333333333333334
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.8333,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/reason_non_latin_promotion",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Please ありがとうありがとうありがとうありがとう"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "non-Latin script (kana, 77% of letters); the English checkpoint cannot read it",
+      "detection": {
+        "script": "kana",
+        "script_profile": {
+          "latin": 0.23076923076923078,
+          "kana": 0.7692307692307693
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.7692,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/mixed_segment_long_line",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Please review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nEu nao consigo entrar na minha conta e depois eu nao sei mais o que fazer com isso tudo."
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, mostly English, but a line or field reads as 'pt' ('Eu nao consigo entrar na minha conta e depois eu nao sei mai'); the English checkpoint cannot read it",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "pt",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": "Eu nao consigo entrar na minha conta e depois eu nao sei mais o que fazer com isso tudo."
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/mixed_segment_quote_char",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Please review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nEu nao consigo entrar na minha conta, don't ask me e depois"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, mostly English, but a line or field reads as 'pt' (\"Eu nao consigo entrar na minha conta, don't ask me e depois\"); the English checkpoint cannot read it",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "pt",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": "Eu nao consigo entrar na minha conta, don't ask me e depois"
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/mixed_segment_double_quotes",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Please review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nEu nao consigo entrar na \"minha\" conta, don't ask me e depois"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, mostly English, but a line or field reads as 'pt' ('Eu nao consigo entrar na \"minha\" conta, don\\'t ask me e depoi'); the English checkpoint cannot read it",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "pt",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": "Eu nao consigo entrar na \"minha\" conta, don't ask me e depois"
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/mixed_segment_nonprintable",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Please review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nEu nao consigo​ entrar na minha\u0007 conta e depois eu nao sei mais o que fazer com isso"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, mostly English, but a line or field reads as 'pt' ('Eu nao consigo\\u200b entrar na minha\\x07 conta e depois eu nao sei m'); the English checkpoint cannot read it",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "pt",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": "Eu nao consigo​ entrar na minha\u0007 conta e depois eu nao sei mais o que fazer com isso"
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/mixed_segment_astral",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Please review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nEu nao consigo 😀 entrar na minha conta e depois eu nao sei mais o que fazer com isso tudo"
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, mostly English, but a line or field reads as 'pt' ('Eu nao consigo 😀 entrar na minha conta e depois eu nao sei m'); the English checkpoint cannot read it",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "pt",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": "Eu nao consigo 😀 entrar na minha conta e depois eu nao sei mais o que fazer com isso tudo"
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/mixed_segment_field",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+        "body": "Quiero cancelar mi pedido por favor ahora"
+      }
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, mostly English, but a line or field reads as 'es' ('Quiero cancelar mi pedido por favor ahora'); the English checkpoint cannot read it",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "es",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": "Quiero cancelar mi pedido por favor ahora"
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/mixed_segment_shouted_rejected",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": "Please review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nMON DES EST LA"
+    },
+    "decision": {
+      "model": "english",
+      "reason": "English Latin text",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "en",
+        "is_english": true,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/mixed_segment_customer_default",
+    "router_kwargs": {
+      "default": "english"
+    },
+    "route_kwargs": {
+      "state": "Please review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nPlease review the error and send me the details of this and what you would like to do.\nEu nao consigo entrar na minha conta e depois eu nao sei mais o que fazer."
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, mostly English, but a line or field reads as 'pt' ('Eu nao consigo entrar na minha conta e depois eu nao sei mai'); the English checkpoint cannot read it",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": "pt",
+        "is_english": false,
+        "language_undecided": false,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": "Eu nao consigo entrar na minha conta e depois eu nao sei mais o que fazer."
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/leaf_flip_no_mixed_segment",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {
+        "note": "Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. Please review the error and send me the details. ",
+        "x": "žluťoučký kůň úpěl ďábelské ódy"
+      }
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "Latin script, language not identified but 4% non-English letters; not safe for the English checkpoint",
+      "detection": {
+        "script": "latin",
+        "script_profile": {
+          "latin": 1.0
+        },
+        "language": null,
+        "is_english": false,
+        "language_undecided": true,
+        "diacritic_rate": 0.0433,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/state_none",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": null
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "no letters detected in state; using default (multilingual)",
+      "detection": {
+        "script": "unknown",
+        "script_profile": {},
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/state_number",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": 5
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "no letters detected in state; using default (multilingual)",
+      "detection": {
+        "script": "unknown",
+        "script_profile": {},
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
+  },
+  {
+    "label": "p0411/state_empty_dict",
+    "router_kwargs": {},
+    "route_kwargs": {
+      "state": {}
+    },
+    "decision": {
+      "model": "multilingual",
+      "reason": "no letters detected in state; using default (multilingual)",
+      "detection": {
+        "script": "unknown",
+        "script_profile": {},
+        "language": null,
+        "is_english": true,
+        "language_undecided": true,
+        "diacritic_rate": 0.0,
+        "non_latin_fraction": 0.0,
+        "mixed_segment": null
+      },
+      "workflow": null
+    }
   }
 ]

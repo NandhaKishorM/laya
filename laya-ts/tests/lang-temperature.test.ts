@@ -190,11 +190,15 @@ describe("Router.predict lang forwarding", () => {
     expect(seen).toEqual([{ lang: "bn" }]);
   });
 
-  it("forwards null when nothing non-English was detected", async () => {
+  it("forwards the detected \"en\", so a lang_temperatures.en override is applied", async () => {
+    // Python parity (laya/lang.py): `analyse` names English "en", and router.py forwards
+    // `decision.detection.language` without a special case, so an `en` entry in
+    // `lang_temperatures` is applied there. This path replaced "en" with null, which made that
+    // override dead code on the Router while the same agent honoured it when called directly.
     const seen: any[] = [];
     const r = routerRecording(seen);
     await r.predict("please refund my ticket", questions);
-    expect(seen).toEqual([{ lang: null }]);
+    expect(seen).toEqual([{ lang: "en" }]);
   });
 
   it("an explicit lang is forwarded verbatim, even \"en\"", async () => {
@@ -202,6 +206,21 @@ describe("Router.predict lang forwarding", () => {
     const r = routerRecording(seen);
     await r.predict("please refund my ticket", questions, { lang: "en" });
     expect(seen).toEqual([{ lang: "en" }]);
+  });
+
+  it("an \"en\" override changes the answer through Router.predict", async () => {
+    // End-to-end, not just the forwarded option: the same agent answers 0.7311 at temperature
+    // 2 and 0.8808 at the base 1.0 (see the fixed logit row above), so a dropped "en" is a
+    // visible difference in the reported probabilities rather than an unused option.
+    const agent = new Agent({
+      provider: fakeProvider(),
+      lang_temperatures: { en: { temperature: [2, 2, 2] } },
+    } as any);
+    const r = new Router({ loader: () => agent } as any);
+    const viaRouter: any = await r.predict("please refund my ticket", CHOICE);
+    const direct: any = await agent.systemOne("please refund my ticket", CHOICE, { lang: "en" });
+    expect(viaRouter.answers.d.probabilities.x).toBeCloseTo(0.7311, 4);
+    expect(viaRouter.answers.d.probabilities.x).toBeCloseTo(direct.answers.d.probabilities.x, 10);
   });
 });
 
@@ -242,11 +261,11 @@ describe("Router.predictBatch lang forwarding", () => {
     expect(seen.map((c) => c.opts.lang)).toEqual(["bn"]);
   });
 
-  it("forwards no lang when nothing non-English was detected", async () => {
+  it("forwards the detected \"en\" on the batch path too", async () => {
     const seen: any[] = [];
     const r = routerRecording(seen);
     await r.predictBatch([req("please refund my ticket")]);
-    expect(seen.map((c) => c.opts.lang)).toEqual([undefined]);
+    expect(seen.map((c) => c.opts.lang)).toEqual(["en"]);
   });
 
   it("does not share a forward pass across languages", async () => {

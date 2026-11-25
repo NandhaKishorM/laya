@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
           cache: pip
@@ -73,9 +73,37 @@ jobs:
         run: |
           git --no-pager diff --stat -- "$GOLDEN"
           git status --short -- "$GOLDEN"
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      # setup-dotnet downloads the SDK global.json resolves to from Microsoft's storage, which
+      # intermittently answers HTTP 409 (2026-10-25: #1324 and main, several jobs in one hour). Retry
+      # once after a pause, then fall back to the runner image's own .NET 10 SDK, which global.json
+      # (10.0.100, rollForward latestFeature) accepts; fail with a clear message only if neither works.
+      - id: setup_dotnet
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        continue-on-error: true
         with:
           global-json-file: laya-dotnet/global.json
+      - name: Wait before retrying the .NET SDK download
+        if: ${{ steps.setup_dotnet.outcome == 'failure' }}
+        run: sleep 60
+      - id: setup_dotnet_retry
+        if: ${{ steps.setup_dotnet.outcome == 'failure' }}
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        continue-on-error: true
+        with:
+          global-json-file: laya-dotnet/global.json
+      - name: Fall back to the runner's .NET 10 SDK
+        if: ${{ steps.setup_dotnet.outcome == 'failure' && steps.setup_dotnet_retry.outcome == 'failure' }}
+        working-directory: laya-dotnet
+        run: |
+          echo "::warning::setup-dotnet could not download the SDK twice (Microsoft storage); trying the runner's own SDK"
+          dotnet --list-sdks || true
+          if ! dotnet --version; then
+            echo "::error::No .NET 10 SDK: the download failed twice and the runner's SDK does not satisfy global.json. Re-run the job."
+            exit 1
+          fi
+      - name: .NET SDK in use
+        working-directory: laya-dotnet
+        run: dotnet --version
       - name: Build (library, samples and tests, warnings are errors)
         working-directory: laya-dotnet
         run: dotnet build Laya.slnx -c Release
@@ -108,46 +136,125 @@ jobs:
     name: parity (${{ matrix.name }})
     runs-on: ubuntu-latest
     continue-on-error: true   # advisory: see the header
-    timeout-minutes: 60
+    # Per cell, from the matrix (see the derivation below). The single-cell limit went from 60 to
+    # 120 on main (b9fe351c) because the replays grew: on a478221b, where #1358 added about 50 batch
+    # cases per checkpoint, english took 52m, typed-decisions was killed at 60m mid-test-run and
+    # recorded as CANCELLED (which reads like a superseded run, not a budget failure), multilingual
+    # 13m and router 26m. Splitting each checkpoint by layout halves the replays per cell, so each
+    # cell gets a limit sized from its own measured time instead of one shared headroom number.
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
-      # One cell at a time. Every cell that needs weights fetches them from the same Hugging
+      # FOUR at a time (was two). Every cell that needs weights fetches them from the same Hugging
       # Face repo, and four in parallel -- alongside `java.yml`'s parity matrix against the same
-      # repo in the same run -- is what provoked the throttle. `regen_golden.py` now refuses an
-      # incomplete snapshot at the fetch, so this is no longer the only thing between a
-      # truncated download and a confusing failure; not provoking the throttle is simply
-      # cheaper than diagnosing it, and this lane is advisory.
+      # repo in the same run -- is what once provoked the throttle. Two was the answer then; it is
+      # now the wrong trade, because the matrix is seven cells (a checkpoint x layout pair for each
+      # checkpoint, plus the router) and at two the critical path would be half of the summed cell
+      # time, about 105 minutes on a slow host, no better than the one-cell-per-checkpoint shape
+      # this replaces. What changed since: the exports and the pinned Hub downloads are cached
+      # (keys below), so a warm run fetches nothing; a cold run fetches only for the cells that
+      # miss, `HF_TOKEN` authenticates those fetches, and `regen_golden.py` refuses an incomplete
+      # snapshot at the fetch, naming the file. Four is below the seven concurrent fetches that
+      # provoked the original throttle and gives, on the slow-host estimates below, a critical path
+      # of about 60 minutes (about 45 with seven slots, about 105 with two). The cells are listed
+      # longest first so the long ones start together and the short ones fill the slots as they
+      # free up. If a cold run is throttled, lower this to 2: the cost is wall time only, and this
+      # lane is advisory.
+      max-parallel: 4
+      # One cell per checkpoint x layout. Both cells of a checkpoint regenerate that checkpoint's
+      # goldens from Python at this commit (the recording is layout independent but each cell owns
+      # its copy; nothing is shared between cells and goldens are never cached).
       #
-      # TWO, not one. One was the first attempt and it cost too much: measured from this PR's own
-      # cells, serialising takes the parity critical path from 10:56 to 30:08. Two keeps the peak
-      # well below the seven concurrent fetches that provoked the throttle while costing roughly
-      # half of that. And serialising is no longer the load-bearing half of the fix -- the
-      # download sites now refuse an incomplete snapshot AT THE FETCH, naming the file, so a
-      # throttled fetch fails immediately and legibly instead of three minutes later inside a
-      # tokenizer constructor. This only reduces how often that path is taken.
-      max-parallel: 2
+      # `layouts` is LAYA_TEST_LAYOUTS: it narrows the theory rows that exist for both layouts
+      # (long and batch predictions). The test methods that exercise one layout only carry
+      # `[Trait("Layout", ...)]`: `split-only` for the split-layout theories, `any` for the
+      # layout-parameterised ones. The fused cell therefore runs everything except `split-only`,
+      # including the tokenizer, shortlist, error-case and multilingual-only tests, which do not
+      # depend on the layout and so run once; the split cell runs `split-only` and `any`. A
+      # deselected test is never discovered, so it cannot show up as a skip.
+      #
+      # `min-passed` and `timeout`, from the committed goldens and the lane logs in
+      # researcher-agent/ci-runtime.md (slow-host mode, 4 vCPU, the worse of the two modes seen):
+      #  * Tests per cell, counted from the theory data with LAYA_TEST_CHECKPOINTS and
+      #    LAYA_TEST_LAYOUTS set (all layouts together the english count is 484, the same as the
+      #    a478221b log):
+      #      english          fused 222 pass (216 rows + 6 layout independent), split 130
+      #      multilingual     fused 323 pass, split 136
+      #      typed-decisions  fused 228 pass, split 136
+      #    `min-passed` is about 80% of that, rounded down: a floor against a wrong filter or a
+      #    dropped group, with room for the case count to shrink. A layout whose artifacts are
+      #    missing is caught by the skip guard, not by this floor.
+      #  * Time. Tests measured on a slow host with both layouts in one cell: english 33.8 min,
+      #    typed-decisions about 41 (its cell hit the old 60 minute cap), multilingual 8-16; regen
+      #    17.1 / 19.4 / 4.5 min; the router cell 15-22 in total. A layout cell does about half of
+      #    the forward passes (each success case runs once per layout); take 0.55 for the fused
+      #    cell, which also carries the one-off tests. Volume is expected to grow by about 47% when
+      #    the pending option-order and lang-temperature cases land. Projected cell: install + regen
+      #    + 0.55 x tests x 1.47 + 1 => english about 46, typed-decisions about 54, multilingual
+      #    about 17, router 22. `timeout` is that with 1.5x to 2x headroom for a slower host or a
+      #    cold export cache (about 3 minutes per checkpoint): 75 / 90 / 40 / 45.
       matrix:
         include:
-          - name: english
-            checkpoints: english
-            filter: --filter-class Laya.Tests.PredictParityTests Laya.Tests.TokenizerParityTests Laya.Tests.ShapeSweepTests Laya.Tests.ShortlistEndToEndTests
-            min-passed: 50
-          - name: multilingual
-            checkpoints: multilingual
-            filter: --filter-class Laya.Tests.PredictParityTests Laya.Tests.TokenizerParityTests Laya.Tests.ShapeSweepTests Laya.Tests.ShortlistEndToEndTests
-            min-passed: 50
-          - name: typed-decisions
+          - name: typed-decisions-fused
+            cache: typed-decisions
             checkpoints: typed-decisions
-            filter: --filter-class Laya.Tests.PredictParityTests Laya.Tests.TokenizerParityTests Laya.Tests.ShapeSweepTests Laya.Tests.ShortlistEndToEndTests
-            min-passed: 50
-          # The router end-to-end tests load english and multilingual side by side.
+            layouts: fused
+            filter: --filter-class Laya.Tests.PredictParityTests Laya.Tests.TokenizerParityTests Laya.Tests.ShapeSweepTests Laya.Tests.ShortlistEndToEndTests --filter-not-trait Layout=split-only
+            min-passed: 180
+            timeout: 90
+          - name: typed-decisions-split
+            cache: typed-decisions
+            checkpoints: typed-decisions
+            layouts: split
+            filter: --filter-class Laya.Tests.PredictParityTests Laya.Tests.TokenizerParityTests Laya.Tests.ShapeSweepTests Laya.Tests.ShortlistEndToEndTests --filter-trait Layout=split-only --filter-trait Layout=any
+            min-passed: 105
+            timeout: 90
+          - name: english-fused
+            cache: english
+            checkpoints: english
+            layouts: fused
+            filter: --filter-class Laya.Tests.PredictParityTests Laya.Tests.TokenizerParityTests Laya.Tests.ShapeSweepTests Laya.Tests.ShortlistEndToEndTests --filter-not-trait Layout=split-only
+            min-passed: 175
+            timeout: 75
+          - name: english-split
+            cache: english
+            checkpoints: english
+            layouts: split
+            filter: --filter-class Laya.Tests.PredictParityTests Laya.Tests.TokenizerParityTests Laya.Tests.ShapeSweepTests Laya.Tests.ShortlistEndToEndTests --filter-trait Layout=split-only --filter-trait Layout=any
+            min-passed: 100
+            timeout: 75
+          # The router end-to-end tests load english and multilingual side by side; they have
+          # no layout parameter, so LAYA_TEST_LAYOUTS stays unset.
           - name: router
+            cache: router
             checkpoints: english multilingual
+            layouts: ""
             filter: --filter-class Laya.Tests.RouterEndToEndTests
             min-passed: 1
+            timeout: 45
+          - name: multilingual-fused
+            cache: multilingual
+            checkpoints: multilingual
+            layouts: fused
+            filter: --filter-class Laya.Tests.PredictParityTests Laya.Tests.TokenizerParityTests Laya.Tests.ShapeSweepTests Laya.Tests.ShortlistEndToEndTests --filter-not-trait Layout=split-only
+            min-passed: 255
+            timeout: 40
+          - name: multilingual-split
+            cache: multilingual
+            checkpoints: multilingual
+            layouts: split
+            filter: --filter-class Laya.Tests.PredictParityTests Laya.Tests.TokenizerParityTests Laya.Tests.ShapeSweepTests Laya.Tests.ShortlistEndToEndTests --filter-trait Layout=split-only --filter-trait Layout=any
+            min-passed: 105
+            timeout: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      # So the runner's speed can be read from the log: the same job has run at twice the
+      # per-token cost on some hosts, and the CPU model and core count are what tell them apart.
+      - name: Runner CPU
+        run: |
+          nproc
+          lscpu | grep -E '^(Model name|CPU\(s\)|Thread\(s\) per core|Core\(s\) per socket|Socket\(s\)|CPU max MHz)'
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
           cache: pip
@@ -167,7 +274,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/huggingface/hub
-          key: laya-hf-${{ runner.os }}-${{ matrix.name }}-${{ hashFiles('laya-dotnet/tools/regen_golden.py', 'laya-dotnet/tools/export_onnx.py', 'laya-ts/scripts/export_onnx.py') }}
+          key: laya-hf-${{ runner.os }}-${{ matrix.cache }}-${{ hashFiles('laya-dotnet/tools/regen_golden.py', 'laya-dotnet/tools/export_onnx.py', 'laya-ts/scripts/export_onnx.py') }}
       - name: Cache exported english artifacts
         if: ${{ contains(matrix.checkpoints, 'english') }}
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -215,9 +322,37 @@ jobs:
           git --no-pager diff --stat -- "$GOLDEN"
           git status --short -- "$GOLDEN"
 
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      # setup-dotnet downloads the SDK global.json resolves to from Microsoft's storage, which
+      # intermittently answers HTTP 409 (2026-10-25: #1324 and main, several jobs in one hour). Retry
+      # once after a pause, then fall back to the runner image's own .NET 10 SDK, which global.json
+      # (10.0.100, rollForward latestFeature) accepts; fail with a clear message only if neither works.
+      - id: setup_dotnet
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        continue-on-error: true
         with:
           global-json-file: laya-dotnet/global.json
+      - name: Wait before retrying the .NET SDK download
+        if: ${{ steps.setup_dotnet.outcome == 'failure' }}
+        run: sleep 60
+      - id: setup_dotnet_retry
+        if: ${{ steps.setup_dotnet.outcome == 'failure' }}
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        continue-on-error: true
+        with:
+          global-json-file: laya-dotnet/global.json
+      - name: Fall back to the runner's .NET 10 SDK
+        if: ${{ steps.setup_dotnet.outcome == 'failure' && steps.setup_dotnet_retry.outcome == 'failure' }}
+        working-directory: laya-dotnet
+        run: |
+          echo "::warning::setup-dotnet could not download the SDK twice (Microsoft storage); trying the runner's own SDK"
+          dotnet --list-sdks || true
+          if ! dotnet --version; then
+            echo "::error::No .NET 10 SDK: the download failed twice and the runner's SDK does not satisfy global.json. Re-run the job."
+            exit 1
+          fi
+      - name: .NET SDK in use
+        working-directory: laya-dotnet
+        run: dotnet --version
       # The fused layout is found through LAYA_ONNX_ROOT; the split layout through the test
       # project's walk-up to <repo>/onnx-split, which is where the script wrote it.
       - name: Run the tests against the fresh goldens
@@ -225,6 +360,7 @@ jobs:
         env:
           LAYA_ONNX_ROOT: ${{ github.workspace }}/onnx
           LAYA_TEST_CHECKPOINTS: ${{ matrix.checkpoints }}
+          LAYA_TEST_LAYOUTS: ${{ matrix.layouts }}
         run: >
           dotnet test --solution Laya.slnx -c Release
           --results-directory "$RUNNER_TEMP/trx" --report-xunit-trx --report-xunit-trx-filename parity.trx

@@ -76,6 +76,26 @@ check("map/nullable boolean remains noul",
       questions_from_json_schema({"type": "object", "properties": {"a": {"type": ["null", "boolean"]}}})["a"]["type"],
       "noul")
 
+for value in (True, False):
+    for constraint in ({"enum": [value]}, {"const": value}):
+        schema = {"type": "object", "properties": {"flag": {"type": "boolean", **constraint}}}
+        question = questions_from_json_schema(schema)["flag"]
+        case = "boolean singleton %r" % constraint
+        check("map/%s is a choice" % case, question["type"], "choice")
+        check("map/%s has only the allowed option" % case,
+              question.get("criteria"), {str(value): None})
+        projected = answers_to_json({"flag": {"type": "choice", "choice": str(value)}}, schema)
+        check_true("project/%s preserves its boolean value" % case, projected["flag"] is value)
+
+for options in ([True, False], [False, True]):
+    schema = {"type": "object", "properties": {"flag": {"enum": options}}}
+    check("map/two boolean options %r remain noul" % options,
+          questions_from_json_schema(schema)["flag"]["type"], "noul")
+    for probability, value in ((0.2, False), (0.8, True)):
+        projected = answers_to_json({"flag": {"type": "noul", "noul": probability}}, schema)
+        check_true("project/boolean options %r with noul %s" % (options, probability),
+                   projected["flag"] is value)
+
 
 # --------------------------------------------------------------- projection
 ANSWERS = {
@@ -107,6 +127,19 @@ for score, want in ((0, 3), (2.4, 5), (4, 7)):
     got = answers_to_json({"x": {"type": "score", "score": score}}, SEVERITY_SCHEMA)["x"]
     check("project/score with no probabilities honours minimum (score=%r)" % score, got, want)
 
+# A runner that reports a field as something other than an answer object -- a bare string, number
+# or list -- gives nothing to project. `apply_confidence_gate` already skips a non-dict answer
+# (confidence.py:298); the projection read `.get` off one and raised AttributeError, crashing the
+# whole result. It now omits the field, exactly as an absent answer does.
+malformed = dict(ANSWERS, department="oops", urgency=None, needs_human=["not", "an", "answer"])
+partial = answers_to_json(malformed, SCHEMA)
+check_true("project/non-dict answers are omitted, not fatal",
+           "department" not in partial and "urgency" not in partial
+           and "needs_human" not in partial)
+check("project/valid fields still project beside a non-dict one", partial["priority"], 2)
+check("project/all answers non-dict yields no values",
+      answers_to_json({"department": 5, "urgency": "x"}, SCHEMA), {})
+
 
 # --------------------------------------------------------------- rejections
 def _bad(schema):
@@ -131,6 +164,22 @@ check_raises("reject/unbounded number", SchemaError,
              _bad({"type": "object", "properties": {"a": {"type": "integer", "minimum": 0}}}))
 check_raises("reject/score too wide", SchemaError,
              _bad({"type": "object", "properties": {"a": {"type": "integer", "minimum": 0, "maximum": 100}}}))
+# A JSON boolean is not an integer scale bound. `bool` subclasses `int`, so `isinstance(True, int)` is
+# true and a `minimum`/`maximum` of `true`/`false` used to slip through and silently become 1/0 -- even
+# though the same guard rejects `"0"` (str) and `1.5` (float). Refuse them on the same message.
+for bool_bound in ({"minimum": True, "maximum": 3}, {"minimum": 1, "maximum": False},
+                   {"minimum": False, "maximum": True}, {"minimum": True, "maximum": True}):
+    check_raises("reject/boolean score bound %r" % bool_bound, SchemaError,
+                 _bad({"type": "object", "properties": {"a": {"type": "integer", **bool_bound}}}))
+try:
+    questions_from_json_schema({"type": "object", "properties": {"x": {"type": "integer", "minimum": True, "maximum": 3}}})
+except SchemaError as exc:
+    check("reject/boolean bound names the field and the integer rule", str(exc),
+          "properties.x: a numeric field needs integer 'minimum' and 'maximum' to become a score")
+# Positive control: a real integer bound still maps to a score scale (the guard is not over-strict).
+check("accept/integer score bounds unchanged",
+      questions_from_json_schema({"type": "object", "properties": {"x": {"type": "integer", "minimum": 1, "maximum": 3}}})
+      ["x"]["criteria"], ["1", "2", "3"])
 check_raises("reject/too many properties", SchemaError,
              _bad({"type": "object", "properties": {("p%d" % i): {"type": "boolean"} for i in range(33)}}))
 check_raises("reject/too many options", SchemaError,
@@ -143,6 +192,35 @@ try:
 except SchemaError as exc:
     check("reject/colliding enum names the field", str(exc),
           "properties.x: enum values produce duplicate choice labels")
+# A JSON 'enum' is an array. A bare scalar used to leak TypeError from len(), and a bare string
+# silently split into per-character options; both must now raise a SchemaError naming the path.
+for scalar in (5, 1.5, True, None, "abc"):
+    check_raises("reject/non-array enum %r" % (scalar,), SchemaError,
+                 _bad({"type": "object", "properties": {"x": {"enum": scalar}}}))
+try:
+    questions_from_json_schema({"type": "object", "properties": {"x": {"enum": "abc"}}})
+except SchemaError as exc:
+    check("reject/non-array enum names the field and type", str(exc),
+          "properties.x: 'enum' must be an array of values, got str")
+# The same guard the `allOf` branch already applies to its wrapper, `anyOf`/`oneOf` did not: a
+# non-array union leaked `TypeError: 'int' object is not iterable` (and a `bool`, which subclasses
+# `int`, leaked `TypeError: 'bool' object is not iterable`) instead of the path-naming SchemaError
+# the module raises for every other malformed property. Both must now reject as an unsupported schema.
+for nonarray in (3, 1.5, True, False):
+    check_raises("reject/non-array union %s %r" % ("anyOf", nonarray), SchemaError,
+                 _bad({"type": "object", "properties": {"x": {"anyOf": nonarray}}}))
+    check_raises("reject/non-array union %s %r" % ("oneOf", nonarray), SchemaError,
+                 _bad({"type": "object", "properties": {"x": {"oneOf": nonarray}}}))
+try:
+    questions_from_json_schema({"type": "object", "properties": {"x": {"anyOf": 3}}})
+except SchemaError as exc:
+    check("reject/non-array union names the field and shows the schema", str(exc),
+          "properties.x: unsupported schema {'anyOf': 3}")
+# Positive control: a real one-non-null-branch union still unwraps (the guard is not over-strict).
+check("accept/optional anyOf still maps",
+      questions_from_json_schema(
+          {"type": "object", "properties": {"x": {"anyOf": [{"type": "boolean"}, {"type": "null"}]}}}
+      )["x"]["type"], "noul")
 check_raises("reject/non-object root", SchemaError, _bad({"type": "array"}))
 check_raises("reject/empty properties", SchemaError, _bad({"type": "object", "properties": {}}))
 
@@ -170,6 +248,21 @@ check("decide/details confidence", details.confidence["department"], 0.9)
 check("decide/details noul probabilities", details.probabilities["needs_human"], {"false": 0.2, "true": 0.8})
 check("decide/details usage", details.usage, {"input_tokens": 1, "output_tokens": 0})
 check("decide/details routing", details.routing, {"model": "english"})
+
+# The same non-dict answer reaches decide through a runner, not only through answers_to_json:
+# `decide` projects onto the schema and builds the DecisionResult from the very same answer objects
+# the confidence gate walks. Before the fix both `decide` and `return_details` raised AttributeError
+# on a field whose answer was not a dict.
+mixed_answers = dict(ANSWERS, department="oops")
+runner = FakeRunner(mixed_answers)
+out = decide(runner, "some state", schema=SCHEMA)
+check_true("decide/non-dict answer omits the field, rest intact",
+           "department" not in out and out["urgency"] == 2 and out["needs_human"] is True)
+details = decide(FakeRunner(mixed_answers), "some state", schema=SCHEMA, return_details=True)
+check_true("decide/details a non-dict answer reports no confidence",
+           "department" not in details.confidence and "department" not in details.probabilities)
+check("decide/details valid answers still report confidence beside it",
+       details.confidence["needs_human"], 0.8)
 
 runner = FakeRunner({"a": {"type": "noul", "noul": 0.9, "confidence": 0.9}})
 out = decide(runner, "s", questions={"a": {"type": "noul", "instructions": "?"}})
@@ -542,6 +635,22 @@ try:
     })
     check("pydantic/instance", (ticket.department, ticket.urgency, ticket.needs_human),
           ("support", 1, True))
+
+    class BooleanLiterals(pydantic.BaseModel):
+        enabled: Literal[True]
+        disabled: Literal[False]
+
+    literal_questions = questions_from_pydantic(BooleanLiterals)
+    check("pydantic/true literal has one option", literal_questions["enabled"].get("criteria"),
+          {"True": None})
+    check("pydantic/false literal has one option", literal_questions["disabled"].get("criteria"),
+          {"False": None})
+    literals = answer_to_pydantic(BooleanLiterals, {
+        "enabled": {"type": "choice", "choice": "True"},
+        "disabled": {"type": "choice", "choice": "False"},
+    })
+    check_true("pydantic/boolean literals preserve their values",
+               literals.enabled is True and literals.disabled is False)
 except ImportError:
     PASS.append("pydantic/skipped (not installed)")
 

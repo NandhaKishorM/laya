@@ -74,11 +74,13 @@ SKIP_DIRS = {".git", ".github", ".cache", ".venv", "site", "__pycache__", "node_
 # and cannot become a permanent hole in the sweep.
 DEFERRED: dict = {}
 
-# The half-precision spellings a document could offer for the two AMP names. Kept as the closed
-# universe of things a prose site can mean rather than as an accepted list: the accepted list is
-# derived from laya/agent.py below, and a spelling outside this set (`fp32`, `int8`) is not a
-# value anyone offers -- it is what the forward falls back to, and pages name it for that.
-DTYPE_SPELLINGS = ("fp16", "float16", "bf16", "bfloat16")
+# The dtype spellings a document could offer for the two AMP names. Kept as the closed universe of
+# things a prose site can mean rather than as an accepted list: the accepted list is derived from
+# laya/agent.py below. `fp32`/`float32` are in it because `LAYA_CUDA_AMP` takes them (#443); a page
+# that offers them for `LAYA_CPU_AMP`, where full precision is what an unset value already means,
+# offers a value the CPU comparison does not read. A spelling outside this set (`int8`) is not a
+# value anyone offers.
+DTYPE_SPELLINGS = ("fp16", "float16", "bf16", "bfloat16", "fp32", "float32")
 AMP_VARS = ("LAYA_CUDA_AMP", "LAYA_CPU_AMP")
 BACKTICK = re.compile(r"`([^`\n]+)`")
 # A sentence that claims its own list is the whole vocabulary. Only these phrases make a doc

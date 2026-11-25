@@ -52,7 +52,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
       - run: pip install pip-audit
@@ -154,38 +154,40 @@ jobs:
         # `dotnet build` for it, and a build this change cannot verify locally would turn a
         # scanner into a broken required check. laya-dotnet is covered by gitleaks only today;
         # adding it needs whoever owns that build to confirm autobuild works. `go` builds the
-        # module in laya-go/, not the repo root: autobuild finds laya-go/go.mod itself (checked
-        # with the CodeQL CLI: "Found 1 go.mod files in: laya-go/go.mod", 20 non-test files).
+        # modules in laya-go/ and its nested laya-go/onnx/, not the repo root: autobuild finds
+        # both go.mod files itself and builds the onnx module with cgo (checked with the CodeQL
+        # CLI 2.27.1: "Found 2 go.mod files in: laya-go/go.mod, laya-go/onnx/go.mod", and
+        # onnx/session_cgo.go is in the extracted sources), so no explicit build step is needed.
         language: [python, java-kotlin, javascript-typescript, go]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Only the Java cell compiles anything, so only it needs a JDK -- and the wrapper jar it
       # would execute is validated first, for the reason `java.yml` gives: it is a binary that
       # runs at build time and is the one file here a reviewer cannot read.
-      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         if: ${{ matrix.language == 'java-kotlin' }}
         with:
           distribution: temurin
           java-version: "17"
           cache: gradle
-      - uses: gradle/actions/wrapper-validation@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+      - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         if: ${{ matrix.language == 'java-kotlin' }}
       # The Go cell compiles too, so it needs the same pinned toolchain `go.yml` uses and not
       # whatever the runner image happens to carry.
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         if: ${{ matrix.language == 'go' }}
         with:
           go-version: "1.27.1"
           cache: false
-      - uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: ${{ matrix.language }}
           queries: security-extended
       # Python needs no build step; Java and Go do, and autobuild finds the Gradle build and
       # laya-go/go.mod itself.
-      - uses: github/codeql-action/autobuild@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+      - uses: github/codeql-action/autobuild@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         if: ${{ matrix.language == 'java-kotlin' || matrix.language == 'go' }}
-      - uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
 
   supply_chain:
     name: no unsafe deserialization
@@ -205,11 +207,18 @@ jobs:
           echo "OK: no unsafe deserialization in laya/ or laya-ts/scripts/"
       - name: No shell-out or dynamic exec in the shipped package
         run: |
+          # laya/video.py is the one sanctioned shell-out: it runs the ffmpeg and ffprobe binaries
+          # that `shutil.which` resolved, always as an argv list through `subprocess.run`, never
+          # through a shell. The second grep pins that file to exactly that shape.
           if grep -rnE "os\.system\(|subprocess\.|shell=True|\beval\(|\bexec\(" laya/ \
-               | grep -v "\.eval()"; then
+               --exclude=video.py | grep -v "\.eval()"; then
             echo "::error::shell-out or dynamic execution in the shipped package"
             exit 1
           fi
-          echo "OK: no os.system/subprocess/eval/exec in laya/"
+          if grep -nE "os\.system\(|shell=True|\beval\(|\bexec\(|subprocess\.(Popen|call|check_call|check_output|getoutput|getstatusoutput)\(" laya/video.py; then
+            echo "::error::laya/video.py may only call subprocess.run on an argv list"
+            exit 1
+          fi
+          echo "OK: no os.system/subprocess/eval/exec in laya/ outside the ffmpeg calls in laya/video.py"
       - name: ONNX exporter requires safetensors weights
         run: python tests/test_export_onnx_safety.py

@@ -1,13 +1,17 @@
 """Model-free checks for paired agreement and case-level uncertainty."""
 from copy import deepcopy
+import collections
+import inspect
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 
+import numpy as np
 import pytest
 
-from laya import confidence, evals
+from laya import _agreement, confidence, evals
 
 
 def run_document(run_id, rows, *, teacher=True):
@@ -135,6 +139,71 @@ def test_bootstrap_preserves_decision_weights_with_unequal_case_sizes():
     assert overall["paired_delta_ci95"] == pytest.approx([-1.0, 299 / 301])
 
 
+def test_the_bootstrap_batch_split_is_invisible_in_the_published_interval():
+    """`paired_delta_ci95` depends on the records, `bootstrap_samples` and `seed`, and on nothing else.
+
+    `_agreement._interval` draws its replicate indices in batches so the index matrix stays under
+    131072 `int64` -- 1 MiB -- and the comment there says exactly that: "batching bounds the index
+    matrix memory". It has to stay true that nothing else moves: the report publishes
+    `bootstrap_samples` and `seed` as the identity of the interval, so a rewrite that reseeds per
+    batch -- one line, and every other number in the report still validates -- silently republishes a
+    different 95% interval under the same recorded configuration.
+
+    A batch boundary lands on a row boundary of the same row-major stream, so the replicates are the
+    ones one matrix of the whole draw would have produced, and the equality below is exact rather
+    than `pytest.approx` for that reason: both sides ask the same numpy, in the same process, for the
+    same stream and the same percentile method, so a numpy that changed either would move both.
+
+    The shape is sized from the constant read out of `_interval`'s own source -- 120 cases and
+    `5 * (constant // 120) + 1` samples cross the split 6 times here -- so the test cannot quietly
+    stop exercising the split if the constant moves; it fails with the remedy in the message.
+
+    What this does NOT pin is the constant's value: shrinking it (more batches, same stream) and
+    drawing the matrix flat then reshaping it both leave the interval exactly where they are, and
+    both were measured to do so. Only a rewrite that changes which draws land in which replicate
+    moves it. Removing the batching altogether is the one equivalent-looking change this test does
+    fail, deliberately: the guard belongs to the mechanism, so the message names both remedies --
+    keep a memory budget, or delete this test along with the split.
+    """
+    cases = 120
+    budget = re.search(r"(\d+) // len\(clusters\)", inspect.getsource(_agreement._interval))
+    assert budget is not None, (
+        "`_interval` no longer splits its bootstrap draw by a row budget, so the split this test "
+        "guards is gone: either keep a memory budget here, or delete this test together with the "
+        "batching -- but do not leave a claim of a guarded invariant standing on nothing.")
+    constant = int(budget.group(1))
+    batch = constant // cases
+    samples = min(100000, 5 * batch + 1)
+    assert samples > batch, ("this shape no longer crosses the batch split (%d samples against a "
+                             "%d-row batch): raise `cases` so the draw still spans more than one batch"
+                             % (samples, batch))
+    # 1..4 questions per case, so the clusters carry unequal decision weights, and the repeat and
+    # student runs disagree on a pattern that is periodic in neither the case nor the question index.
+    reference = tuple(tuple("a" for _ in range(1 + i % 4)) for i in range(cases))
+
+    def labels(modulus):
+        return tuple(tuple("a" if (i + j) % modulus == 0 else "b"
+                           for j in range(1 + i % 4)) for i in range(cases))
+
+    report = compare(documents(reference, labels(4), labels(3)), bootstrap_samples=samples, seed=12)
+    published = report["overall"]["paired_delta_ci95"]
+    assert report["overall"]["n_cases"] == cases
+    assert report["overall"]["n_decisions"] == sum(len(row) for row in reference)
+
+    totals = {}
+    for case in report["cases"]:
+        cluster = totals.setdefault(case["case_id"], [0, 0])
+        cluster[0] += case["delta"]
+        cluster[1] += 1
+    matrix = np.asarray([totals[case_id] for case_id in sorted(totals)], dtype=np.int64)
+    indices = np.random.default_rng(12).integers(len(matrix), size=(samples, len(matrix)))
+    sums = matrix[indices].sum(axis=1)
+    one_shot = np.percentile(sums[:, 0] / sums[:, 1], [2.5, 97.5]).tolist()
+    assert published == one_shot, ("the batched draw and one draw of the same %d replicates disagree, "
+                                   "so the batching is no longer invisible: batched=%r one-shot=%r"
+                                   % (samples, published, one_shot))
+
+
 @pytest.mark.parametrize("side", [0, 1, 2])
 @pytest.mark.parametrize("change", ["missing", "duplicate", "unknown"])
 def test_case_sets_must_match_exactly(side, change):
@@ -227,6 +296,91 @@ def test_malformed_runs_are_rejected(change):
         for run in runs:
             run["provenance"]["settings"]["temperature"] = float("nan")
     with pytest.raises(ValueError):
+        compare(runs)
+
+
+def _deep(value, dict_factory, list_factory):
+    """Rebuild every mapping as `dict_factory(...)` and every list as `list_factory(...)`.
+
+    Scalars are left alone: these arms are about the container spellings a caller reaches for
+    when it wants a JSON object whose key order it controls, not about scalar subclasses.
+    """
+    if isinstance(value, dict):
+        return dict_factory({k: _deep(v, dict_factory, list_factory) for k, v in value.items()})
+    if isinstance(value, list):
+        return list_factory([_deep(v, dict_factory, list_factory) for v in value])
+    return value
+
+
+class SubDict(dict):
+    pass
+
+
+class SubList(list):
+    pass
+
+
+@pytest.mark.parametrize("flavour", ["ordered", "pairs_hook", "defaultdict", "counter",
+                                     "subdict", "sublist"])
+def test_container_subclasses_encode_as_the_mapping_they_wrap(flavour):
+    """`_json` matched containers by exact type, so it refused payloads `json.dumps` encodes
+    byte-for-byte as the plain mapping. `object_pairs_hook=OrderedDict` is how a caller reads a
+    saved run *and* keeps the key order this module fingerprints, and `Counter`/`defaultdict` are
+    what a caller builds criteria and settings from; all of them reached
+    "unsupported value of type OrderedDict" while every `isinstance(..., dict)` guard in `_run`,
+    `_provenance` and `_labels` had already accepted the same object."""
+    expected = compare(documents())
+    runs = documents()
+    if flavour == "ordered":
+        runs = [_deep(run, collections.OrderedDict, list) for run in runs]
+    elif flavour == "pairs_hook":
+        runs = [json.loads(json.dumps(run), object_pairs_hook=collections.OrderedDict)
+                for run in runs]
+    elif flavour == "defaultdict":
+        runs = [_deep(run, lambda d: collections.defaultdict(dict, d), list) for run in runs]
+    elif flavour == "counter":
+        for run in runs:
+            for case in run["cases"]:
+                for question in case["questions"].values():
+                    question["criteria"] = collections.Counter(question["criteria"])
+    elif flavour == "subdict":
+        runs = [_deep(run, SubDict, list) for run in runs]
+    else:
+        runs = [_deep(run, dict, SubList) for run in runs]
+    report = compare(runs)
+    assert report == expected
+    assert report["config"]["input_fingerprints"] == expected["config"]["input_fingerprints"]
+
+
+@pytest.mark.parametrize("value,typed", [(("x", "y"), "tuple"), ({"x", "y"}, "set"),
+                                         (np.float64(0.5), "float64"), (np.int64(7), "int64"),
+                                         (np.str_("teacher"), "str_")])
+def test_scalars_stay_matched_by_exact_type(value, typed):
+    """The other half of the rule: a tuple is an array to `json.dumps` and a set is not
+    encodable, so exactness there protects the encoding; a scalar subclass would silently
+    substitute a type the writer did not declare (`np.int64` and `np.bool_` do not encode at
+    all). Containers are the only match relaxed."""
+    runs = documents()
+    runs[0]["provenance"]["settings"]["temperature"] = value
+    with pytest.raises(evals.EvalError,
+                       match="must be strict JSON: unsupported value of type %s" % typed):
+        compare(runs)
+
+
+def test_a_non_string_key_inside_a_subclass_is_still_refused():
+    runs = documents()
+    runs[0]["provenance"]["settings"] = collections.OrderedDict([(1, 0.5)])
+    with pytest.raises(evals.EvalError, match="must be strict JSON: object keys must be strings"):
+        compare(runs)
+
+
+def test_ordered_spellings_do_not_blind_the_order_check():
+    # `_align` compares the *encoding*, so a criteria mapping spelled as an OrderedDict in both
+    # runs must still fail when the two runs disagree on option order.
+    runs = [_deep(run, collections.OrderedDict, list) for run in documents()]
+    question = runs[1]["cases"][0]["questions"]["q0"]
+    question["criteria"] = collections.OrderedDict(reversed(list(question["criteria"].items())))
+    with pytest.raises(evals.EvalError, match="including option order"):
         compare(runs)
 
 
@@ -357,6 +511,25 @@ def test_cli_saved_run_replay_matches_public_api(tmp_path):
     assert result.returncode == 0, result.stderr
     assert not result.stdout
     assert json.loads(output.read_text(encoding="utf-8")) == expected
+
+
+def test_cli_reads_bom_prefixed_saved_runs(tmp_path):
+    """A run re-saved through an editor or a spreadsheet export is the same run with three bytes in front.
+
+    The three agreement reads opened `utf-8`, so a UTF-8 BOM stayed as U+FEFF and `json.load` refused
+    a document that is valid JSON, answering `cannot read agreement run ... Unexpected UTF-8 BOM
+    (decode using utf-8-sig)` -- a refusal naming the decoding this CLI could have asked for itself.
+    `laya/cli.py`, `laya/train.py` and `laya/evidence.py` open a caller's file with `utf-8-sig` for
+    exactly this reason, and the byte-for-byte equality below is the point: the BOM changes nothing
+    about the numbers, so it must change nothing about the verdict.
+    """
+    paths, runs = saved_runs(tmp_path)
+    for path in paths:
+        path.write_text("﻿" + path.read_text(encoding="utf-8"), encoding="utf-8")
+    expected = compare(runs, bootstrap_samples=100, seed=12)
+    result = cli(*paths, "--bootstrap-samples", "100", "--seed", "12")
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == expected
 
 
 @pytest.mark.parametrize("invalid", ["duplicate_key", "nan", "malformed", "nested", "missing", "misaligned"])

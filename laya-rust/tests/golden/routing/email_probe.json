@@ -1,0 +1,1838 @@
+{
+  "clean": [
+    {
+      "label": "upstream/confidential_request",
+      "body": "Confidential: I need a refund.",
+      "max_chars": 3000,
+      "result": "Confidential: I need a refund."
+    },
+    {
+      "label": "upstream/from_prose",
+      "body": "Hello.\nFrom: my side the integration works, but please refund it.",
+      "max_chars": 3000,
+      "result": "Hello.\nFrom: my side the integration works, but please refund it."
+    },
+    {
+      "label": "upstream/from_header",
+      "body": "Please refund it.\nFrom: Jane Smith\nSent: Monday\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "upstream/thanks_prose",
+      "body": "Hello.\nThanks for the quick reply, but I need a refund.",
+      "max_chars": 3000,
+      "result": "Hello.\nThanks for the quick reply, but I need a refund."
+    },
+    {
+      "label": "upstream/english_signoff",
+      "body": "Please refund it.\nWarmest regards, Łukasz",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "upstream/lowercase_name_is_prose",
+      "body": "Please refund it.\nThanks, żaneta needs help.",
+      "max_chars": 3000,
+      "result": "Please refund it.\nThanks, żaneta needs help."
+    },
+    {
+      "label": "upstream/marked_name",
+      "body": "Please refund it.\nRegards, José",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "upstream/astral_signoff_name",
+      "body": "Please refund it.\nRegards, 𐐀𐐨",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "upstream/unattached_mark",
+      "body": "Please refund it.\nRegards, ́Jose",
+      "max_chars": 3000,
+      "result": "Please refund it.\nRegards, ́Jose"
+    },
+    {
+      "label": "upstream/portuguese_quote",
+      "body": "Preciso de ajuda.\nEm 10/09 João escreveu:\nOld request.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "upstream/spanish_quote",
+      "body": "Necesito ayuda.\nEl 10/09 Juan escribió:\nOld request.",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "upstream/french_quote",
+      "body": "Je demande un remboursement.\nLe 10/09 Jean a écrit :\nOld request.",
+      "max_chars": 3000,
+      "result": "Je demande un remboursement."
+    },
+    {
+      "label": "upstream/wrapped_attribution",
+      "body": "Please refund it.\nOn 10/09 Jane Smith\njane@example.com> wrote:\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "upstream/french_signoff",
+      "body": "Je demande un remboursement.\nCordialement,\nMarie",
+      "max_chars": 3000,
+      "result": "Je demande un remboursement."
+    },
+    {
+      "label": "upstream/portuguese_signoff",
+      "body": "Preciso de ajuda.\nAtenciosamente,\nMaria",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "upstream/spanish_signoff",
+      "body": "Necesito ayuda.\nSaludos cordiales,\nJuan",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "upstream/device_footer",
+      "body": "Please refund it.\nSent from my Samsung Galaxy.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "upstream/device_mention_prose",
+      "body": "Please refund it.\nSent from my iPhone yesterday to support.",
+      "max_chars": 3000,
+      "result": "Please refund it.\nSent from my iPhone yesterday to support."
+    },
+    {
+      "label": "upstream/french_disclaimer",
+      "body": "Je demande un remboursement.\n\nCe message est confidentiel et réservé au destinataire.",
+      "max_chars": 3000,
+      "result": "Je demande un remboursement."
+    },
+    {
+      "label": "upstream/french_device_footer",
+      "body": "Merci de rembourser la facture.\n\nEnvoyé depuis mon iPhone",
+      "max_chars": 3000,
+      "result": "Merci de rembourser la facture."
+    },
+    {
+      "label": "upstream/french_device_footer_de_mon",
+      "body": "Merci de rembourser la facture.\n\nEnvoyé de mon iPad.",
+      "max_chars": 3000,
+      "result": "Merci de rembourser la facture."
+    },
+    {
+      "label": "upstream/french_device_footer_no_possessive",
+      "body": "Merci de rembourser la facture.\n\nEnvoyé depuis Outlook",
+      "max_chars": 3000,
+      "result": "Merci de rembourser la facture."
+    },
+    {
+      "label": "upstream/french_device_mention_prose",
+      "body": "Bonjour,\nEnvoyé depuis mon iPhone par erreur.\nMerci de rembourser la facture.",
+      "max_chars": 3000,
+      "result": "Bonjour,\nEnvoyé depuis mon iPhone par erreur.\nMerci de rembourser la facture."
+    },
+    {
+      "label": "inline_footer_no_blank_line",
+      "body": "My account is locked.\nThis email is confidential and intended solely for the named addressee.\nPlease unlock it.",
+      "max_chars": 3000,
+      "result": "My account is locked. Please unlock it."
+    },
+    {
+      "label": "inline_footer_no_terminal_punctuation",
+      "body": "My account is locked\nThis email is confidential and intended solely for the named addressee.\nPlease unlock it.",
+      "max_chars": 3000,
+      "result": "My account is locked Please unlock it."
+    },
+    {
+      "label": "inline_footer_body_never_emptied",
+      "body": "My account is locked. This email is confidential and intended solely for the named addressee.",
+      "max_chars": 3000,
+      "result": "My account is locked."
+    },
+    {
+      "label": "standalone_footer_paragraph_dropped",
+      "body": "My account is locked.\n\nThis email is confidential and intended solely for the named addressee.",
+      "max_chars": 3000,
+      "result": "My account is locked."
+    },
+    {
+      "label": "wrapped_standalone_footer_dropped",
+      "body": "My account is locked.\n\nThis email and any files transmitted with it are\nconfidential and intended solely for the named addressee.",
+      "max_chars": 3000,
+      "result": "My account is locked."
+    },
+    {
+      "label": "received_in_error_footer_dropped",
+      "body": "Please reopen ticket 4411.\n\nIf you have received this message in error, delete it.",
+      "max_chars": 3000,
+      "result": "Please reopen ticket 4411."
+    },
+    {
+      "label": "quoted_history_removed",
+      "body": "Thanks for the update.\nOn Mon, Sep 20, Bob wrote:\n> original text",
+      "max_chars": 3000,
+      "result": "Thanks for the update."
+    },
+    {
+      "label": "signature_block_removed",
+      "body": "Hi team,\nCan you confirm the refund?\nRegards,\nAlice",
+      "max_chars": 3000,
+      "result": "Hi team,\nCan you confirm the refund?"
+    },
+    {
+      "label": "empty_body",
+      "body": "",
+      "max_chars": 3000,
+      "result": ""
+    },
+    {
+      "label": "quote_header_on_wrote_long_name",
+      "body": "Please see below.\nOn Mon, Jan 5, 2026 at 3:00 PM, Bob Smith <bob@example.com> wrote:\n> old text here",
+      "max_chars": 3000,
+      "result": "Please see below."
+    },
+    {
+      "label": "quote_header_original_message",
+      "body": "Approved.\n----- Original Message -----\nFrom: alice@example.com\nSubject: Re: Invoice",
+      "max_chars": 3000,
+      "result": "Approved."
+    },
+    {
+      "label": "quote_header_forwarded_message",
+      "body": "See below for context.\n---------- Forwarded Message ----------\nFrom: bob@example.com",
+      "max_chars": 3000,
+      "result": "See below for context."
+    },
+    {
+      "label": "quote_header_underscores",
+      "body": "My reply is above.\n________________________________\nFrom: system@example.com",
+      "max_chars": 3000,
+      "result": "My reply is above."
+    },
+    {
+      "label": "quote_header_from_line",
+      "body": "Confirmed, thanks.\nFrom: support@example.com\nSubject: Ticket 4411 update\nDate: today",
+      "max_chars": 3000,
+      "result": "Confirmed, thanks."
+    },
+    {
+      "label": "quote_header_only_no_body_before_kept",
+      "body": "On Mon, Jan 5, 2026, Bob wrote:\n> quoted only, no lines before it to break on",
+      "max_chars": 3000,
+      "result": "On Mon, Jan 5, 2026, Bob wrote:"
+    },
+    {
+      "label": "quote_marker_gt_lines_stripped",
+      "body": "My reply.\n> quoted line one\n> quoted line two\nMore of my reply.",
+      "max_chars": 3000,
+      "result": "My reply.\nMore of my reply."
+    },
+    {
+      "label": "signature_dash_dash",
+      "body": "Hi,\nPlease confirm.\n--\nAlice Smith\nSupport Team",
+      "max_chars": 3000,
+      "result": "Hi,\nPlease confirm."
+    },
+    {
+      "label": "signature_best_regards",
+      "body": "Hi,\nCan you confirm the refund?\nBest regards,\nAlice",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_kind_regards",
+      "body": "Hi,\nCan you confirm the refund?\nKind regards,\nBob",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_warm_regards",
+      "body": "Hi,\nCan you confirm the refund?\nWarm regards,\nCarol",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_many_thanks",
+      "body": "Hi,\nCan you confirm the refund?\nMany thanks,\nDave",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_thanks",
+      "body": "Hi,\nCan you confirm the refund?\nThanks,\nEve",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_thank_you",
+      "body": "Hi,\nCan you confirm the refund?\nThank you,\nFrank",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_cheers",
+      "body": "Hi,\nCan you confirm the refund?\nCheers,\nGrace",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_sincerely",
+      "body": "Hi,\nCan you confirm the refund?\nSincerely,\nHeidi",
+      "max_chars": 3000,
+      "result": "Hi,\nCan you confirm the refund?"
+    },
+    {
+      "label": "signature_sent_from_iphone",
+      "body": "On the go, will follow up later.\nSent from my iPhone",
+      "max_chars": 3000,
+      "result": "On the go, will follow up later."
+    },
+    {
+      "label": "signature_sent_from_android",
+      "body": "Quick reply here.\nSent from my Android",
+      "max_chars": 3000,
+      "result": "Quick reply here."
+    },
+    {
+      "label": "signature_too_early_kept_as_body",
+      "body": "Thanks,\nfor looking into this.\nMy account is still locked after the reset.\nPlease escalate this to the on-call engineer today.\nRegards,\nIvan",
+      "max_chars": 3000,
+      "result": "Thanks,\nfor looking into this.\nMy account is still locked after the reset.\nPlease escalate this to the on-call engineer today."
+    },
+    {
+      "label": "disclaimer_mid_paragraph_request_survives",
+      "body": "My account is locked.\nThis email is confidential and intended solely for the named addressee.\nPlease unlock it.",
+      "max_chars": 3000,
+      "result": "My account is locked. Please unlock it."
+    },
+    {
+      "label": "disclaimer_two_sentences_only_boilerplate_dropped",
+      "body": "My account is locked. This email is confidential and intended solely for the named addressee. Please help urgently.",
+      "max_chars": 3000,
+      "result": "My account is locked. Please help urgently."
+    },
+    {
+      "label": "disclaimer_across_two_paragraphs_only_its_own_paragraph_affected",
+      "body": "Please reopen ticket 4411 as soon as you can.\n\nThis email and any attachments are confidential and intended solely for the addressee.\n\nIf you have received this message in error, please delete it.\n\nLet me know once it is done.",
+      "max_chars": 3000,
+      "result": "Please reopen ticket 4411 as soon as you can.\n\nLet me know once it is done."
+    },
+    {
+      "label": "disclaimer_received_in_error_variant_2",
+      "body": "Approve the refund please.\n\nIf you received this e-mail in error, notify the sender immediately.",
+      "max_chars": 3000,
+      "result": "Approve the refund please."
+    },
+    {
+      "label": "crlf_line_endings",
+      "body": "My account is locked.\r\nPlease unlock it.\r\nRegards,\r\nAlice",
+      "max_chars": 3000,
+      "result": "My account is locked.\nPlease unlock it."
+    },
+    {
+      "label": "crlf_with_quote_header",
+      "body": "Thanks for the update.\r\nOn Mon, Sep 20, Bob wrote:\r\n> original text",
+      "max_chars": 3000,
+      "result": "Thanks for the update."
+    },
+    {
+      "label": "literal_backslash_n_becomes_newline",
+      "body": "My account is locked.\\nPlease unlock it.\\nRegards,\\nAlice",
+      "max_chars": 3000,
+      "result": "My account is locked.\nPlease unlock it."
+    },
+    {
+      "label": "literal_backslash_n_with_disclaimer",
+      "body": "My account is locked.\\nThis email is confidential and intended solely for the named addressee.\\nPlease unlock it.",
+      "max_chars": 3000,
+      "result": "My account is locked. Please unlock it."
+    },
+    {
+      "label": "mixed_real_and_literal_newlines",
+      "body": "Line one.\nLine two.\\nLine three (literal escape).\nLine four.",
+      "max_chars": 3000,
+      "result": "Line one.\nLine two.\nLine three (literal escape).\nLine four."
+    },
+    {
+      "label": "unicode_nbsp_not_collapsed",
+      "body": "My account is locked.\nPlease unlock it.",
+      "max_chars": 3000,
+      "result": "My account is locked.\nPlease unlock it."
+    },
+    {
+      "label": "unicode_em_space_and_ideographic_space",
+      "body": "My account is　locked.\nPlease unlock it.",
+      "max_chars": 3000,
+      "result": "My account is　locked.\nPlease unlock it."
+    },
+    {
+      "label": "unicode_whitespace_leading_trailing_stripped",
+      "body": "  My account is locked. \n Please unlock it.  ",
+      "max_chars": 3000,
+      "result": "My account is locked.\n Please unlock it."
+    },
+    {
+      "label": "unicode_zero_width_space_kept",
+      "body": "My​account is locked.\nPlease​unlock it.",
+      "max_chars": 3000,
+      "result": "My​account is locked.\nPlease​unlock it."
+    },
+    {
+      "label": "max_chars_tiny_cuts_mid_word",
+      "body": "Please refund the duplicate charge on invoice 4411 today.",
+      "max_chars": 10,
+      "result": "Please ref"
+    },
+    {
+      "label": "max_chars_default_no_truncation_needed",
+      "body": "Short message that fits easily.",
+      "max_chars": 3000,
+      "result": "Short message that fits easily."
+    },
+    {
+      "label": "max_chars_large_no_op",
+      "body": "Please refund the duplicate charge on invoice 4411 today.",
+      "max_chars": 100000,
+      "result": "Please refund the duplicate charge on invoice 4411 today."
+    },
+    {
+      "label": "max_chars_exact_boundary",
+      "body": "01234567890123456789012345678901234567890123456789",
+      "max_chars": 50,
+      "result": "01234567890123456789012345678901234567890123456789"
+    },
+    {
+      "label": "max_chars_one_over_boundary",
+      "body": "01234567890123456789012345678901234567890123456789X",
+      "max_chars": 50,
+      "result": "01234567890123456789012345678901234567890123456789"
+    },
+    {
+      "label": "kitchen_sink_quote_signature_disclaimer",
+      "body": "Hi team,\n\nMy account was charged twice for the Pro plan this month and the refund has not arrived yet. Could you please look into this today?\n\nBest regards,\nPriya Sharma\nSent from my iPhone\n\nThis email and any files transmitted with it are confidential and intended solely for the use of the individual or entity to whom they are addressed. If you have received this email in error please notify the sender.\n\nOn Tue, Sep 22, 2026 at 9:14 AM, Support <support@example.com> wrote:\n> Hi Priya, thanks for reaching out, we are looking into it.\n> - Support Team\n",
+      "max_chars": 3000,
+      "result": "Hi team,\n\nMy account was charged twice for the Pro plan this month and the refund has not arrived yet. Could you please look into this today?"
+    },
+    {
+      "label": "p0411/budget_default_cut",
+      "body": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",
+      "max_chars": 3000,
+      "result": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word "
+    },
+    {
+      "label": "p0411/budget_small",
+      "body": "Please refund the duplicate charge on invoice 4411 today.",
+      "max_chars": 10,
+      "result": "Please ref"
+    },
+    {
+      "label": "p0411/budget_one",
+      "body": "Hello",
+      "max_chars": 1,
+      "result": "H"
+    },
+    {
+      "label": "p0411/budget_zero",
+      "body": "Please refund it.",
+      "max_chars": 0,
+      "result": ""
+    },
+    {
+      "label": "p0411/budget_zero_empty_body",
+      "body": "",
+      "max_chars": 0,
+      "result": ""
+    },
+    {
+      "label": "p0411/budget_negative_one",
+      "body": "Please refund it today and thanks for the help.",
+      "max_chars": -1,
+      "result": "Please refund it today and thanks for the "
+    },
+    {
+      "label": "p0411/budget_negative_ten",
+      "body": "Please refund it today and thanks for the help with the invoice.",
+      "max_chars": -10,
+      "result": "Please refund "
+    },
+    {
+      "label": "p0411/budget_negative_beyond_body",
+      "body": "Please refund it.",
+      "max_chars": -100,
+      "result": ""
+    },
+    {
+      "label": "p0411/budget_larger_than_body",
+      "body": "Please refund it.",
+      "max_chars": 100000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/budget_pre_cut_hides_footer",
+      "body": "Request line.\nfiller line that is not a footer.\nfiller line that is not a footer.\nfiller line that is not a footer.\n\n\nThis email is confidential and intended solely for the named addressee.",
+      "max_chars": 25,
+      "result": "Request line.\nfiller line"
+    },
+    {
+      "label": "p0411/budget_pre_cut_hides_quote",
+      "body": "Short request.\nMore detail here.\nOn Mon, Jan 1, 2024 at 9:00 AM Jane <j@x.com> wrote:\nOld text.",
+      "max_chars": 12,
+      "result": "Short reques"
+    },
+    {
+      "label": "p0411/budget_pre_cut_multibyte",
+      "body": "退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 ",
+      "max_chars": 30,
+      "result": "退款请求 退款请求 退款请求 退款请求 退款请求 退款请求 "
+    },
+    {
+      "label": "p0411/budget_boundary_exact",
+      "body": "abcde",
+      "max_chars": 5,
+      "result": "abcde"
+    },
+    {
+      "label": "p0411/budget_negative_multiline",
+      "body": "line one\nline two\nline three\nline four",
+      "max_chars": -2,
+      "result": "line one\nline two\nline three"
+    },
+    {
+      "label": "p0411/quote_first_line_kept",
+      "body": "On Mon, Jan 1, 2024 Jane wrote:\nPlease refund it.",
+      "max_chars": 3000,
+      "result": "On Mon, Jan 1, 2024 Jane wrote:\nPlease refund it."
+    },
+    {
+      "label": "p0411/quote_en_wrote",
+      "body": "Please refund it.\nOn Mon, Jan 1, 2024 at 9:00 AM Jane <j@x.com> wrote:\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/quote_en_wrote_trailing_space",
+      "body": "Please refund it.\nON TUE, SEP 22 JANE WROTE:   \nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/quote_pt_no_date_is_body",
+      "body": "Preciso de ajuda.\nEm resposta ao que você escreveu:\nMais detalhes aqui.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda.\nEm resposta ao que você escreveu:\nMais detalhes aqui."
+    },
+    {
+      "label": "p0411/quote_pt_date",
+      "body": "Preciso de ajuda.\nEm 10/09/2024 às 10:00, João escreveu:\nOld request.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/quote_pt_unicode_digits",
+      "body": "Preciso de ajuda.\nEm ١٠/٠٩ João escreveu:\nOld request.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/quote_es_no_date_is_body",
+      "body": "Necesito ayuda.\nComo usted escribió:\nEl resto del texto.",
+      "max_chars": 3000,
+      "result": "Necesito ayuda.\nComo usted escribió:\nEl resto del texto."
+    },
+    {
+      "label": "p0411/quote_es_no_date_el",
+      "body": "Necesito ayuda.\nEl cliente que escribió:\nEl resto del texto.",
+      "max_chars": 3000,
+      "result": "Necesito ayuda.\nEl cliente que escribió:\nEl resto del texto."
+    },
+    {
+      "label": "p0411/quote_es_date_ascii_o",
+      "body": "Necesito ayuda.\nEl 10/09 Juan escribio:\nOld request.",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "p0411/quote_fr_no_date_is_body",
+      "body": "Je demande de l'aide.\nLe rapport que vous avez écrit :\nLe reste du texte.",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide.\nLe rapport que vous avez écrit :\nLe reste du texte."
+    },
+    {
+      "label": "p0411/quote_fr_no_space_before_colon",
+      "body": "Je demande de l'aide.\nLe 10/09 Jean a écrit:\nOld request.",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/quote_fr_ecrit_ascii",
+      "body": "Je demande de l'aide.\nLe 10/09 Jean a ecrit :\nOld request.",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/quote_original_message",
+      "body": "Please refund it.\n-----Original Message-----\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/quote_forwarded_message",
+      "body": "Please refund it.\n---- Forwarded Message ----\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/quote_mensagem_original",
+      "body": "Preciso de ajuda.\n-----Mensagem original-----\nOld request.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/quote_mensagem_encaminhada",
+      "body": "Preciso de ajuda.\n----- Mensagem encaminhada -----\nOld request.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/quote_mensaje_original",
+      "body": "Necesito ayuda.\n-----Mensaje original-----\nOld request.",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "p0411/quote_mensaje_reenviado",
+      "body": "Necesito ayuda.\n-----Mensaje reenviado-----\nOld request.",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "p0411/quote_message_d_origine",
+      "body": "Je demande de l'aide.\n-----Message d'origine-----\nOld request.",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/quote_underscores",
+      "body": "Please refund it.\n________\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/quote_underscores_seven",
+      "body": "Please refund it.\n_______\nStill here.",
+      "max_chars": 3000,
+      "result": "Please refund it.\n_______\nStill here."
+    },
+    {
+      "label": "p0411/quote_from_address",
+      "body": "Please refund it.\nFrom: Jane <jane@example.com>\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/quote_from_prose_with_at",
+      "body": "Please refund it.\nFrom: the desk at 5pm we meet\nStill here.",
+      "max_chars": 3000,
+      "result": "Please refund it.\nFrom: the desk at 5pm we meet\nStill here."
+    },
+    {
+      "label": "p0411/quote_de_address",
+      "body": "Preciso de ajuda.\nDe: Maria <maria@x.com>\nOld request.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/quote_de_french_spaced",
+      "body": "Je demande de l'aide.\nDe : Marie <marie@x.com>\nOld request.",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/quote_de_dates_is_body",
+      "body": "Quero folga.\nDe: 10/09 a 15/09\nPara: 20/09\nObrigada.",
+      "max_chars": 3000,
+      "result": "Quero folga.\nDe: 10/09 a 15/09\nPara: 20/09"
+    },
+    {
+      "label": "p0411/quote_de_name_enviado",
+      "body": "Preciso de ajuda.\nDe: Maria Souza\nEnviado: segunda-feira\nOld request.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/quote_de_name_enviada_em",
+      "body": "Preciso de ajuda.\nDe: Maria Souza\nEnviada em: segunda\nOld request.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/quote_de_name_fecha",
+      "body": "Necesito ayuda.\nDe: Maria Souza\nFecha: 10 de septiembre de 2024\nOld request.",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "p0411/quote_de_name_data_no_year",
+      "body": "Preciso de ajuda.\nDe: Maria Souza\nData: 10/09\nStill here.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda.\nDe: Maria Souza\nData: 10/09\nStill here."
+    },
+    {
+      "label": "p0411/quote_de_name_para_only",
+      "body": "Quero folga.\nDe: 10/09\nPara: 15/09\nObrigada.",
+      "max_chars": 3000,
+      "result": "Quero folga.\nDe: 10/09\nPara: 15/09"
+    },
+    {
+      "label": "p0411/quote_de_french_envoye",
+      "body": "Je demande de l'aide.\nDe : Marie Dupont\nEnvoyé : lundi 10 septembre\nOld request.",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/quote_from_name_date",
+      "body": "Please refund it.\nFrom: Jane Smith\nDate: Mon, 10 Sep 2018 10:00\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/quote_from_name_last_line",
+      "body": "Please refund it.\nFrom: Jane Smith",
+      "max_chars": 3000,
+      "result": "Please refund it.\nFrom: Jane Smith"
+    },
+    {
+      "label": "p0411/quote_from_name_first_line",
+      "body": "From: Jane Smith\nSent: Monday\nOld request.",
+      "max_chars": 3000,
+      "result": "From: Jane Smith\nSent: Monday\nOld request."
+    },
+    {
+      "label": "p0411/quote_gt_lines_dropped",
+      "body": "Please refund it.\n> quoted one\n  > quoted two\nStill mine.",
+      "max_chars": 3000,
+      "result": "Please refund it.\nStill mine."
+    },
+    {
+      "label": "p0411/quote_attribution_tail_en",
+      "body": "Please refund it.\nOn Mon, 10/09/2018, Jane Smith\njane@example.com> wrote:\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/quote_attribution_tail_pt",
+      "body": "Preciso de ajuda.\nEm 10/09/2018, Fulano de Tal\nfulano@x.com> escreveu:\nOld request.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/quote_attribution_tail_es",
+      "body": "Necesito ayuda.\nEl 10/09/2018, Fulano de Tal\nfulano@x.com> escribió:\nOld request.",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "p0411/quote_attribution_tail_fr",
+      "body": "Je demande de l'aide.\nLe 10/09/2018, Fulano\nsupport@x.com> a écrit :\nOld request.",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/quote_attribution_tail_no_head_date",
+      "body": "Please refund it.\nOn the other hand\njane@example.com> wrote:\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it.\nOn the other hand"
+    },
+    {
+      "label": "p0411/quote_attribution_tail_unrelated_head",
+      "body": "Please refund it.\nWith thanks 10/09\njane@example.com> wrote:\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it.\nWith thanks 10/09"
+    },
+    {
+      "label": "p0411/quote_attribution_tail_first_line",
+      "body": "jane@example.com> wrote:\nOld request.",
+      "max_chars": 3000,
+      "result": "jane@example.com> wrote:\nOld request."
+    },
+    {
+      "label": "p0411/quote_attribution_tail_too_long",
+      "body": "Please refund it.\nOn 10/09\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@y.com> wrote:\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it.\nOn 10/09\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@y.com> wrote:\nOld request."
+    },
+    {
+      "label": "p0411/quote_crlf",
+      "body": "Please refund it.\r\nOn Mon, Jan 1, 2024 Jane wrote:\r\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/quote_lone_cr",
+      "body": "Please refund it.\rOn Mon, Jan 1, 2024 Jane wrote:\rOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/quote_literal_backslash_n",
+      "body": "Please refund it.\\nOn Mon, Jan 1, 2024 Jane wrote:\\nOld request.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_dashes",
+      "body": "Line one.\nLine two.\nLine three.\nLine four.\nLine five.\n--\nJohn Smith\nCEO",
+      "max_chars": 3000,
+      "result": "Line one.\nLine two.\nLine three.\nLine four.\nLine five."
+    },
+    {
+      "label": "p0411/sig_dashes_trailing_space",
+      "body": "Line one.\nLine two.\nLine three.\nLine four.\nLine five.\n-- \nJohn Smith",
+      "max_chars": 3000,
+      "result": "Line one.\nLine two.\nLine three.\nLine four.\nLine five."
+    },
+    {
+      "label": "p0411/sig_best_regards",
+      "body": "Please refund it.\nBest regards,\nJohn Smith",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_kind_regards_name",
+      "body": "Please refund it.\nKind regards, John",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_thanks_and_regards",
+      "body": "Please refund it.\nThanks and regards, José",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_thanks_ampersand_regards",
+      "body": "Please refund it.\nThanks & regards,\nJosé",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_warmest_wishes",
+      "body": "Please refund it.\nWarmest wishes, Pat",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_many_thanks_in_advance",
+      "body": "Please refund it.\nMany thanks in advance!",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_thank_you_so_much",
+      "body": "Please refund it.\nThank you so much, Priya Sharma",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_three_name_tokens",
+      "body": "Please refund it.\nThanks, Anna Maria Lopez",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_four_name_tokens_is_prose",
+      "body": "Please refund it.\nThanks, Anna Maria Lopez Garcia",
+      "max_chars": 3000,
+      "result": "Please refund it.\nThanks, Anna Maria Lopez Garcia"
+    },
+    {
+      "label": "p0411/sig_thanks_for_is_prose",
+      "body": "Please refund it.\nThanks for the quick reply",
+      "max_chars": 3000,
+      "result": "Please refund it.\nThanks for the quick reply"
+    },
+    {
+      "label": "p0411/sig_thanks_digits",
+      "body": "Please refund it.\nThanks, Anna 2",
+      "max_chars": 3000,
+      "result": "Please refund it.\nThanks, Anna 2"
+    },
+    {
+      "label": "p0411/sig_apostrophe_hyphen_name",
+      "body": "Please refund it.\nRegards, D'Arcy-Smith",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_lowercase_name_is_prose",
+      "body": "Please refund it.\nThanks, anna",
+      "max_chars": 3000,
+      "result": "Please refund it.\nThanks, anna"
+    },
+    {
+      "label": "p0411/sig_caseless_name",
+      "body": "Please refund it.\nRegards, 山田",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_cyrillic_name",
+      "body": "Please refund it.\nSincerely, Дмитрий",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_name_with_semicolon_is_prose",
+      "body": "Please refund it.\nThanks; Anna",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_cheers_bang",
+      "body": "Please refund it.\nCheers!!",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/sig_too_long_is_not_cut",
+      "body": "Please refund it.\nBest regards, Averyveryverylongnamethatgoes",
+      "max_chars": 3000,
+      "result": "Please refund it.\nBest regards, Averyveryverylongnamethatgoes"
+    },
+    {
+      "label": "p0411/sig_pt_atenciosamente",
+      "body": "Preciso de ajuda.\nAtenciosamente,\nMaria",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/sig_pt_att",
+      "body": "Preciso de ajuda.\nAtt.\nMaria",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/sig_pt_abraco",
+      "body": "Preciso de ajuda.\nAbraços!\nMaria",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/sig_pt_um_abraco",
+      "body": "Preciso de ajuda.\nUm abraço\nMaria",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/sig_pt_obrigado_desde_ja",
+      "body": "Preciso de ajuda.\nObrigado desde já!\nMaria",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/sig_pt_muito_obrigada_atencao",
+      "body": "Preciso de ajuda.\nMuito obrigada pela atenção.\nMaria",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/sig_pt_obrigado_request_is_prose",
+      "body": "Preciso de ajuda.\nObrigado pelo retorno, mas ainda preciso do boleto.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda.\nObrigado pelo retorno, mas ainda preciso do boleto."
+    },
+    {
+      "label": "p0411/sig_pt_cumprimentos",
+      "body": "Preciso de ajuda.\nCom os melhores cumprimentos,\nMaria",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/sig_es_saludos_cordiales",
+      "body": "Necesito ayuda.\nSaludos cordiales,\nJuan",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "p0411/sig_es_un_saludo",
+      "body": "Necesito ayuda.\nUn saludo\nJuan",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "p0411/sig_es_gracias_de_antemano",
+      "body": "Necesito ayuda.\nMuchas gracias de antemano.\nJuan",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "p0411/sig_es_atentamente",
+      "body": "Necesito ayuda.\nAtentamente,\nJuan",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "p0411/sig_fr_cordialement",
+      "body": "Je demande de l'aide.\nCordialement,\nMarie",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/sig_fr_bien_cordialement",
+      "body": "Je demande de l'aide.\nBien cordialement\nMarie",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/sig_fr_salutations_distinguees",
+      "body": "Je demande de l'aide.\nSalutations distinguées,\nMarie",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/sig_fr_bien_a_vous",
+      "body": "Je demande de l'aide.\nBien à vous\nMarie",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/sig_fr_merci_d_avance",
+      "body": "Je demande de l'aide.\nMerci d'avance !\nMarie",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/sig_fr_bonne_journee",
+      "body": "Je demande de l'aide.\nBonne journée.\nMarie",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/sig_fr_merci_request_is_prose",
+      "body": "Je demande de l'aide.\nMerci pour votre aide, mais il reste un problème.",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide.\nMerci pour votre aide, mais il reste un problème."
+    },
+    {
+      "label": "p0411/sig_scan_starts_late",
+      "body": "Cheers,\nJohn\nBody line 0.\nBody line 1.\nBody line 2.\nBody line 3.\nBody line 4.\nBody line 5.\nBody line 6.\nBody line 7.\nBody line 8.\nBody line 9.\nBody line 10.\nBody line 11.",
+      "max_chars": 3000,
+      "result": "Cheers,\nJohn\nBody line 0.\nBody line 1.\nBody line 2.\nBody line 3.\nBody line 4.\nBody line 5.\nBody line 6.\nBody line 7.\nBody line 8.\nBody line 9.\nBody line 10.\nBody line 11."
+    },
+    {
+      "label": "p0411/sig_scan_window_ten_lines",
+      "body": "Body line 0.\nBody line 1.\nBody line 2.\nBody line 3.\nBody line 4.\nThanks,\nMore 0.\nMore 1.\nMore 2.\nMore 3.",
+      "max_chars": 3000,
+      "result": "Body line 0.\nBody line 1.\nBody line 2.\nBody line 3.\nBody line 4."
+    },
+    {
+      "label": "p0411/sig_in_short_body_first_line_never_cut",
+      "body": "Thanks,\nPlease refund it.",
+      "max_chars": 3000,
+      "result": "Thanks,\nPlease refund it."
+    },
+    {
+      "label": "p0411/sig_longer_than_forty_is_not_cut",
+      "body": "Line one.\nLine two.\nLine three.\nLine four.\nLine five.\nRegards, Someone With A Very Long Name Indeed Yes",
+      "max_chars": 3000,
+      "result": "Line one.\nLine two.\nLine three.\nLine four.\nLine five.\nRegards, Someone With A Very Long Name Indeed Yes"
+    },
+    {
+      "label": "p0411/device_sent_from_iphone",
+      "body": "Please refund it.\nSent from my iPhone",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/device_sent_from_galaxy",
+      "body": "Please refund it.\nSent from my Samsung Galaxy S21 Ultra 5G.",
+      "max_chars": 3000,
+      "result": "Please refund it.\nSent from my Samsung Galaxy S21 Ultra 5G."
+    },
+    {
+      "label": "p0411/device_sent_from_using",
+      "body": "Please refund it.\nSent from Outlook using mail-client_1.2",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/device_samsung_pt",
+      "body": "Preciso de ajuda.\nEnviado do meu smartphone Samsung Galaxy.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/device_pt_celular_request",
+      "body": "Preciso de ajuda.\nEnviado do meu celular o comprovante ontem.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda.\nEnviado do meu celular o comprovante ontem."
+    },
+    {
+      "label": "p0411/device_get_outlook_ios",
+      "body": "Please refund it.\nGet Outlook for iOS",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/device_obter_outlook_android",
+      "body": "Preciso de ajuda.\nObter o Outlook para Android",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/device_fr_iphone",
+      "body": "Je demande de l'aide.\nEnvoyé depuis mon iPhone",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/device_fr_de_ipad",
+      "body": "Je demande de l'aide.\nEnvoyé de mon iPad.",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/device_fr_mentioned_in_prose",
+      "body": "Bonjour,\nEnvoyé depuis mon iPhone par erreur.\nMerci de rembourser la facture.",
+      "max_chars": 3000,
+      "result": "Bonjour,\nEnvoyé depuis mon iPhone par erreur.\nMerci de rembourser la facture."
+    },
+    {
+      "label": "p0411/device_es_movil",
+      "body": "Necesito ayuda.\nEnviado desde mi móvil",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "p0411/device_pt_mi",
+      "body": "Preciso de ajuda.\nEnviado via mi Android",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/device_longer_than_sixty",
+      "body": "Please refund it.\nSent from my iPhone phone phone phone phone phone phone phone phone phone phone phone phone ",
+      "max_chars": 3000,
+      "result": "Please refund it.\nSent from my iPhone phone phone phone phone phone phone phone phone phone phone phone phone"
+    },
+    {
+      "label": "p0411/disclaimer_en_standard",
+      "body": "Please refund it.\n\nThis email is confidential and intended solely for the named addressee.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/disclaimer_en_wrapped",
+      "body": "Please refund it.\n\nThis email and its contents are\nconfidential and intended solely for the addressee.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/disclaimer_en_privileged",
+      "body": "Please refund it.\n\nThis information is confidential and may be privileged.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/disclaimer_en_received_in_error",
+      "body": "Please refund it.\n\nIf you have received this email in error please delete it.",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/disclaimer_en_question_is_body",
+      "body": "Is this confidential?",
+      "max_chars": 3000,
+      "result": "Is this confidential?"
+    },
+    {
+      "label": "p0411/disclaimer_en_fused_lines",
+      "body": "My account is locked\nThis email is confidential and intended solely for the addressee.",
+      "max_chars": 3000,
+      "result": "My account is locked"
+    },
+    {
+      "label": "p0411/disclaimer_en_inline",
+      "body": "My account is locked. This email is confidential and intended solely for the addressee. Please help me.",
+      "max_chars": 3000,
+      "result": "My account is locked. Please help me."
+    },
+    {
+      "label": "p0411/disclaimer_pt",
+      "body": "Preciso de ajuda.\n\nEsta mensagem é confidencial e destinada exclusivamente ao destinatário.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/disclaimer_pt_request_confidencial",
+      "body": "Preciso do contrato confidencial.",
+      "max_chars": 3000,
+      "result": "Preciso do contrato confidencial."
+    },
+    {
+      "label": "p0411/disclaimer_pt_print",
+      "body": "Preciso de ajuda.\n\nAntes de imprimir, pense no meio ambiente.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/disclaimer_pt_print_request",
+      "body": "Antes de imprimir o boleto, confira o valor.",
+      "max_chars": 3000,
+      "result": "Antes de imprimir o boleto, confira o valor."
+    },
+    {
+      "label": "p0411/disclaimer_pt_ambiente_first",
+      "body": "Preciso de ajuda.\n\nPense no meio ambiente antes de imprimir.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/disclaimer_pt_recebeu_engano",
+      "body": "Preciso de ajuda.\n\nSe você recebeu esta mensagem por engano, apague-a.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "p0411/disclaimer_es",
+      "body": "Necesito ayuda.\n\nEste mensaje es confidencial y de uso exclusivo del destinatario.",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "p0411/disclaimer_es_recibido_error",
+      "body": "Necesito ayuda.\n\nSi ha recibido este mensaje por error, bórrelo.",
+      "max_chars": 3000,
+      "result": "Necesito ayuda."
+    },
+    {
+      "label": "p0411/disclaimer_fr",
+      "body": "Je demande de l'aide.\n\nCe message est confidentiel et réservé au destinataire.",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/disclaimer_fr_recu_erreur",
+      "body": "Je demande de l'aide.\n\nSi vous avez reçu ce message par erreur, supprimez-le.",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/disclaimer_fr_request_confidentiel",
+      "body": "Je veux le contrat confidentiel.",
+      "max_chars": 3000,
+      "result": "Je veux le contrat confidentiel."
+    },
+    {
+      "label": "p0411/disclaimer_fr_usage_exclusif",
+      "body": "Je demande de l'aide.\n\nUsage exclusif du destinataire.",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "p0411/disclaimer_mixed_paragraph",
+      "body": "Please help me. The email is confidential and intended solely for you. Thanks!",
+      "max_chars": 3000,
+      "result": "Please help me. Thanks!"
+    },
+    {
+      "label": "p0411/disclaimer_uppercase_split",
+      "body": "Locked out\nThis email is confidential and intended solely for you.\nMore text.",
+      "max_chars": 3000,
+      "result": "Locked out More text."
+    },
+    {
+      "label": "p0411/disclaimer_caseless_wrapped",
+      "body": "退款请求\n\n这封邮件是机密的 This email is\nconfidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "退款请求"
+    },
+    {
+      "label": "p0411/disclaimer_sentence_split_ws",
+      "body": "Hello there.  This email is confidential and intended solely for you.  Bye!",
+      "max_chars": 3000,
+      "result": "Hello there. Bye!"
+    },
+    {
+      "label": "p0411/whitespace_collapse",
+      "body": "Please   refund\t\tit.\n\n\n\nThanks   a lot",
+      "max_chars": 3000,
+      "result": "Please refund it."
+    },
+    {
+      "label": "p0411/empty_body",
+      "body": "",
+      "max_chars": 3000,
+      "result": ""
+    },
+    {
+      "label": "p0411/only_quoted",
+      "body": "> a\n> b",
+      "max_chars": 3000,
+      "result": ""
+    },
+    {
+      "label": "p0411/only_whitespace",
+      "body": "   \n\t\n  ",
+      "max_chars": 3000,
+      "result": ""
+    },
+    {
+      "label": "p0411/unit_separator_blank_line",
+      "body": "First\n\u001f\nSecond",
+      "max_chars": 3000,
+      "result": "First\n\nSecond"
+    },
+    {
+      "label": "p0411/unicode_whitespace_line",
+      "body": "First\n \nSecond\n \n\nThird",
+      "max_chars": 3000,
+      "result": "First\n\nSecond\n\nThird"
+    },
+    {
+      "label": "pyre/boundary_after_no_superscript",
+      "body": "Please help me.\n\nThis email² is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me.\n\nThis email² is confidential and intended solely for you."
+    },
+    {
+      "label": "pyre/boundary_before_no_superscript",
+      "body": "Please help me.\n\nThis ²email is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me.\n\nThis ²email is confidential and intended solely for you."
+    },
+    {
+      "label": "pyre/boundary_after_combining_mark",
+      "body": "Please help me.\n\nThis emaiĺ is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/boundary_before_combining_mark",
+      "body": "Please help me.\n\nThis ́email is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/boundary_after_connector_punctuation",
+      "body": "Please help me.\n\nThis email‿ is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/boundary_after_zero_width_joiner",
+      "body": "Please help me.\n\nThis email‍ is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/boundary_after_circled_letter",
+      "body": "Please help me.\n\nThis emailⒶ is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/boundary_after_roman_numeral",
+      "body": "Preciso de ajuda.\n\nEsta mensagemⅠ é confidencial.",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda.\n\nEsta mensagemⅠ é confidencial."
+    },
+    {
+      "label": "pyre/ignorecase_dotted_capital_i_disclaimer",
+      "body": "Please help me.\n\nİf you received this email in error, delete it.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/ignorecase_dotless_i_disclaimer",
+      "body": "Please help me.\n\nIf you received this email ın error, delete it.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/ignorecase_dotless_i_device_footer",
+      "body": "Please help me.\nSent from my ıPhone",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/ignorecase_dotted_i_device_range",
+      "body": "Please help me.\nSent from my iPhone using İOS",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/ignorecase_dotless_i_signoff",
+      "body": "Please help me.\nKınd regards,\nJohn",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/ignorecase_dotless_i_pt_signoff",
+      "body": "Preciso de ajuda.\nCordıalmente,\nMaria",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "pyre/ignorecase_dotted_i_original_message",
+      "body": "Please help me.\n-----Orİginal Message-----\nOld request.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/ignorecase_dotless_i_french_signoff",
+      "body": "Je demande de l'aide.\nBonne journée,\nMarıe",
+      "max_chars": 3000,
+      "result": "Je demande de l'aide."
+    },
+    {
+      "label": "pyre/ignorecase_long_s_and_kelvin_sign",
+      "body": "Please help me.\n\nThis email is confidential and intended ſolely for you, thankK you.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/astral_boundary_after_letter",
+      "body": "Please help me.\n\nThis email𝐀 is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me.\n\nThis email𝐀 is confidential and intended solely for you."
+    },
+    {
+      "label": "pyre/astral_boundary_before_letter",
+      "body": "Please help me.\n\nThis 𝐀email is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me.\n\nThis 𝐀email is confidential and intended solely for you."
+    },
+    {
+      "label": "pyre/astral_boundary_after_emoji",
+      "body": "Please help me.\n\nThis email😀 is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/astral_dot_run_within_bound",
+      "body": "Please help me.\n\nThis email 𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀 is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/astral_dot_run_past_bound",
+      "body": "Please help me.\n\nThis email 𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀 is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me.\n\nThis email 𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀 is confidential and intended solely for you."
+    },
+    {
+      "label": "pyre/astral_quote_header_within_bound",
+      "body": "Please help me.\nOn Monday 1 Jan, 𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀 wrote:\n> old request",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/astral_quote_header_past_bound",
+      "body": "Please help me.\nOn Monday 1 Jan, 𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀 wrote:\n> old request\nStill mine.",
+      "max_chars": 3000,
+      "result": "Please help me.\nOn Monday 1 Jan, 𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀 wrote:\nStill mine."
+    },
+    {
+      "label": "pyre/astral_digit_boundary",
+      "body": "Please help me.\n\nThis email𝟎 is confidential and intended solely for you.",
+      "max_chars": 3000,
+      "result": "Please help me.\n\nThis email𝟎 is confidential and intended solely for you."
+    },
+    {
+      "label": "pyre/ignorecase_long_s_original_message",
+      "body": "Please help me.\n-----Menſagem original-----\nOld request.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/ignorecase_long_s_forwarded_message",
+      "body": "Please help me.\n----- Forwarded Meſsage -----\nOld request.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/ignorecase_long_s_pt_signoff",
+      "body": "Preciso de ajuda.\nſaludoſ cordiales,\nMaria",
+      "max_chars": 3000,
+      "result": "Preciso de ajuda."
+    },
+    {
+      "label": "pyre/ignorecase_kelvin_sign_signoff",
+      "body": "Please help me.\nThanK you,\nJohn",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/ignorecase_kelvin_sign_device_footer",
+      "body": "Please help me.\nSent from my iPhone using KIT",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/astral_digit_quote_header",
+      "body": "Please help me.\nEm 𝟚𝟘𝟚𝟜 João escreveu:\n> old request\nStill mine.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/astral_digit_french_header",
+      "body": "Please help me.\nLe 𝟚 janvier a écrit :\n> old request",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/astral_digit_header_pair",
+      "body": "Please help me.\nFrom: Maria Souza\nDate: 𝟚𝟘𝟚𝟜\nOld request.",
+      "max_chars": 3000,
+      "result": "Please help me."
+    },
+    {
+      "label": "pyre/astral_digit_in_year_needs_four",
+      "body": "Please help me.\nFrom: Maria Souza\nDate: 𝟚𝟘𝟚\nOld request.",
+      "max_chars": 3000,
+      "result": "Please help me.\nFrom: Maria Souza\nDate: 𝟚𝟘𝟚\nOld request."
+    },
+    {
+      "label": "pyre/astral_number_not_digit_header",
+      "body": "Please help me.\nEm 𐄇 João escreveu:\n> old request\nStill mine.",
+      "max_chars": 3000,
+      "result": "Please help me.\nEm 𐄇 João escreveu:\nStill mine."
+    },
+    {
+      "label": "pyre/astral_letter_not_digit_header",
+      "body": "Please help me.\nEm 𝐀 João escreveu:\n> old request\nStill mine.",
+      "max_chars": 3000,
+      "result": "Please help me.\nEm 𝐀 João escreveu:\nStill mine."
+    },
+    {
+      "label": "pyre/astral_digit_device_footer",
+      "body": "Please help me.\nSent from my iPhone 𝟚",
+      "max_chars": 3000,
+      "result": "Please help me."
+    }
+  ],
+  "state": [
+    {
+      "label": "basic_clean_true",
+      "subject": "Locked out",
+      "body": "My account is locked. This email is confidential and intended solely for the named addressee.",
+      "sender": null,
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "Locked out",
+        "body": "My account is locked."
+      }
+    },
+    {
+      "label": "basic_clean_false_keeps_raw_body",
+      "subject": "Locked out",
+      "body": "My account is locked.\nThis email is confidential and intended solely for the named addressee.",
+      "sender": null,
+      "clean": false,
+      "extra": {},
+      "result": {
+        "subject": "Locked out",
+        "body": "My account is locked.\nThis email is confidential and intended solely for the named addressee."
+      }
+    },
+    {
+      "label": "with_sender",
+      "subject": "Refund request",
+      "body": "Please refund invoice 4411.",
+      "sender": "user@example.com",
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "Refund request",
+        "body": "Please refund invoice 4411.",
+        "from": "user@example.com"
+      }
+    },
+    {
+      "label": "subject_whitespace_stripped",
+      "subject": "   Refund request   ",
+      "body": "Please help.",
+      "sender": null,
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "Refund request",
+        "body": "Please help."
+      }
+    },
+    {
+      "label": "extra_fields_kept_when_not_none",
+      "subject": "Ticket",
+      "body": "Body text.",
+      "sender": "user@example.com",
+      "clean": true,
+      "extra": {
+        "priority": "high",
+        "ticket_id": 4411
+      },
+      "result": {
+        "subject": "Ticket",
+        "body": "Body text.",
+        "from": "user@example.com",
+        "priority": "high",
+        "ticket_id": 4411
+      }
+    },
+    {
+      "label": "extra_none_values_dropped",
+      "subject": "Ticket",
+      "body": "Body text.",
+      "sender": null,
+      "clean": true,
+      "extra": {
+        "nullable": null,
+        "kept": "value"
+      },
+      "result": {
+        "subject": "Ticket",
+        "body": "Body text.",
+        "kept": "value"
+      }
+    },
+    {
+      "label": "empty_subject_and_body",
+      "subject": "",
+      "body": "",
+      "sender": null,
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "",
+        "body": ""
+      }
+    },
+    {
+      "label": "hindi_subject_and_body",
+      "subject": "सहायता चाहिए",
+      "body": "मुझसे दो बार शुल्क लिया गया, कृपया रिफंड करें।",
+      "sender": null,
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "सहायता चाहिए",
+        "body": "मुझसे दो बार शुल्क लिया गया, कृपया रिफंड करें।"
+      }
+    },
+    {
+      "label": "p0411/max_chars_extra_small",
+      "subject": "Locked out",
+      "body": "My account is locked and I need help right now.",
+      "sender": null,
+      "clean": true,
+      "extra": {
+        "max_chars": 10
+      },
+      "result": {
+        "subject": "Locked out",
+        "body": "My account"
+      }
+    },
+    {
+      "label": "p0411/max_chars_extra_zero",
+      "subject": "Locked out",
+      "body": "My account is locked.",
+      "sender": null,
+      "clean": true,
+      "extra": {
+        "max_chars": 0
+      },
+      "result": {
+        "subject": "Locked out",
+        "body": ""
+      }
+    },
+    {
+      "label": "p0411/max_chars_extra_negative",
+      "subject": "Locked out",
+      "body": "My account is locked and I need help right now.",
+      "sender": null,
+      "clean": true,
+      "extra": {
+        "max_chars": -5
+      },
+      "result": {
+        "subject": "Locked out",
+        "body": "My account is locked "
+      }
+    },
+    {
+      "label": "p0411/max_chars_extra_large",
+      "subject": "Locked out",
+      "body": "My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. ",
+      "sender": null,
+      "clean": true,
+      "extra": {
+        "max_chars": 100000
+      },
+      "result": {
+        "subject": "Locked out",
+        "body": "My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked."
+      }
+    },
+    {
+      "label": "p0411/max_chars_default_cut",
+      "subject": "Locked out",
+      "body": "My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. ",
+      "sender": null,
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "Locked out",
+        "body": "My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My account is locked. My accou"
+      }
+    },
+    {
+      "label": "p0411/max_chars_ignored_when_not_clean",
+      "subject": "Locked out",
+      "body": "My account is locked and I need help right now.",
+      "sender": null,
+      "clean": false,
+      "extra": {
+        "max_chars": 5
+      },
+      "result": {
+        "subject": "Locked out",
+        "body": "My account is locked and I need help right now."
+      }
+    },
+    {
+      "label": "p0411/max_chars_with_other_extra",
+      "subject": "Locked out",
+      "body": "My account is locked and I need help.",
+      "sender": "a@b.com",
+      "clean": true,
+      "extra": {
+        "max_chars": 7,
+        "priority": "high"
+      },
+      "result": {
+        "subject": "Locked out",
+        "body": "My acco",
+        "from": "a@b.com",
+        "priority": "high"
+      }
+    },
+    {
+      "label": "p0411/sender_empty_dropped",
+      "subject": "Locked out",
+      "body": "My account is locked.",
+      "sender": "",
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "Locked out",
+        "body": "My account is locked."
+      }
+    },
+    {
+      "label": "p0411/extra_overrides_from",
+      "subject": "Locked out",
+      "body": "My account is locked.",
+      "sender": "a@b.com",
+      "clean": true,
+      "extra": {
+        "from": "c@d.com"
+      },
+      "result": {
+        "subject": "Locked out",
+        "body": "My account is locked.",
+        "from": "c@d.com"
+      }
+    },
+    {
+      "label": "p0411/extra_non_string_values",
+      "subject": "Locked out",
+      "body": "My account is locked.",
+      "sender": null,
+      "clean": true,
+      "extra": {
+        "n": 1,
+        "f": 1.5,
+        "b": false,
+        "l": [
+          1,
+          "x"
+        ],
+        "d": {
+          "k": "v"
+        }
+      },
+      "result": {
+        "subject": "Locked out",
+        "body": "My account is locked.",
+        "n": 1,
+        "f": 1.5,
+        "b": false,
+        "l": [
+          1,
+          "x"
+        ],
+        "d": {
+          "k": "v"
+        }
+      }
+    },
+    {
+      "label": "p0411/subject_none_like_empty",
+      "subject": "",
+      "body": "My account is locked.",
+      "sender": null,
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "",
+        "body": "My account is locked."
+      }
+    },
+    {
+      "label": "p0411/subject_unicode_whitespace",
+      "subject": "  Locked out  ",
+      "body": "My account is locked.",
+      "sender": null,
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "Locked out",
+        "body": "My account is locked."
+      }
+    },
+    {
+      "label": "p0411/state_quote_cleaned",
+      "subject": "Locked out",
+      "body": "Please unlock it.\nOn Mon, Jan 1, 2024 Jane wrote:\nOld text.",
+      "sender": null,
+      "clean": true,
+      "extra": {},
+      "result": {
+        "subject": "Locked out",
+        "body": "Please unlock it."
+      }
+    },
+    {
+      "label": "p0411/state_unclean_keeps_quote",
+      "subject": "Locked out",
+      "body": "Please unlock it.\nOn Mon, Jan 1, 2024 Jane wrote:\nOld text.",
+      "sender": null,
+      "clean": false,
+      "extra": {},
+      "result": {
+        "subject": "Locked out",
+        "body": "Please unlock it.\nOn Mon, Jan 1, 2024 Jane wrote:\nOld text."
+      }
+    }
+  ]
+}

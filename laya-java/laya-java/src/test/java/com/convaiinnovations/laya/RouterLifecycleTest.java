@@ -768,11 +768,11 @@ final class RouterLifecycleTest {
         assertThrows(IllegalStateException.class, () -> router.load("english"));
         assertThrows(IllegalStateException.class, () -> router.lease("english"));
         router.close();     // idempotent
-        // and routing a closed router is still harmless, because it touches nothing
-        // Undecided, not identified English (analyse gives language=null), so it takes the
-        // default -- which is multilingual. The point here is that routing still answers
-        // after close, not which checkpoint it picks.
-        assertEquals(Checkpoint.MULTILINGUAL,
+        // and routing a closed router is still harmless, because it touches nothing.
+        // Identified English, not undecided: `here` and `now` are English function words, so the
+        // reference routes this state to the English checkpoint instead of the default. The point
+        // here is that routing still answers after close, not which checkpoint it picks.
+        assertEquals(Checkpoint.ENGLISH,
                 router.route("plain english text here now").model());
     }
 

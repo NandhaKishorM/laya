@@ -76,7 +76,15 @@ public static class LanguageDetection
         {
             "the", "and", "is", "are", "was", "were", "to", "of", "in", "for", "with", "that",
             "this", "it", "you", "have", "has", "not", "but", "on", "at", "be", "as", "from",
-            "will", "can", "would", "there", "their", "what", "which", "please", "we", "i",
+            "will", "can", "would", "there", "their", "what", "which", "please", "we", "i", "how",
+            "why", "when", "where", "who", "whom", "does", "done", "doing", "been", "being",
+            "could", "should", "might", "must", "shall", "doesn", "didn", "isn", "aren", "wasn",
+            "weren", "haven", "hasn", "couldn", "wouldn", "won", "dont", "wont", "didnt", "doesnt",
+            "isnt", "wasnt", "havent", "ive", "youre", "thats", "whats", "any", "some", "many",
+            "much", "every", "each", "these", "those", "both", "few", "they", "them", "she", "him",
+            "his", "our", "your", "yours", "into", "onto", "between", "after", "before", "through",
+            "during", "without", "within", "down", "if", "nor", "than", "then", "because", "while",
+            "until", "here", "only", "very", "too", "ever", "never", "always", "already", "yet",
         },
         ["fr"] = new(StringComparer.Ordinal)
         {
@@ -106,6 +114,12 @@ public static class LanguageDetection
             "pueden", "quiero", "necesito", "hemos", "han", "sobre", "entre", "cuando", "donde",
             "porque", "aunque", "también", "ya", "eso", "esto", "esa", "ese", "nada", "algo",
             "aquí", "hoy", "gracias",
+            "ahora", "alguien", "ayer", "buenas", "cual", "cuales", "cuál", "cuáles", "cuándo",
+            "cómo", "desde", "despues", "después", "dónde", "entonces", "estan", "estoy", "están",
+            "hace", "hacer", "hago", "hasta", "hola", "luego", "mis", "nadie", "ninguna",
+            "nosotros", "nuestra", "nuestro", "otra", "pueda", "puedes", "puedo", "pues", "quien",
+            "quienes", "quisiera", "quién", "sabes", "siempre", "tambien", "tardes", "tienes",
+            "todavia", "todavía", "tus", "usted", "ustedes",
         },
         ["pt"] = new(StringComparer.Ordinal)
         {
@@ -120,6 +134,8 @@ public static class LanguageDetection
             "então", "estamos", "estava", "estou", "ficou", "fiz", "gostaria", "ja", "meus", "minhas",
             "nao", "nenhum", "nenhuma", "ninguem", "ninguém", "noite", "nossa", "nosso", "obrigada",
             "pra", "sao", "tambem", "também", "tarde", "tá", "vc", "vcs", "voce", "voces", "você", "vocês",
+            "amanha", "amanhã", "elas", "eles", "estao", "estão", "faco", "faz", "fazer", "faço",
+            "nós", "outra", "outras", "outros", "precisa", "quais", "qual", "quem",
         },
         ["it"] = new(StringComparer.Ordinal)
         {
@@ -132,6 +148,7 @@ public static class LanguageDetection
             "ieri", "grazie", "ciao", "scusa",
             "nel", "nell", "negli", "sul", "sulla", "sulle", "dal", "dalla", "dallo", "dagli", "dei",
             "delle", "dello", "degli", "agli", "alle", "col",
+            "qual",
         },
         ["nl"] = new(StringComparer.Ordinal)
         {
@@ -178,6 +195,8 @@ public static class LanguageDetection
         },
     };
 
+    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
     private static readonly HashSet<string> NordicOverlapWords = new(StringComparer.Ordinal)
         { "får", "hej", "ja", "jo", "kommer", "mig", "min", "nej", "om", "skulle", "tack", "vi" };
     private static readonly HashSet<string> ShortSwedishWords = new(StringComparer.Ordinal)
@@ -188,10 +207,6 @@ public static class LanguageDetection
     };
     private static readonly HashSet<string> EnglishCollisionWords = new(StringComparer.Ordinal)
         { "care", "come", "do", "im", "per", "plus", "son", "todo" };
-    private static readonly Regex Identifier = new(@"(?<![\w-])[\w-]*(?:[.@][\w-]+)+");
-    private static readonly Regex CodeLine = new(@"[=;{}\[\]]|\w\(");
-    private static readonly Regex Joined = new(@"[^\W_][._/\\][^\W_]");
-    private static readonly Regex LetterRun = new(@"[^\W\d_]{2,}");
 
     // Letters that ordinary English does not use. This is the signal that catches a Latin-script
     // language for which no stopword list is held at all (Romanian, Polish, Czech, Turkish,
@@ -205,7 +220,18 @@ public static class LanguageDetection
         + "ğı"                                      // Turkish (text is lowercased before matching)
         + "āēģīķļņūž"                               // Baltic
         + "đ"                                       // Serbo-Croatian / Vietnamese
-        + "ə";                                      // Azerbaijani
+        + "ə"                                       // Azerbaijani
+        // Vietnamese: no stopword list of its own, so its letters are the only signal that keeps
+        // it off the English checkpoint. The set used to stop at "đ" (the comment above already
+        // claimed Vietnamese coverage), but the tone-marked letters are precomposed codepoints of
+        // their own, so everyday sentences such as "Cảm ơn bạn nhiều nhé" carried a diacritic rate
+        // of 0.0 and were routed to the English checkpoint. Mirrors laya/lang.py; text is
+        // lowercased before matching, so lowercase forms are enough.
+        + "ạảấầẩẫậắằẳẵặ"                            // a-family tone marks
+        + "ẹẻẽếềểễệỉị"                              // e-/i-family tone marks
+        + "ọỏốồổỗộớờởỡợụủứừửữự"                      // o-/u-family tone marks
+        + "ỳỵỷỹơư";                                 // y-family tone marks, and the two letters
+                                                    // no other listed language uses
 
     private static readonly HashSet<int> NonEnDiacritics =
         new(NonEnDiacriticChars.EnumerateRunes().Select(r => r.Value));
@@ -252,6 +278,11 @@ public static class LanguageDetection
             case string s:
                 leaves.Add(s);
                 return;
+            // bytes: strict UTF-8, and invalid UTF-8 contributes no text (lang.py:253-255).
+            case byte[] bytes:
+                try { leaves.Add(StrictUtf8.GetString(bytes)); }
+                catch (DecoderFallbackException) { }
+                return;
             // Dict-like before generically enumerable, mirroring PythonJson's dispatch order.
             case IEnumerable<KeyValuePair<string, object?>> kvpSeq:
                 foreach (var kv in kvpSeq) CollectText(kv.Value, leaves, depth + 1);
@@ -259,14 +290,26 @@ public static class LanguageDetection
             case System.Collections.IDictionary dict:
                 foreach (System.Collections.DictionaryEntry entry in dict) CollectText(entry.Value, leaves, depth + 1);
                 return;
-            case System.Collections.IEnumerable seq:
-                foreach (var item in seq) CollectText(item, leaves, depth + 1);
+            // Any other mapping type (an IReadOnlyDictionary only, say): its values, as Python walks any Mapping.
+            case System.Collections.IEnumerable mapping when IsMapping(state):
+                foreach (var entry in mapping)
+                    CollectText(entry!.GetType().GetProperty("Value")!.GetValue(entry), leaves, depth + 1);
+                return;
+            // _iter_text walks lists and tuples only. A set, a generator or any other iterable holds no text.
+            case System.Collections.IList list:
+                foreach (var item in list) CollectText(item, leaves, depth + 1);
+                return;
+            case System.Runtime.CompilerServices.ITuple tuple:
+                for (var i = 0; i < tuple.Length; i++) CollectText(tuple[i], leaves, depth + 1);
                 return;
             default:
                 // Numbers, booleans and other scalars contribute nothing, matching _iter_text.
                 return;
         }
     }
+
+    private static bool IsMapping(object state) =>
+        state.GetType().GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>));
 
     /// <summary>
     /// Dominant script of <paramref name="text"/>: <c>"latin"</c>, <c>"han"</c>,
@@ -390,7 +433,7 @@ public static class LanguageDetection
     {
         ArgumentNullException.ThrowIfNull(text);
 
-        var words = ExtractWords(PythonLower(Identifier.Replace(text, " ").Replace("İ", "i"))).ToList();
+        var words = ExtractWords(PythonLower(ReplaceIdentifiers(text).Replace("İ", "i"))).ToList();
         var lowered = PythonLower(text);
 
         var diac = 0;
@@ -489,14 +532,14 @@ public static class LanguageDetection
             {
                 if (seen >= 4000) break;
                 var sample = SliceCodePoints(segment, 4000 - seen);
-                seen += sample.EnumerateRunes().Count();
+                seen += CodePointCount(sample);
                 var language = NamedProseLanguage(sample);
                 if (language is not null)
                 {
                     result = result with
                     {
                         Language = language, IsEnglish = false, LanguageUndecided = false,
-                        MixedSegment = sample.Trim(),
+                        MixedSegment = PythonStr.Strip(sample),
                     };
                     break;
                 }
@@ -507,30 +550,10 @@ public static class LanguageDetection
         var bestCount = -1;
         foreach (var leaf in leaves)
         {
-            LanguageAnalysis? candidate = null;
-            var lineCount = -1;
-            foreach (var line in leaf.Split('\n'))
-            {
-                if (line.EnumerateRunes().Count() < 7) continue;
-                var sample = SliceCodePoints(line, 4000);
-                if (string.IsNullOrWhiteSpace(sample) || CodeLine.IsMatch(sample)) continue;
-                var detection = AnalyseText(sample);
-                if (detection.IsEnglish) continue;
-                var alphaCount = sample.EnumerateRunes().Count(Rune.IsLetter);
-                if (detection.Language is not null and not "en")
-                {
-                    if (NamedProseLanguage(sample) is null) continue;
-                }
-                else if (detection.Script is not "latin" and not "unknown")
-                {
-                    if (!HasNonLatinWords(sample) || alphaCount < 10) continue;
-                }
-                else if (!(detection.LanguageUndecided && detection.DiacriticRate >= NonEnDiacriticRate
-                    && ExtractWords(sample).Count >= 4)) continue;
-                if (alphaCount > lineCount) { lineCount = alphaCount; candidate = detection; }
-            }
+            var candidate = LeafNonEnglish(leaf);
+            if (candidate is null) continue;
             var count = SliceCodePoints(leaf, 4000).EnumerateRunes().Count(Rune.IsLetter);
-            if (candidate is not null && count > bestCount) { bestCount = count; best = candidate; }
+            if (count > bestCount) { bestCount = count; best = candidate; }
         }
         return best is null ? result : result with
         {
@@ -538,30 +561,85 @@ public static class LanguageDetection
         };
     }
 
+    // _leaf_non_english: a string value that is itself not safe for the English checkpoint.
+    private static LanguageAnalysis? LeafNonEnglish(string leaf)
+    {
+        var bestN = -1;
+        LanguageAnalysis? best = null;
+        foreach (var line in leaf.Split('\n'))
+        {
+            // A line this short cannot be selected (see lang.py's note), so skip it first.
+            if (CodePointCount(line) < 7) continue;
+            var sample = SliceCodePoints(line, 4000);
+            if (PythonStr.Strip(sample).Length == 0 || HasCodeSyntax(sample)) continue;
+            var det = AnalyseText(sample);
+            if (det.IsEnglish) continue;
+            // A named language still has to survive NamedProseLanguage, but a veto is not a verdict
+            // of English: the line falls through to the diacritic branch below.
+            var named = det.Language is not (null or "en") && NamedProseLanguage(sample) is not null;
+            var alphaCount = sample.EnumerateRunes().Count(Rune.IsLetter);
+            if (!named)
+            {
+                if (det.Script is not ("latin" or "unknown"))
+                {
+                    if (!(HasNonLatinWords(sample) && alphaCount >= NonLatinMinLetters)) continue;
+                }
+                else if (!(det.DiacriticRate >= NonEnDiacriticRate && ExtractWords(sample).Count >= 4)) continue;
+            }
+            if (alphaCount > bestN) { bestN = alphaCount; best = det; }
+        }
+        return best;
+    }
+
+    // _shouted: a *cased* segment written entirely in capitals.
+    private static bool Shouted(string text)
+    {
+        var upper = false;
+        foreach (var rune in text.EnumerateRunes())
+        {
+            if (PythonStr.IsLower(rune)) return false;
+            if (PythonStr.IsUpper(rune)) upper = true;
+        }
+        return upper;
+    }
+
+    // _shouted_evidence: whether an all-caps line's evidence for `lang` is more than acronym-shaped tokens.
+    private static bool ShoutedEvidence(List<string> tokens, string lang, double diacriticRate)
+    {
+        if (!tokens.Any(t => CodePointCount(t) >= ShoutedMinWord)) return false;
+        if (diacriticRate >= NonEnDiacriticRate) return true;
+        var stop = Stop.GetValueOrDefault(lang);
+        return stop is not null
+            && tokens.Select(PythonLower).Any(w => stop.Contains(w) && CodePointCount(w) >= ShoutedMinStopword);
+    }
+
     private static string? NamedProseLanguage(string segment)
     {
-        if (string.IsNullOrWhiteSpace(segment) || CodeLine.IsMatch(segment)) return null;
-        var prose = string.Join(' ', segment.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
-            .Where(token => !Joined.IsMatch(token)));
-        if (prose.EnumerateRunes().Any(Rune.IsLower))
-            prose = LetterRun.Replace(prose, match => match.Value.EnumerateRunes().Any(Rune.IsUpper)
-                && !match.Value.EnumerateRunes().Any(Rune.IsLower) ? " " : match.Value);
+        if (PythonStr.Strip(segment).Length == 0 || HasCodeSyntax(segment)) return null;
+        var prose = string.Join(' ', PythonStr.Split(segment).Where(token => !IsJoinedToken(token)));
+        var shouted = Shouted(prose);
+        if (!shouted) prose = BlankUpperRuns(prose);
         var tokens = ExtractWords(prose);
         if (tokens.Count < 4) return null;
-        var language = LatinProfile(prose).Language;
+        var profile = LatinProfile(prose);
+        var language = profile.Language;
         if (language is null or "en") return null;
+        if (shouted && !ShoutedEvidence(tokens, language, profile.DiacriticRate)) return null;
         return tokens.Select(PythonLower).Distinct().Count(w => Stop[language].Contains(w)) >= 2
             ? language : null;
     }
+
+    private static bool NonLatinCarries(double nonLatin, int nonLatinLetters) =>
+        nonLatin >= NonLatinFraction
+        || (nonLatin >= NonLatinMinFraction && nonLatinLetters >= NonLatinMinLetters);
 
     private static LanguageAnalysis AnalyseText(string text)
     {
         var prof = ScriptProfile(text);
         var script = DetectScript(text);
         var nonLatin = prof.Count > 0 ? Calibration.Round4(1.0 - prof.GetValueOrDefault("latin", 0.0)) : 0.0;
-        var nonLatinLetters = Math.Round(nonLatin * text.EnumerateRunes().Count(Rune.IsLetter));
-        if (script == "latin" && HasNonLatinWords(text)
-            && (nonLatin >= 0.2 || (nonLatin >= 0.1 && nonLatinLetters >= 10)))
+        var nonLatinLetters = (int)Math.Round(nonLatin * text.EnumerateRunes().Count(Rune.IsLetter));
+        if (script == "latin" && HasNonLatinWords(text) && NonLatinCarries(nonLatin, nonLatinLetters))
             script = prof.Where(p => p.Key != "latin").MaxBy(p => p.Value).Key;
 
         if (script == "unknown")
@@ -572,6 +650,26 @@ public static class LanguageDetection
 
         var profLat = LatinProfile(text);
         var lang = profLat.Language;
+        // The acronym bar belongs here too, not only in the segment scan (lang.py:689-736). Neither
+        // bar applies when the state is carried by a caseless script.
+        if (lang is not (null or "en") && !NonLatinCarries(nonLatin, nonLatinLetters))
+        {
+            if (Shouted(text))
+            {
+                if (!ShoutedEvidence(ExtractWords(text), lang, profLat.DiacriticRate)) lang = null;
+            }
+            else
+            {
+                // Mixed-case text: re-take the verdict without the acronym-shaped all-caps runs.
+                var caps = LetterRuns(text).Select(r => text.Substring(r.Start, r.Length))
+                    .Where(PythonStr.StrIsUpper).ToList();
+                if (caps.Count > 0 && !caps.Any(c => CodePointCount(c) >= ShoutedMinWord))
+                {
+                    var blanked = BlankUpperRuns(text);
+                    if (blanked != text) lang = LatinProfile(blanked).Language;
+                }
+            }
+        }
         // Undecided is not English. Treating it as English sends every Latin-script language no
         // stopwords are held for to the checkpoint that cannot read it, silently.
         var undecided = lang is null;
@@ -590,8 +688,7 @@ public static class LanguageDetection
         var upper = false;
         foreach (var rune in text.EnumerateRunes())
         {
-            if (Rune.GetUnicodeCategory(rune) is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark)
-                continue;
+            if (PythonStr.IsCombining(rune.Value)) continue;
             var cp = rune.Value;
             var next = cp < 0x0250 || (cp >= 0x1E00 && cp <= 0x1EFF)
                 || (cp >= 0xFF21 && cp <= 0xFF3A) || (cp >= 0xFF41 && cp <= 0xFF5A)
@@ -600,9 +697,131 @@ public static class LanguageDetection
             if (count >= 2 && !upper) return true;
             script = next;
             count = next is null ? 0 : 1;
-            upper = Rune.IsUpper(rune);
+            upper = PythonStr.IsUpper(rune);
         }
         return count >= 2 && !upper;
+    }
+
+    // ── Python-compatible scanners ───────────────────────────────────────────
+    // `re`'s \w, \s and \d differ from .NET's (marks, connector punctuation, U+001C..U+001F) and
+    // .NET regexes work on UTF-16 units, not code points, so the patterns lang.py runs are written
+    // over code-point predicates instead.
+
+    private const int ShoutedMinStopword = 4;
+    private const int ShoutedMinWord = 5;
+    private const double NonLatinFraction = 0.2;
+    private const double NonLatinMinFraction = 0.1;
+    private const int NonLatinMinLetters = 10;
+
+    private static int CodePointCount(string s)
+    {
+        var count = 0;
+        foreach (var _ in s.EnumerateRunes()) count++;
+        return count;
+    }
+
+    /// <summary><c>\w</c>: <c>str.isalnum()</c> or the underscore.</summary>
+    private static bool IsWordChar(Rune r) => r.Value == '_' || Rune.IsLetter(r) || Rune.IsNumber(r);
+
+    /// <summary><c>[^\W_]</c>: <c>str.isalnum()</c>.</summary>
+    private static bool IsAlnum(Rune r) => Rune.IsLetter(r) || Rune.IsNumber(r);
+
+    /// <summary><c>_IDENTIFIER.sub(" ", text)</c>: <c>(?&lt;![\w-])[\w-]*(?:[.@][\w-]+)+</c>.</summary>
+    private static string ReplaceIdentifiers(string text)
+    {
+        var runes = text.EnumerateRunes().ToArray();
+        static bool Ident(Rune r) => IsWordChar(r) || r.Value == '-';
+        var sb = new StringBuilder(text.Length);
+        var i = 0;
+        while (i < runes.Length)
+        {
+            // The lookbehind only lets a match start at the head of a run, which is also what keeps this linear.
+            if (i == 0 || !Ident(runes[i - 1]))
+            {
+                var j = i;
+                while (j < runes.Length && Ident(runes[j])) j++;
+                var groups = 0;
+                while (j < runes.Length && runes[j].Value is '.' or '@')
+                {
+                    var k = j + 1;
+                    while (k < runes.Length && Ident(runes[k])) k++;
+                    if (k == j + 1) break;
+                    j = k;
+                    groups++;
+                }
+                if (groups > 0)
+                {
+                    sb.Append(' ');
+                    i = j;
+                    continue;
+                }
+            }
+            sb.Append(runes[i]);
+            i++;
+        }
+        return sb.ToString();
+    }
+
+    /// <summary><c>_CODE_LINE.search</c>: <c>[=;{}\[\]]|\w\(</c>.</summary>
+    private static bool HasCodeSyntax(string line)
+    {
+        var prevWord = false;
+        foreach (var rune in line.EnumerateRunes())
+        {
+            if (rune.Value is '=' or ';' or '{' or '}' or '[' or ']' || (rune.Value == '(' && prevWord)) return true;
+            prevWord = IsWordChar(rune);
+        }
+        return false;
+    }
+
+    /// <summary><c>_JOINED.search(token)</c>: <c>[^\W_][._/\\][^\W_]</c>.</summary>
+    private static bool IsJoinedToken(string token)
+    {
+        var runes = token.EnumerateRunes().ToArray();
+        for (var i = 0; i + 2 < runes.Length; i++)
+            if (IsAlnum(runes[i]) && runes[i + 1].Value is '.' or '_' or '/' or '\\' && IsAlnum(runes[i + 2]))
+                return true;
+        return false;
+    }
+
+    /// <summary><c>_LETTER_RUN.finditer</c>: maximal runs of at least two <c>[^\W\d_]</c> characters (UTF-16 offsets).</summary>
+    private static List<(int Start, int Length)> LetterRuns(string text)
+    {
+        var runs = new List<(int, int)>();
+        var start = -1;
+        var count = 0;
+        var offset = 0;
+        foreach (var rune in text.EnumerateRunes())
+        {
+            if (IsWordRune(rune))
+            {
+                if (start < 0) { start = offset; count = 0; }
+                count++;
+            }
+            else
+            {
+                if (start >= 0 && count >= 2) runs.Add((start, offset - start));
+                start = -1;
+            }
+            offset += rune.Utf16SequenceLength;
+        }
+        if (start >= 0 && count >= 2) runs.Add((start, offset - start));
+        return runs;
+    }
+
+    /// <summary><c>_LETTER_RUN.sub(lambda m: " " if m.group().isupper() else m.group(), text)</c>.</summary>
+    private static string BlankUpperRuns(string text)
+    {
+        var sb = new StringBuilder(text.Length);
+        var last = 0;
+        foreach (var (start, length) in LetterRuns(text))
+        {
+            if (!PythonStr.StrIsUpper(text.Substring(start, length))) continue;
+            sb.Append(text, last, start - last).Append(' ');
+            last = start + length;
+        }
+        sb.Append(text, last, text.Length - last);
+        return sb.ToString();
     }
 
     // ── word extraction ──────────────────────────────────────────────────────
@@ -645,23 +864,8 @@ public static class LanguageDetection
 
     // ── code-point-aware slicing ─────────────────────────────────────────────
 
-    /// <summary>
-    /// Python's <c>str.lower()</c>: full (locale-independent default) Unicode lowercasing,
-    /// including the one unconditional 1-to-2-code-point special case, U+0130 (LATIN CAPITAL
-    /// LETTER I WITH DOT ABOVE) → U+0069 U+0307 ("i" + combining dot above).
-    /// </summary>
-    /// <remarks>
-    /// This project builds with <c>InvariantGlobalization</c> enabled, under which
-    /// <see cref="string.ToLowerInvariant()"/> uses a compiled-in simple (1-to-1) Unicode casing
-    /// table rather than ICU's full <c>SpecialCasing.txt</c> rules: it lowercases ordinary
-    /// accented letters correctly (é, ß, ...) but leaves U+0130 completely untouched rather than
-    /// expanding it, so the fix-up below only ever needs to look for a leftover U+0130.
-    /// </remarks>
-    internal static string PythonLower(string text)
-    {
-        var lowered = text.ToLowerInvariant();
-        return lowered.Contains('İ') ? lowered.Replace("İ", "i̇") : lowered;
-    }
+    /// <summary>Python's <c>str.lower()</c>; see <see cref="PythonStr.Lower"/>.</summary>
+    internal static string PythonLower(string text) => PythonStr.Lower(text);
 
     /// <summary>Python's <c>s[:maxCodePoints]</c>: a prefix measured in Unicode code points.</summary>
     /// <remarks>Internal rather than private so <see cref="LayaEmail"/> can reuse it for <c>max_chars</c>.</remarks>

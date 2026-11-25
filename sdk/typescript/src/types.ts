@@ -67,6 +67,31 @@ export interface PredictOptions extends RequestOptions {
   minConfidence?: MinConfidence;
 }
 
+export interface BatchPredictOptions extends PredictOptions {
+  /** Server-side inference batch size; does not split the HTTP request. */
+  batchSize?: number;
+  /** Let the server group similar lengths; results still follow input order. */
+  sortByLength?: boolean;
+}
+
+/** Controls for a routing snapshot, without prediction budgets or abstention. */
+export interface RouteOptions extends RequestOptions,
+    Pick<PredictOptions, 'model' | 'task' | 'lang' | 'langGuess'> {
+  /** Include the deployed Router's diagnostic after its route hooks run. */
+  explain?: boolean;
+}
+
+/** The deployed Router's current selection; not a guarantee about later inference. */
+export interface RouteSnapshot {
+  /** Includes custom registered names, not only built-in checkpoints. */
+  model: string;
+  /** Null when an attached model has no reloadable source. */
+  repo: string | null;
+  reason: string;
+  /** Present when explain=true; null means no diagnostic was available. Hooks may supply any JSON. */
+  diagnostic?: JsonValue;
+}
+
 interface AnswerBase {
   /** Optional action metadata returned by Laya. */
   action?: { act_probability: number };
@@ -175,6 +200,16 @@ export interface Prediction<Q extends Questions = Questions> {
   usage: Usage;
   /** Optional routing metadata returned by Laya. */
   routing?: RouteDecision;
+}
+/** Aggregate token counts. Per-state truncation metadata stays in each result's usage. */
+export interface BatchUsage {
+  input_tokens: number;
+  output_tokens: number;
+}
+export interface BatchPrediction<Q extends Questions = Questions> {
+  /** Result at index i belongs to input state i; invalid batches throw instead of returning a partial list. */
+  results: Prediction<Q>[];
+  total_usage: BatchUsage;
 }
 /** Laya's self-hosted health probe.
  *

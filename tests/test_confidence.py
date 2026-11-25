@@ -127,7 +127,13 @@ from laya.confidence import check_min_confidence, flag_low_confidence  # noqa: E
 for valid in (0.0, 0.5, 1.0, 0, 1, 0.85):
     check("min_confidence/valid %.2f" % valid, check_min_confidence(valid), float(valid))
 
-for invalid in (True, False, -0.01, 1.01, -1.0, 2.0, float("nan"), float("inf"), float("-inf"), "0.5", None, [0.5]):
+for invalid in (True, False, -0.01, 1.01, -1.0, 2.0, float("nan"), float("inf"), float("-inf"), "0.5", None, [0.5],
+                # A JSON integer wider than a double is the third way a client's threshold is not a
+                # number: `math.isfinite` raises `OverflowError` rather than answering "not finite",
+                # so this walked out of `check_min_confidence` -- and out of `validate_min_confidence`,
+                # whose docstring says it "only wraps its ValueError as a clean invalid_min_confidence
+                # the client can read" -- as an interpreter error instead of the refusal.
+                10 ** 400, -(10 ** 400)):
     try:
         check_min_confidence(invalid)
         FAIL.append("min_confidence/should reject %r" % (invalid,))
@@ -245,6 +251,11 @@ odd = [{"answers": {
     # None is not None is also False), so nothing else pinned this down.
     "q_nan_entropy": {"type": "choice", "confidence": float("nan")},
     "q_bool_entropy": {"type": "choice", "confidence": True},
+    # Both readers above end in `math.isfinite`, and a 400-digit integer is what JSON's unbounded
+    # grammar hands them: the gate crashed instead of reporting `unevaluated`, from the same field
+    # it is defined against and from the entropy fallback that already leaked a NaN.
+    "q_overflow": {"type": "choice", "answer_confidence": 10 ** 400},
+    "q_overflow_entropy": {"type": "choice", "confidence": 10 ** 400},
     "q_fine": {"type": "choice", "answer_confidence": 0.99},
 }}]
 apply_confidence_gate(odd, 0.80)
@@ -433,8 +444,9 @@ check("export/laya re-exports the same tuple", laya.GATE_STATES, _confidence.GAT
 # --------------------------------- the two doc pages must attribute confidence per question type
 # `docs/structured.md` and `docs/questions-and-answers.md` each opened their confidence section with
 # "`confidence` is normalized entropy". Neither agent writes that for every type:
-# `Agent._decode_answers` (`laya/agent.py:1367-1404`) and `ONNXAgent._decode_answers`
-# (`laya/onnx_agent.py:682-727`) put `confidence_from_probs(p, k)` = `1 - H(p) / log(k)` in the
+# `Agent._decode_answers` (`laya/agent.py::Agent._decode_answers`) and `ONNXAgent._decode_answers`
+# (`laya/onnx_agent.py::ONNXAgent._decode_answers`) put `confidence_from_probs(p, k)` =
+# `1 - H(p) / log(k)` in the
 # `choice` and `score` answers and `max(p_true, 1 - p_true)` in the `noul` one. Each page printed a
 # `noul` in the very block its sentence introduces, so the sentence was falsifiable from the page
 # alone: the Q&A page's sample answer is `{"type": "noul", "noul": 0.8727, "confidence": 0.8727}`,
@@ -943,7 +955,7 @@ def test_page_qualifies_the_banner_and_derives_its_numbers():
 # `examples/03_reading_the_result.py` is the page a reader comes back to "when writing your own
 # glue code", and its field tour closed with "`confidence` is 1 minus normalised entropy -- a scale
 # that moves with the option count on the same answer". `Agent._decode_answers` runs two formulas
-# and picks by question type (`laya/agent.py:1366-1402`):
+# and picks by question type (`laya/agent.py:1498-1530`):
 #   * `choice` and `score`  ->  `round(confidence_from_probs(p, k), 4)` = `1 - H(p) / log(k)`
 #   * `noul`                ->  `round(max(float(p[1]), 1.0 - float(p[1])), 4)`
 # The page calls all three types in one `predict()`, so no single sentence covers `confidence` --
@@ -2228,7 +2240,7 @@ for _fn in (test_tl_kernels_drops_the_wrong_row_claim,
 # --------------------------------------- DecisionResult's docstring must split confidence by question type
 # `laya/structured.py`'s `DecisionResult` closed with "confidence keeps the **normalized-entropy
 # value** it has always had, because that is a different quantity on a scale that depends on the
-# label count". `Agent._decode_answers` (`laya/agent.py:1349-1402`) uses two different formulas:
+# label count". `Agent._decode_answers` (`laya/agent.py:1458-1487`) uses two different formulas:
 #   * `choice` and `score`  ->  `confidence_from_probs(p, k)` = `1 - H(p) / log(k)`
 #   * `noul`                ->  `max(p_true, 1 - p_true)`  (its own comment: "identical here:
 #                               over two options `max(p_true, 1 - p_true)` is `max(p)`")
@@ -2443,6 +2455,35 @@ for _name, _answer, _want in (
     check_true("jev_confidence/%s" % _name, _got is not None and abs(_got - _want) < 1e-9,
                "got %r, want %r" % (_got, _want))
 
+# --- finite total overflow: a common scale must not change the confidence -----------------
+# Each entry below is finite and non-negative. The public helper accepts unnormalised weights,
+# but their sum can still overflow: dividing by infinity turns them all into zeros, reporting
+# negative choice confidence or maximum score confidence for an uncertain distribution.
+_JEV_FINITE_SCALE_CASES = (
+    ("overflow-uniform", (1e308, 1e308), (1.0, 1.0)),
+    ("overflow-skewed", (1e308, 8e307), (1.0, 0.8)),
+    ("overflow-with-zero", (0.0, 1e308, 1e308), (0.0, 1.0, 1.0)),
+    ("overflow-three", (1e308, 5e307, 5e307), (1.0, 0.5, 0.5)),
+    ("overflow-integers", (10 ** 308, 10 ** 308), (1.0, 1.0)),
+    ("overflow-numeric-strings", ("1e308", "1e308"), (1.0, 1.0)),
+    ("small-normal", (1e-308, 8e-309), (1.0, 0.8)),
+    ("smallest-subnormal", (5e-324, 5e-324), (1.0, 1.0)),
+    ("zero-total", (0.0, 0.0), (1.0, 1.0)),
+)
+for _name, _weights, _reference in _JEV_FINITE_SCALE_CASES:
+    for _build in (_choice, _score):
+        _answer = _build(*_weights)
+        _before = copy.deepcopy(_answer)
+        _got = jev_confidence(_answer)
+        _want = jev_confidence(_build(*_reference))
+        check_true("jev_finite_scale/%s/%s" % (_answer["type"], _name),
+                   _got is not None and abs(_got - _want) < 1e-9,
+                   "got %r, want %r" % (_got, _want))
+        check_true("jev_finite_range/%s/%s" % (_answer["type"], _name),
+                   _got is not None and 0.0 <= _got <= 1.0, repr(_got))
+        check("jev_finite_input/%s/%s" % (_answer["type"], _name), _answer, _before)
+# --- end finite total overflow -------------------------------------------------------------
+
 # Score levels are read in numeric order, not string order: "10" sorts before "2" as text.
 _levels = {str(i): 0.0 for i in range(11)}
 _levels["10"] = 1.0
@@ -2464,9 +2505,89 @@ for _name, _answer in (
     ("non-numeric-probability", _choice(0.5, "high")),
     ("bool-probability", _choice(True, False)),
     ("nan-probability", _choice(float("nan"), 0.5)),
+    ("infinite-probability", _choice(float("inf"), 0.5)),
     ("non-integer-score-level", {"type": "score", "probabilities": {"low": 0.5, "high": 0.5}}),
+    # A negative probability is malformed, and at `432312b3` none of these five were refused: they
+    # returned 3.0, 2.0, 0.8, 121.0 (120.99999999999989) and 1.75. The third is the one that cannot
+    # be caught by inspection -- an all-negative document divides by its own negative total and
+    # comes back with the number its positive counterpart comes back with.
+    ("negative-probability", _choice(2.0, -1.0)),
+    ("mixed-sign-argmax-flips", _choice(0.5, -1.5)),
+    ("all-negative-probabilities", _choice(-0.9, -0.1)),
+    ("negative-total-near-zero", _choice(-0.61, 0.6)),
+    ("negative-score-level", _score(1.5, -0.5, 0.0)),
+    # `float()` and `int()` do not only refuse a value that is not a number, they also refuse one
+    # that is too wide to become one: JSON's grammar has no double limit, so a 400-digit integer
+    # probability arrives as a Python `int` and `float()` raises `OverflowError` out of a function
+    # whose docstring promises no number rather than a made-up one.
+    ("overflowing-integer-probability", _choice(10 ** 400, 1)),
+    ("json-integer-too-wide-for-a-double",
+     _json.loads('{"type":"choice","probabilities":{"a":' + "9" * 400 + ',"b":0.1}}')),
+    ("overflowing-score-level", {"type": "score", "probabilities": {float("inf"): 0.5, 2: 0.5}}),
 ):
     check("jev_confidence/none-for-%s" % _name, jev_confidence(_answer), None)
+
+
+# The table above refuses a document whose probabilities are *all* boolean, which is the one shape a
+# `any(isinstance(v, bool) ...)` guard and an `all(...)` one agree on. The positions below are where
+# the two disagree, and they are the shapes a client actually sends: `{"spam": true, "ham": 0.4}`
+# mixes a JSON boolean with real numbers. Under `all` that document is measured -- `float(True)` is
+# 1.0, so the answer comes back as the most confident option the caller never scored -- and
+# `/v1/systemone` publishes the number as `x_jev_confidence` for a client to threshold against.
+_swept, _measured = 0, []
+for _k in (2, 3, 4, 5, 8, 12):
+    for _i in range(_k):
+        for _flag in (True, False):
+            _vals = [1.0 / _k] * _k
+            _vals[_i] = _flag
+            for _answer in (_choice(*_vals), _score(*_vals)):
+                _got = jev_confidence(_answer)
+                _swept += 1
+                if _got is not None:
+                    _measured.append((_k, _i, _flag, _answer["type"], _got))
+check_true("jev_confidence/a bool in any position of any option count is refused",
+           not _measured, "%d of %d measured: %r" % (len(_measured), _swept, _measured[:3]))
+# Every one of those documents differs from its all-float twin by exactly one entry, so the count
+# is the witness that the sweep ran over the positions it claims.
+check("jev_confidence/position sweep size", _swept, sum(2 * 2 * _k for _k in (2, 3, 4, 5, 8, 12)))
+
+
+def _jev_measured(_answer):
+    """`jev_confidence`'s number, or the exception it raised instead, so a slip reports, not aborts."""
+    try:
+        return jev_confidence(_answer)
+    except BaseException as _exc:  # noqa: BLE001 -- the bare TypeError a misplaced check raises
+        return _exc
+
+
+# A probability written as the string "0.9" reads as a number through the function's own float()
+# coercion, so it is measured rather than refused -- and the finite and range checks run on that
+# coerced value, not on the JSON type it arrived as.
+_got = _jev_measured(_choice("0.9", "0.1"))
+check_true("jev_confidence/a numeric string probability is measured as a number",
+           isinstance(_got, float) and abs(_got - 0.8) < 1e-9, repr(_got))
+
+# The range the name promises: nothing this returns is outside [0, 1], and the negatives are
+# exactly what is refused. `x_jev_confidence` is served for a client to compare a threshold
+# against, so an out-of-range number is a gate that passes every answer it touches.
+_swept, _out_of_range, _refused = 0, [], []
+for _i in range(-200, 301):
+    for _answer in (_choice(_i / 100.0, 0.6), _score(_i / 100.0, 0.4, 0.2)):
+        _got = jev_confidence(_answer)
+        _swept += 1
+        if _got is None:
+            _refused.append(_i / 100.0)
+        elif not (0.0 <= _got <= 1.0):
+            _out_of_range.append((_i / 100.0, _got))
+check_true("jev_confidence/sweep kept every number inside [0, 1]", not _out_of_range,
+           "%d of %d outside, worst %r" % (len(_out_of_range), _swept, _out_of_range[:3]))
+check_true("jev_confidence/sweep refused exactly the negative probability",
+           sorted(set(_refused)) == [value / 100.0 for value in range(-200, 0)],
+           "%d refused: %r" % (len(_refused), _refused[:2] + _refused[-2:]))
+# 501 values x both answer types, and the 400 refusals are the 200 negatives twice over
+check_true("jev_confidence/sweep measured everything that is not negative",
+           (_swept, len(_refused), _swept - len(_refused)) == (1002, 400, 602),
+           "swept %d, refused %d, measured %d" % (_swept, len(_refused), _swept - len(_refused)))
 
 # --- the public name and the served field must be one computation (#302) --------------------
 # `/v1/systemone` publishes `x_jev_confidence`, but a caller running the checkpoint in-process
@@ -2493,6 +2614,38 @@ for _qid in ("q", "r", "s"):
           _served[_qid]["x_jev_confidence"], round(jev_confidence(_answers[_qid]), 4))
 check_true("jev_public/served noul carries no field",
            "x_jev_confidence" not in _served["n"], _served["n"].keys())
+
+# --- probability precision: both decoders round independently, not to a unit sum (#555) ------
+from laya.agent import Agent  # noqa: E402
+from laya.onnx_agent import ONNXAgent  # noqa: E402
+
+for _cls in (Agent, ONNXAgent):
+    _agent = _cls.__new__(_cls)  # no checkpoint, model or ONNX session
+    _agent.temperature = [1.0, 1.0, 1.0]
+    _agent.temperature_by_options = {}
+    for _k, _value, _total in ((3, 0.3333, 0.9999), (6, 0.1667, 1.0002)):
+        for _qtype in ("choice", "score"):
+            _labels = ["o%d" % i for i in range(_k)]
+            _crit = dict.fromkeys(_labels) if _qtype == "choice" else _labels
+            _answer = _agent._decode_answers(
+                np.zeros((1, _k)), np.array([[1.0, 0.0]]), [{"markers": list(range(_k))}],
+                ["q"], {"q": {"t": _qtype, "crit": _crit}}, 0)["q"]
+            _probs = list(_answer["probabilities"].values())
+            _name = "rounding/%s/%s/k=%d" % (_cls.__name__, _qtype, _k)
+            check(_name + "/four decimal places", _probs, [_value] * _k)
+            check_true(_name + "/non-unit sum", close(sum(_probs), _total), repr(_probs))
+
+for _page in ("questions-and-answers.md", "http-api.md"):
+    _text = _prose(_read_page(os.path.join(DOC_ROOT, "docs", _page)))
+    check_true("rounding/docs/%s explains precision" % _page,
+               bool(_re.search(r"`probabilities`.*?rounded independently to four decimal places", _text)))
+    check_true("rounding/docs/%s qualifies the unit sum" % _page,
+               "need not sum exactly to 1" in _text)
+
+_tournament = _prose(_read_page(os.path.join(DOC_ROOT, "docs", "http-api.md")).split(
+    "### Large choices:", 1)[1].split("## Limits", 1)[0])
+check_true("rounding/docs/tournament does not promise an exact unit sum",
+           "need not sum exactly to 1" in _tournament)
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:

@@ -1,0 +1,854 @@
+{
+  "name": "batch_truncated",
+  "states": [
+    "Customer support transcript. Turn 0: the agent restated the refund policy and the customer repeated the complaint. Turn 1: the agent restated the refund policy and the customer repeated the complaint. Turn 2: the agent restated the refund policy and the customer repeated the complaint. Turn 3: the agent restated the refund policy and the customer repeated the complaint. Turn 4: the agent restated the refund policy and the customer repeated the complaint. Turn 5: the agent restated the refund policy and the customer repeated the complaint. Turn 6: the agent restated the refund policy and the customer repeated the complaint. Turn 7: the agent restated the refund policy and the customer repeated the complaint. Turn 8: the agent restated the refund policy and the customer repeated the complaint. Turn 9: the agent restated the refund policy and the customer repeated the complaint. Turn 10: the agent restated the refund policy and the customer repeated the complaint. Turn 11: the agent restated the refund policy and the customer repeated the complaint. Turn 12: the agent restated the refund policy and the customer repeated the complaint. Turn 13: the agent restated the refund policy and the customer repeated the complaint. Turn 14: the agent restated the refund policy and the customer repeated the complaint. Turn 15: the agent restated the refund policy and the customer repeated the complaint. Turn 16: the agent restated the refund policy and the customer repeated the complaint. Turn 17: the agent restated the refund policy and the customer repeated the complaint. Turn 18: the agent restated the refund policy and the customer repeated the complaint. Turn 19: the agent restated the refund policy and the customer repeated the complaint. Turn 20: the agent restated the refund policy and the customer repeated the complaint. Turn 21: the agent restated the refund policy and the customer repeated the complaint. Turn 22: the agent restated the refund policy and the customer repeated the complaint. Turn 23: the agent restated the refund policy and the customer repeated the complaint. Turn 24: the agent restated the refund policy and the customer repeated the complaint. Turn 25: the agent restated the refund policy and the customer repeated the complaint. Turn 26: the agent restated the refund policy and the customer repeated the complaint. Turn 27: the agent restated the refund policy and the customer repeated the complaint. Turn 28: the agent restated the refund policy and the customer repeated the complaint. Turn 29: the agent restated the refund policy and the customer repeated the complaint. Turn 30: the agent restated the refund policy and the customer repeated the complaint. Turn 31: the agent restated the refund policy and the customer repeated the complaint. Turn 32: the agent restated the refund policy and the customer repeated the complaint. Turn 33: the agent restated the refund policy and the customer repeated the complaint. Turn 34: the agent restated the refund policy and the customer repeated the complaint. Turn 35: the agent restated the refund policy and the customer repeated the complaint. Turn 36: the agent restated the refund policy and the customer repeated the complaint. Turn 37: the agent restated the refund policy and the customer repeated the complaint. Turn 38: the agent restated the refund policy and the customer repeated the complaint. Turn 39: the agent restated the refund policy and the customer repeated the complaint. Turn 40: the agent restated the refund policy and the customer repeated the complaint. Turn 41: the agent restated the refund policy and the customer repeated the complaint. Turn 42: the agent restated the refund policy and the customer repeated the complaint. Turn 43: the agent restated the refund policy and the customer repeated the complaint. Turn 44: the agent restated the refund policy and the customer repeated the complaint. Turn 45: the agent restated the refund policy and the customer repeated the complaint. Turn 46: the agent restated the refund policy and the customer repeated the complaint. Turn 47: the agent restated the refund policy and the customer repeated the complaint. Turn 48: the agent restated the refund policy and the customer repeated the complaint. Turn 49: the agent restated the refund policy and the customer repeated the complaint. Turn 50: the agent restated the refund policy and the customer repeated the complaint. Turn 51: the agent restated the refund policy and the customer repeated the complaint. Turn 52: the agent restated the refund policy and the customer repeated the complaint. Turn 53: the agent restated the refund policy and the customer repeated the complaint. Turn 54: the agent restated the refund policy and the customer repeated the complaint. Turn 55: the agent restated the refund policy and the customer repeated the complaint. Turn 56: the agent restated the refund policy and the customer repeated the complaint. Turn 57: the agent restated the refund policy and the customer repeated the complaint. Turn 58: the agent restated the refund policy and the customer repeated the complaint. Turn 59: the agent restated the refund policy and the customer repeated the complaint. Turn 60: the agent restated the refund policy and the customer repeated the complaint. Turn 61: the agent restated the refund policy and the customer repeated the complaint. Turn 62: the agent restated the refund policy and the customer repeated the complaint. Turn 63: the agent restated the refund policy and the customer repeated the complaint. Turn 64: the agent restated the refund policy and the customer repeated the complaint. Turn 65: the agent restated the refund policy and the customer repeated the complaint. Turn 66: the agent restated the refund policy and the customer repeated the complaint. Turn 67: the agent restated the refund policy and the customer repeated the complaint. Turn 68: the agent restated the refund policy and the customer repeated the complaint. Turn 69: the agent restated the refund policy and the customer repeated the complaint. Turn 70: the agent restated the refund policy and the customer repeated the complaint. Turn 71: the agent restated the refund policy and the customer repeated the complaint. Turn 72: the agent restated the refund policy and the customer repeated the complaint. Turn 73: the agent restated the refund policy and the customer repeated the complaint. Turn 74: the agent restated the refund policy and the customer repeated the complaint. Turn 75: the agent restated the refund policy and the customer repeated the complaint. Turn 76: the agent restated the refund policy and the customer repeated the complaint. Turn 77: the agent restated the refund policy and the customer repeated the complaint. Turn 78: the agent restated the refund policy and the customer repeated the complaint. Turn 79: the agent restated the refund policy and the customer repeated the complaint. Turn 80: the agent restated the refund policy and the customer repeated the complaint. Turn 81: the agent restated the refund policy and the customer repeated the complaint. Turn 82: the agent restated the refund policy and the customer repeated the complaint. Turn 83: the agent restated the refund policy and the customer repeated the complaint. Turn 84: the agent restated the refund policy and the customer repeated the complaint. Turn 85: the agent restated the refund policy and the customer repeated the complaint. Turn 86: the agent restated the refund policy and the customer repeated the complaint. Turn 87: the agent restated the refund policy and the customer repeated the complaint. Turn 88: the agent restated the refund policy and the customer repeated the complaint. Turn 89: the agent restated the refund policy and the customer repeated the complaint. Turn 90: the agent restated the refund policy and the customer repeated the complaint. Turn 91: the agent restated the refund policy and the customer repeated the complaint. Turn 92: the agent restated the refund policy and the customer repeated the complaint. Turn 93: the agent restated the refund policy and the customer repeated the complaint. Turn 94: the agent restated the refund policy and the customer repeated the complaint. Turn 95: the agent restated the refund policy and the customer repeated the complaint. Turn 96: the agent restated the refund policy and the customer repeated the complaint. Turn 97: the agent restated the refund policy and the customer repeated the complaint. Turn 98: the agent restated the refund policy and the customer repeated the complaint. Turn 99: the agent restated the refund policy and the customer repeated the complaint. Turn 100: the agent restated the refund policy and the customer repeated the complaint. Turn 101: the agent restated the refund policy and the customer repeated the complaint. Turn 102: the agent restated the refund policy and the customer repeated the complaint. Turn 103: the agent restated the refund policy and the customer repeated the complaint. Turn 104: the agent restated the refund policy and the customer repeated the complaint. Turn 105: the agent restated the refund policy and the customer repeated the complaint. Turn 106: the agent restated the refund policy and the customer repeated the complaint. Turn 107: the agent restated the refund policy and the customer repeated the complaint. Turn 108: the agent restated the refund policy and the customer repeated the complaint. Turn 109: the agent restated the refund policy and the customer repeated the complaint. Turn 110: the agent restated the refund policy and the customer repeated the complaint. Turn 111: the agent restated the refund policy and the customer repeated the complaint. Turn 112: the agent restated the refund policy and the customer repeated the complaint. Turn 113: the agent restated the refund policy and the customer repeated the complaint. Turn 114: the agent restated the refund policy and the customer repeated the complaint. Turn 115: the agent restated the refund policy and the customer repeated the complaint. Turn 116: the agent restated the refund policy and the customer repeated the complaint. Turn 117: the agent restated the refund policy and the customer repeated the complaint. Turn 118: the agent restated the refund policy and the customer repeated the complaint. Turn 119: the agent restated the refund policy and the customer repeated the complaint. Turn 120: the agent restated the refund policy and the customer repeated the complaint. Turn 121: the agent restated the refund policy and the customer repeated the complaint. Turn 122: the agent restated the refund policy and the customer repeated the complaint. Turn 123: the agent restated the refund policy and the customer repeated the complaint. Turn 124: the agent restated the refund policy and the customer repeated the complaint. Turn 125: the agent restated the refund policy and the customer repeated the complaint. Turn 126: the agent restated the refund policy and the customer repeated the complaint. Turn 127: the agent restated the refund policy and the customer repeated the complaint. Turn 128: the agent restated the refund policy and the customer repeated the complaint. Turn 129: the agent restated the refund policy and the customer repeated the complaint. Turn 130: the agent restated the refund policy and the customer repeated the complaint. Turn 131: the agent restated the refund policy and the customer repeated the complaint. Turn 132: the agent restated the refund policy and the customer repeated the complaint. Turn 133: the agent restated the refund policy and the customer repeated the complaint. Turn 134: the agent restated the refund policy and the customer repeated the complaint. Turn 135: the agent restated the refund policy and the customer repeated the complaint. Turn 136: the agent restated the refund policy and the customer repeated the complaint. Turn 137: the agent restated the refund policy and the customer repeated the complaint. Turn 138: the agent restated the refund policy and the customer repeated the complaint. Turn 139: the agent restated the refund policy and the customer repeated the complaint.",
+    [
+      {
+        "role": "user",
+        "content": "Turn 0: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 1: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 2: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 3: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 4: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 5: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 6: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 7: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 8: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 9: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 10: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 11: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 12: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 13: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 14: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 15: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 16: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 17: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 18: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 19: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 20: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 21: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 22: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 23: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 24: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 25: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 26: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 27: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 28: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 29: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 30: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 31: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 32: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 33: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 34: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 35: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 36: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 37: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 38: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 39: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 40: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 41: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 42: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 43: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 44: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 45: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 46: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 47: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 48: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 49: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 50: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 51: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 52: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 53: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 54: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 55: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 56: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 57: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 58: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 59: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 60: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 61: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 62: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 63: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 64: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 65: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 66: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 67: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 68: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 69: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 70: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 71: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 72: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 73: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 74: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 75: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 76: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 77: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 78: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 79: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 80: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 81: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 82: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 83: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 84: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 85: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 86: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 87: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 88: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 89: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 90: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 91: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 92: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 93: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 94: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 95: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 96: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 97: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 98: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 99: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 100: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 101: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 102: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 103: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 104: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 105: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 106: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 107: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 108: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 109: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 110: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 111: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 112: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 113: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 114: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 115: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 116: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 117: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 118: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 119: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 120: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 121: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 122: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 123: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 124: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 125: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 126: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 127: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 128: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 129: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 130: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 131: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 132: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 133: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 134: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 135: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 136: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 137: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "Turn 138: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "assistant",
+        "content": "Turn 139: the agent restated the refund policy and the customer repeated the complaint."
+      },
+      {
+        "role": "user",
+        "content": "I want a refund or I will cancel today."
+      }
+    ],
+    {
+      "notes": "Turn 0: the agent restated the refund policy and the customer repeated the complaint. Turn 1: the agent restated the refund policy and the customer repeated the complaint. Turn 2: the agent restated the refund policy and the customer repeated the complaint. Turn 3: the agent restated the refund policy and the customer repeated the complaint. Turn 4: the agent restated the refund policy and the customer repeated the complaint. Turn 5: the agent restated the refund policy and the customer repeated the complaint. Turn 6: the agent restated the refund policy and the customer repeated the complaint. Turn 7: the agent restated the refund policy and the customer repeated the complaint. Turn 8: the agent restated the refund policy and the customer repeated the complaint. Turn 9: the agent restated the refund policy and the customer repeated the complaint. Turn 10: the agent restated the refund policy and the customer repeated the complaint. Turn 11: the agent restated the refund policy and the customer repeated the complaint. Turn 12: the agent restated the refund policy and the customer repeated the complaint. Turn 13: the agent restated the refund policy and the customer repeated the complaint. Turn 14: the agent restated the refund policy and the customer repeated the complaint. Turn 15: the agent restated the refund policy and the customer repeated the complaint. Turn 16: the agent restated the refund policy and the customer repeated the complaint. Turn 17: the agent restated the refund policy and the customer repeated the complaint. Turn 18: the agent restated the refund policy and the customer repeated the complaint. Turn 19: the agent restated the refund policy and the customer repeated the complaint. Turn 20: the agent restated the refund policy and the customer repeated the complaint. Turn 21: the agent restated the refund policy and the customer repeated the complaint. Turn 22: the agent restated the refund policy and the customer repeated the complaint. Turn 23: the agent restated the refund policy and the customer repeated the complaint. Turn 24: the agent restated the refund policy and the customer repeated the complaint. Turn 25: the agent restated the refund policy and the customer repeated the complaint. Turn 26: the agent restated the refund policy and the customer repeated the complaint. Turn 27: the agent restated the refund policy and the customer repeated the complaint. Turn 28: the agent restated the refund policy and the customer repeated the complaint. Turn 29: the agent restated the refund policy and the customer repeated the complaint. Turn 30: the agent restated the refund policy and the customer repeated the complaint. Turn 31: the agent restated the refund policy and the customer repeated the complaint. Turn 32: the agent restated the refund policy and the customer repeated the complaint. Turn 33: the agent restated the refund policy and the customer repeated the complaint. Turn 34: the agent restated the refund policy and the customer repeated the complaint. Turn 35: the agent restated the refund policy and the customer repeated the complaint. Turn 36: the agent restated the refund policy and the customer repeated the complaint. Turn 37: the agent restated the refund policy and the customer repeated the complaint. Turn 38: the agent restated the refund policy and the customer repeated the complaint. Turn 39: the agent restated the refund policy and the customer repeated the complaint. Turn 40: the agent restated the refund policy and the customer repeated the complaint. Turn 41: the agent restated the refund policy and the customer repeated the complaint. Turn 42: the agent restated the refund policy and the customer repeated the complaint. Turn 43: the agent restated the refund policy and the customer repeated the complaint. Turn 44: the agent restated the refund policy and the customer repeated the complaint. Turn 45: the agent restated the refund policy and the customer repeated the complaint. Turn 46: the agent restated the refund policy and the customer repeated the complaint. Turn 47: the agent restated the refund policy and the customer repeated the complaint. Turn 48: the agent restated the refund policy and the customer repeated the complaint. Turn 49: the agent restated the refund policy and the customer repeated the complaint. Turn 50: the agent restated the refund policy and the customer repeated the complaint. Turn 51: the agent restated the refund policy and the customer repeated the complaint. Turn 52: the agent restated the refund policy and the customer repeated the complaint. Turn 53: the agent restated the refund policy and the customer repeated the complaint. Turn 54: the agent restated the refund policy and the customer repeated the complaint. Turn 55: the agent restated the refund policy and the customer repeated the complaint. Turn 56: the agent restated the refund policy and the customer repeated the complaint. Turn 57: the agent restated the refund policy and the customer repeated the complaint. Turn 58: the agent restated the refund policy and the customer repeated the complaint. Turn 59: the agent restated the refund policy and the customer repeated the complaint. Turn 60: the agent restated the refund policy and the customer repeated the complaint. Turn 61: the agent restated the refund policy and the customer repeated the complaint. Turn 62: the agent restated the refund policy and the customer repeated the complaint. Turn 63: the agent restated the refund policy and the customer repeated the complaint. Turn 64: the agent restated the refund policy and the customer repeated the complaint. Turn 65: the agent restated the refund policy and the customer repeated the complaint. Turn 66: the agent restated the refund policy and the customer repeated the complaint. Turn 67: the agent restated the refund policy and the customer repeated the complaint. Turn 68: the agent restated the refund policy and the customer repeated the complaint. Turn 69: the agent restated the refund policy and the customer repeated the complaint. Turn 70: the agent restated the refund policy and the customer repeated the complaint. Turn 71: the agent restated the refund policy and the customer repeated the complaint. Turn 72: the agent restated the refund policy and the customer repeated the complaint. Turn 73: the agent restated the refund policy and the customer repeated the complaint. Turn 74: the agent restated the refund policy and the customer repeated the complaint. Turn 75: the agent restated the refund policy and the customer repeated the complaint. Turn 76: the agent restated the refund policy and the customer repeated the complaint. Turn 77: the agent restated the refund policy and the customer repeated the complaint. Turn 78: the agent restated the refund policy and the customer repeated the complaint. Turn 79: the agent restated the refund policy and the customer repeated the complaint. Turn 80: the agent restated the refund policy and the customer repeated the complaint. Turn 81: the agent restated the refund policy and the customer repeated the complaint. Turn 82: the agent restated the refund policy and the customer repeated the complaint. Turn 83: the agent restated the refund policy and the customer repeated the complaint. Turn 84: the agent restated the refund policy and the customer repeated the complaint. Turn 85: the agent restated the refund policy and the customer repeated the complaint. Turn 86: the agent restated the refund policy and the customer repeated the complaint. Turn 87: the agent restated the refund policy and the customer repeated the complaint. Turn 88: the agent restated the refund policy and the customer repeated the complaint. Turn 89: the agent restated the refund policy and the customer repeated the complaint. Turn 90: the agent restated the refund policy and the customer repeated the complaint. Turn 91: the agent restated the refund policy and the customer repeated the complaint. Turn 92: the agent restated the refund policy and the customer repeated the complaint. Turn 93: the agent restated the refund policy and the customer repeated the complaint. Turn 94: the agent restated the refund policy and the customer repeated the complaint. Turn 95: the agent restated the refund policy and the customer repeated the complaint. Turn 96: the agent restated the refund policy and the customer repeated the complaint. Turn 97: the agent restated the refund policy and the customer repeated the complaint. Turn 98: the agent restated the refund policy and the customer repeated the complaint. Turn 99: the agent restated the refund policy and the customer repeated the complaint. Turn 100: the agent restated the refund policy and the customer repeated the complaint. Turn 101: the agent restated the refund policy and the customer repeated the complaint. Turn 102: the agent restated the refund policy and the customer repeated the complaint. Turn 103: the agent restated the refund policy and the customer repeated the complaint. Turn 104: the agent restated the refund policy and the customer repeated the complaint. Turn 105: the agent restated the refund policy and the customer repeated the complaint. Turn 106: the agent restated the refund policy and the customer repeated the complaint. Turn 107: the agent restated the refund policy and the customer repeated the complaint. Turn 108: the agent restated the refund policy and the customer repeated the complaint. Turn 109: the agent restated the refund policy and the customer repeated the complaint. Turn 110: the agent restated the refund policy and the customer repeated the complaint. Turn 111: the agent restated the refund policy and the customer repeated the complaint. Turn 112: the agent restated the refund policy and the customer repeated the complaint. Turn 113: the agent restated the refund policy and the customer repeated the complaint. Turn 114: the agent restated the refund policy and the customer repeated the complaint. Turn 115: the agent restated the refund policy and the customer repeated the complaint. Turn 116: the agent restated the refund policy and the customer repeated the complaint. Turn 117: the agent restated the refund policy and the customer repeated the complaint. Turn 118: the agent restated the refund policy and the customer repeated the complaint. Turn 119: the agent restated the refund policy and the customer repeated the complaint. Turn 120: the agent restated the refund policy and the customer repeated the complaint. Turn 121: the agent restated the refund policy and the customer repeated the complaint. Turn 122: the agent restated the refund policy and the customer repeated the complaint. Turn 123: the agent restated the refund policy and the customer repeated the complaint. Turn 124: the agent restated the refund policy and the customer repeated the complaint. Turn 125: the agent restated the refund policy and the customer repeated the complaint. Turn 126: the agent restated the refund policy and the customer repeated the complaint. Turn 127: the agent restated the refund policy and the customer repeated the complaint. Turn 128: the agent restated the refund policy and the customer repeated the complaint. Turn 129: the agent restated the refund policy and the customer repeated the complaint. Turn 130: the agent restated the refund policy and the customer repeated the complaint. Turn 131: the agent restated the refund policy and the customer repeated the complaint. Turn 132: the agent restated the refund policy and the customer repeated the complaint. Turn 133: the agent restated the refund policy and the customer repeated the complaint. Turn 134: the agent restated the refund policy and the customer repeated the complaint. Turn 135: the agent restated the refund policy and the customer repeated the complaint. Turn 136: the agent restated the refund policy and the customer repeated the complaint. Turn 137: the agent restated the refund policy and the customer repeated the complaint. Turn 138: the agent restated the refund policy and the customer repeated the complaint. Turn 139: the agent restated the refund policy and the customer repeated the complaint.",
+      "message": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account."
+    },
+    "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account."
+  ],
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today"
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    }
+  },
+  "options": {
+    "batch_size": 2
+  },
+  "state_widths": [
+    1024,
+    1024,
+    1024,
+    91
+  ],
+  "results": [
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.4553,
+            "technical": 0.1506,
+            "other": 0.3941
+          },
+          "confidence": 0.0804,
+          "answer_confidence": 0.4553,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.9401,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.3838,
+            "1": 0.2923,
+            "2": 0.3239
+          },
+          "confidence": 0.0058,
+          "answer_confidence": 0.3838,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.1726,
+          "confidence": 0.8274,
+          "answer_confidence": 0.8274,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 3072,
+        "output_tokens": 0,
+        "state_tokens": 2384,
+        "state_tokens_dropped": 1394,
+        "truncated": true,
+        "truncated_questions": [
+          "topic",
+          "urgency",
+          "cancel"
+        ]
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.7622,
+            "technical": 0.0639,
+            "other": 0.1739
+          },
+          "confidence": 0.3748,
+          "answer_confidence": 0.7622,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.562,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.1098,
+            "1": 0.2184,
+            "2": 0.6718
+          },
+          "confidence": 0.2335,
+          "answer_confidence": 0.6718,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.6263,
+          "confidence": 0.6263,
+          "answer_confidence": 0.6263,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 3072,
+        "output_tokens": 0,
+        "state_tokens": 4012,
+        "state_tokens_dropped": 3022,
+        "truncated": true,
+        "truncated_questions": [
+          "topic",
+          "urgency",
+          "cancel"
+        ]
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.444,
+            "technical": 0.1555,
+            "other": 0.4005
+          },
+          "confidence": 0.0749,
+          "answer_confidence": 0.444,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.8498,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.4282,
+            "1": 0.2938,
+            "2": 0.278
+          },
+          "confidence": 0.0179,
+          "answer_confidence": 0.4282,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.2183,
+          "confidence": 0.7817,
+          "answer_confidence": 0.7817,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 3072,
+        "output_tokens": 0,
+        "state_tokens": 2448,
+        "state_tokens_dropped": 1458,
+        "truncated": true,
+        "truncated_questions": [
+          "topic",
+          "urgency",
+          "cancel"
+        ]
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.7054,
+            "technical": 0.1834,
+            "other": 0.1111
+          },
+          "confidence": 0.2705,
+          "answer_confidence": 0.7054,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.8371,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.0193,
+            "1": 0.1243,
+            "2": 0.8564
+          },
+          "confidence": 0.574,
+          "answer_confidence": 0.8564,
+          "action": {
+            "act_probability": 1.0
+          }
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.7914,
+          "confidence": 0.7914,
+          "answer_confidence": 0.7914,
+          "action": {
+            "act_probability": 1.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 265,
+        "output_tokens": 0,
+        "state_tokens": 57,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    }
+  ],
+  "runs": [
+    [
+      6,
+      1024
+    ],
+    [
+      6,
+      1024
+    ]
+  ]
+}

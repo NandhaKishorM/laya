@@ -2,7 +2,7 @@
 
 Laya provides fast, non-autoregressive decision components for **LangChain** and **LangGraph** (single-question latency measured at **32.8 ms** with `laya-multilingual` and **39.5 ms** with `laya` on a Tesla T4 GPU; 193–464 ms on CPU):
 
-* **`LayaRouter`**: Conditional edge and branch router with confidence fallback gating.
+* **`LayaRouter`**: Conditional edge and branch router with confidence fallback gating or a native `auto`/`review` policy.
 * **`LayaGuardrail`**: Sub-40ms inline screening for prompt injections, jailbreaks, and sensitive data.
 * **`LayaTriage`**: Support ticket triage node evaluating intent, urgency, frustration, and churn risk in one forward pass.
 * **`LayaEvaluator`**: Rubric-based output grading and hallucination evaluation.
@@ -85,6 +85,64 @@ It is not calibrated as shipped: `laya-multilingual` ships `temperature: [1.0, 1
 loader's own clamp with a warning that says to treat it as uncalibrated. Fit and validate the
 threshold on held-out data at the option counts your workload uses -- see the README's
 [Calibration](https://github.com/NandhaKishorM/laya#calibration) section.
+
+### Following the backend's native review policy
+
+A Vega decision can have a confident business `choice` and still require `route="review"`
+because of its prediction set, abstention, or fitted policy. The default
+`decision_policy="confidence"` keeps the threshold behavior above. To honor the backend's
+final route instead, opt in with the keyword-only `decision_policy="native"`:
+
+```python
+from typing import TypedDict
+from langgraph.graph import END, StateGraph
+from laya import Agent
+from laya.integrations.langchain import LayaRouter
+
+class NativeState(TypedDict):
+    input: str
+    response: str
+
+router = LayaRouter(
+    criteria={"billing_agent": "invoices and refunds", "tech": "bugs and crashes"},
+    agent=Agent(vegaml=True),  # loads the Vega reader
+    decision_policy="native",
+    fallback="human_agent",
+)
+
+workflow = StateGraph(NativeState)
+workflow.add_node("billing_agent", lambda state: {"response": "Handling billing..."})
+workflow.add_node("tech", lambda state: {"response": "Handling tech support..."})
+workflow.add_node("human_agent", lambda state: {"response": "Queued for human review."})
+destinations = {
+    "billing_agent": "billing_agent", "tech": "tech", "human_agent": "human_agent",
+}
+for name in destinations:
+    workflow.add_edge(name, END)
+workflow.set_conditional_entry_point(router.invoke, destinations)
+app = workflow.compile()
+result = app.invoke({"input": "I was billed twice; the app also keeps crashing."})
+print(result["response"])
+```
+
+The fallback must be an explicit, non-empty string naming the application's review destination.
+The adapter selects that destination; your graph supplies the human-review node or workflow.
+For each answer:
+
+- `route="review"` returns `fallback`, even when `choice` is missing or confidence is high.
+- `route="auto"` returns `choice` only when it names a key in `criteria`.
+- A missing/unknown route, malformed answer, or invalid automatic choice raises
+  `RuntimeError` with `Malformed decision response`; it does not silently authorize a branch.
+
+Native mode requires `confidence_threshold=0` (the default): a second adapter threshold would
+conflict with the backend's policy. Use `min_confidence` on the backend when needed; it is still
+forwarded by the adapter. The adapter reads the final `route`, without recomputing it from
+confidence, prediction sets, or abstention flags. The same rule applies to `invoke`, `batch`,
+`ainvoke`, and `abatch`, using each call's result rather than shared `last_decision`.
+
+Use native mode only with a backend that returns `auto`/`review` metadata for every routed
+answer. A mixed-checkpoint Router or remote service that sometimes omits it will raise on
+those answers; the adapter does not invent a policy for older backends.
 
 ### Routing with the full conversation
 
@@ -274,8 +332,8 @@ process; pass `max_concurrency=1` there, or call `invoke()` in a loop.
 ### The per-call controls
 
 The node plans the questions itself, but the call it makes is an ordinary one, so it takes the
-same seven per-call arguments as the other four nodes -- the two token budgets and the five
-prediction hooks:
+same nine per-call arguments as the other four nodes -- the two token budgets, the five prediction
+hooks, and the two routing hints of [section 9](#9-which-checkpoint-answers):
 
 ```python
 decide = LayaDecision(
@@ -318,8 +376,8 @@ routes = router.batch(["refund my invoice", "the app crashes", "change my passwo
 graded = asyncio.run(evaluator.abatch(predictions))   # the async entry point, same batch
 ```
 
-The outputs are the same as calling `invoke` on each input in turn, including the confidence
-fallback on `LayaRouter` and the `action` (`raise` / `filter` / `annotate`) on `LayaGuardrail`. Two
+The outputs are the same as calling `invoke` on each input in turn, including the selected routing
+policy on `LayaRouter` and the `action` (`raise` / `filter` / `annotate`) on `LayaGuardrail`. Two
 differences are worth knowing:
 
 - With `action="raise"`, the first violating input raises, so the batch stops there. Pass
@@ -399,9 +457,11 @@ the state is routed and answered in -- select the answering checkpoint's per-lan
 rather than relying on built-in detection -- and `min_confidence` is core's abstention gate, which
 marks rather than withholds: an answer under it comes back carrying `low_confidence: true`,
 `abstention: "abstained"` and `abstention_threshold` on the raw decision kept in `last_decision`,
-while the branch label the runnable returns is still the argmax. The label is changed by
-`confidence_threshold` and its `fallback`, not by the gate; a `min_confidence` on its own reports
-the abstention and routes anyway. Both are forwarded on the
+while the default `decision_policy="confidence"` still returns the argmax. In that mode the
+label is changed by `confidence_threshold` and its `fallback`, not by the gate; a
+`min_confidence` on its own reports the abstention and routes anyway. With
+`decision_policy="native"`, the backend's final `route` determines whether the adapter returns
+the business choice or its review fallback, as described above. Both controls are forwarded on the
 local and the remote path, and an unset one is omitted rather than sent as `None` so it cannot
 shadow a checkpoint's own default. `min_confidence=0.0` and `lang=""` are real values, not absences,
 and are forwarded as given.
@@ -474,3 +534,94 @@ through `on_predict_start=`/`on_predict_end=` instead of `hooks=` measured 359 m
 `laya-serve` has no way to receive or run one, so a node with a `base_url` and any of the five set
 raises `ValueError` naming the arguments rather than reporting success for a cache that never ran.
 Install hooks on the process that runs inference.
+
+---
+
+## 9. Which Checkpoint Answers
+
+`Router.route` decides between the three checkpoints on this precedence -- explicit `model` >
+explicit `task` > detected workflow > explicit `lang` > `lang_guess` > detected script/language --
+and until now a chain step could state only `model` of those six. The two that were missing are the
+two that do not name a repository:
+
+- **`task`** forces a checkpoint by workflow name, so `task="typed-decisions"` answers on the
+  typed-decisions checkpoint without waiting for auto task detection to recognise the question ids.
+  An unknown name raises `ValueError` from core and lists what it does know.
+- **`lang_guess`** is a language code from something that already knows the answer -- a user id, a
+  locale header, an `Accept-Language` value. It is consulted after an explicit `lang` and before
+  detection, and it only answers "can the English checkpoint read this?", so any non-English code
+  routes to the multilingual one. It may also be a callable taking the state, and a blank one falls
+  through to detection, which is how an abstaining language identifier is supposed to behave.
+
+```python
+router = LayaRouter(
+    criteria=queue_criteria,
+    task="typed-decisions",           # this workflow, on that checkpoint, always
+    lang_guess=lambda state: state["locale"][:2],
+)
+```
+
+Both are per node, like the budgets, and unset means unsent: leave one out and the deployment's own
+`Router(task=...)` / `Router(lang_guess=...)` stays in charge rather than being overwritten with
+`None`. `batch()` sends them with every request in the batch, `abatch()` on the same path.
+
+**What the hint moves, measured.** Sixteen German support queries through `Router.route` on
+`6880462` (0.4.2) -- routing only, so no checkpoint is loaded and no answer is taken -- counted by
+which checkpoint the decision lands on:
+
+| German queries | no hint | `lang_guess="de"` |
+|---|---|---|
+| 8 written without umlauts or `ß` | 1 read as English | 0 read as English |
+| 8 carrying umlauts or `ß` | 0 read as English | 0 read as English |
+
+The one miss is `Was kostet die MwSt?`, which detection reads as `"English Latin text"`: an
+abbreviation-heavy short query with no diacritics and no stopword signal. Diacritics settle it on
+their own, so the eight `umlauts or ß` queries all leave `english` without any help from the hint.
+Plain German prose that detection cannot place does not reach the English checkpoint either any
+more -- an undecided Latin script now abstains to the multilingual one (`"Latin script, language
+not identified and no non-English letters; using default (multilingual)"`, asserted in
+`tests/test_router.py`), so the residual gap the hint closes is the false-English read, not the
+undecided one. A caller that knows the language from a user id or an `Accept-Language` header still
+knows better than any guess, which is the argument for the hint. What is *not* claimed here is what
+the two checkpoints then score on those queries -- that needs weights and a labelled set, and this
+table is about which one answers, not how well.
+
+`tests/test_langchain.py` re-runs these sixteen queries against the live router and asserts the
+hint half of the table, so the numbers above cannot quietly go stale behind this paragraph.
+
+**A recorded `before`.** On `6d942c9`, in real (installed `langchain-core`) mode, a node built with
+both hints and a budget, answering through a runner that prints what `predict` received:
+
+```
+node.task           'typed_decisions'        # extra="allow" stores it
+model_extra         {'task': 'typed_decisions', 'lang_guess': 'de'}
+predict() received  {'max_len': 8192}        # and the call sees neither hint
+```
+
+The node *looked* configured -- `router.task` read back what it was given -- and the decision above
+was still taken on the deployment's defaults. The forwarding itself is what the gate asserts, in
+`tests/test_langchain.py`, `tests/test_crewai.py` and `tests/test_llamaindex.py`: no latency claim is
+made for it, because a routing hint changes which weights answer, not how long the pass takes.
+
+**Remote mode sends them; one shape it cannot.** A node with a `base_url` puts both in the request
+body, where `laya-serve` treats them exactly as documented in the [HTTP
+API](http-api.md). The callable form of `lang_guess` does not cross HTTP, so a remote node called
+with one raises `ValueError` before the request goes out rather than coming back as serve's `422`
+after it; install the callable on the `Router` where serve runs, or pass a code.
+
+**`agent=` decides the rule.** A node handed `agent=Agent(...)` is answered by an `Agent`, and an
+`Agent` has no routing step to read a routing hint in -- `Agent.predict` takes neither name. The node
+still stores the hint, since declaring `extra = "allow"` is what lets a subclass add fields; what
+changes is that the first call raises instead of answering on the checkpoint the `Agent` was built
+with, and it raises before `predict` is reached, so no hook runs on a decision that cannot honour the
+hint:
+
+```
+ValueError: task is a routing hint, and Agent.predict does not read it: this runner answers on
+the checkpoint it was built with. Pass a Router as `agent=`, or drop it.
+```
+
+The rule is read from the signature of the call about to be made, not from a list of classes, so a
+runner that declares `**kwargs` is forwarded to rather than refused -- the wrapper cannot tell what
+it reads, and refusing on a guess would block a call that works. `laya.integrations.crewai` and
+`laya.integrations.llamaindex` import the same rule from `laya.integrations._controls`.

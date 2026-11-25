@@ -9,6 +9,7 @@ Run: python tests/test_conformal_abstention.py
 import math
 import os
 import sys
+from decimal import Decimal
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -137,6 +138,27 @@ check("gate/k=12 passes under its lower bucket cut", results[0]["answers"]["b"][
 check("gate/echoes the per-bucket threshold (k=2)", results[0]["answers"]["a"]["abstention_threshold"], 0.9)
 check("gate/echoes the per-bucket threshold (k=12)", results[0]["answers"]["b"]["abstention_threshold"], 0.5)
 
+# ---- what covers a bucket the fitter itself omitted ----
+# `MIN_ABSTAIN_BUCKET_N`'s comment used to promise the caller's scalar `min_confidence` covers an
+# omitted bucket. It cannot: a call takes one threshold, a float or a map, never both, and the map
+# path below is the only lookup an omitted bucket can hit. Measured from the fitter's own output
+# rather than a hand-built map, because the fitter is what produces omissions.
+_small = [record(7, 0.35, i % 4 == 0, qtype=1) for i in range(40)]   # score:6-10, under a floor of 50
+_fitted = fit_abstention_thresholds(records + _small, [1.0] * 3, {}, target_error=0.10, min_bucket_n=50)
+check_true("omitted/the fitter does leave the small bucket out",
+           "choice:2" in _fitted and "score:6-10" not in _fitted, _fitted)
+_omitted = [{"answers": {"a": ans("score", 7, 0.05)}}]
+apply_confidence_gate(_omitted, _fitted)
+check("omitted/an omitted bucket resolves to 0.0, not to a caller's scalar",
+      _omitted[0]["answers"]["a"]["abstention_threshold"], 0.0)
+check("omitted/so its least confident answer is passed, not abstained",
+      _omitted[0]["answers"]["a"]["abstention"], GATE_PASSED)
+_with_default = dict(_fitted, default=_fitted["choice:2"])
+_covered = [{"answers": {"a": ans("score", 7, 0.05)}}]
+apply_confidence_gate(_covered, _with_default)
+check("omitted/the map's own 'default' is what does cover it",
+      _covered[0]["answers"]["a"]["abstention"], GATE_ABSTAINED)
+
 # the float path is unchanged
 res_f = [{"answers": {"a": ans("choice", 3, 0.4)}}]
 flag_low_confidence(res_f, 0.7)
@@ -223,6 +245,82 @@ _all_buckets = fit_abstention_thresholds(records, [1.0, 1.0, 1.0], {}, target_er
 check("validate/the same records at floor 1 fit every bucket they touch",
       sorted(_all_buckets), ["choice:11+", "choice:2"])
 check("validate/and pass the validator unchanged", _accepts(dict(_all_buckets)), dict(_all_buckets))
+
+# The floor had no guard, and a comparison against a length is where a bad one goes unnoticed:
+# `len(pairs) < nan` is False for every bucket, and so is `< -1`, so the sentence above
+# ("`min_bucket_n` omits buckets too small to fit") was only ever true of a floor that happened to be
+# an integer. A `nan` or `2.5` arrived quietly -- a floor from a plain `/` division, say -- and the
+# gate was fitted on whatever records the caller had. Same positive-integer rule `fit_binning_map`
+# applies, checked by message because the old behaviour was silence rather than a wrong exception.
+for _bad in (0, -3, 2.5, float("nan"), float("inf"), True, None, "100"):
+    try:
+        fit_abstention_thresholds(_small, [1.0, 1.0, 1.0], {}, target_error=0.10, min_bucket_n=_bad)
+        _res = "no ValueError"
+    except ValueError as _exc:
+        _res = str(_exc)
+    except Exception as _exc:
+        _res = "raised %s" % type(_exc).__name__
+    check("floor/%r is refused by name" % (_bad,), _res,
+          "min_bucket_n must be a positive integer, got %r" % (_bad,))
+
+# And the rule did not get stricter than the module's own: an integer floor below the shipped one
+# still fits, which is how a caller asks for a bucket the default would have dropped.
+check("floor/an integer below the shipped floor still fits",
+      sorted(fit_abstention_thresholds(_small, [1.0, 1.0, 1.0], {}, target_error=0.10,
+                                       min_bucket_n=1)),
+      ["choice:3-5"])
+
+# `target_error` is a rate, and a bool is the one value the range test cannot see: `0.0 <= True`
+# holds, so `False` was read as 0.0 and `True` as 1.0 -- the two failures this fit exists to keep
+# apart. Measured on the 480 `records` above at floor 50: 0.0 fits {'choice:2': 1.0,
+# 'choice:11+': 1.0}, which accepts 0 of 480 answers; 0.10 fits {'choice:2': 0.97,
+# 'choice:11+': 0.55}, which accepts 240 of them with 0 errors among the accepted; 1.0 fits
+# {'choice:2': 0.85, 'choice:11+': 0.33}, which accepts all 480 at 156 errors (32.5%). Either map is
+# something `check_min_confidence` accepts and `laya.train` writes into a checkpoint, so the caller
+# never heard about the coercion. `TrainConfig` refuses the same bool one call earlier, on its way
+# into this function; this is that arm, on the public surface.
+for _bad, _coerces in ((True, 1.0), (False, 0.0)):
+    try:
+        fit_abstention_thresholds(_small, [1.0, 1.0, 1.0], {}, target_error=_bad, min_bucket_n=1)
+        _res = "no ValueError (read as %r)" % (_coerces,)
+    except ValueError as _exc:
+        _res = str(_exc)
+    except Exception as _exc:
+        _res = "raised %s" % type(_exc).__name__
+    check("target_error/%r is refused by name" % (_bad,), _res,
+          "target_error must be in [0.0, 1.0], got %r" % (_bad,))
+
+# The same arm, for the values the range test cannot compare at all rather than cannot see: a
+# `"0.1"` read out of a JSON config, a `None` from a key that was not there. Each used to leave the
+# interpreter's own `TypeError: '<=' not supported between instances of 'float' and 'str'`, which
+# names the operator and not the parameter, and `min_bucket_n` one line below has always named
+# itself for these shapes.
+for _bad in ("0.1", None, 1j, [0.1], {"t": 0.1}):
+    try:
+        fit_abstention_thresholds(_small, [1.0, 1.0, 1.0], {}, target_error=_bad, min_bucket_n=1)
+        _res = "no ValueError"
+    except ValueError as _exc:
+        _res = str(_exc)
+    except Exception as _exc:
+        _res = "raised %s: %s" % (type(_exc).__name__, _exc)
+    check("target_error/%r is refused by name" % (_bad,), _res,
+          "target_error must be in [0.0, 1.0], got %r" % (_bad,))
+
+# A value that compares as a real number but is not a `float` keeps working: `Decimal` was accepted
+# before the shape check existed and the only thing it is used for is `rate <= target_error`.
+check("target_error/a Decimal still fits",
+      fit_abstention_thresholds(_small, [1.0, 1.0, 1.0], {}, target_error=Decimal("0.10"),
+                                min_bucket_n=1),
+      fit_abstention_thresholds(_small, [1.0, 1.0, 1.0], {}, target_error=0.10, min_bucket_n=1))
+
+# And the arm did not get stricter than the two ends it exists to protect: refusing 0.0 and 1.0
+# would refuse a caller genuinely asking for no tolerance, and those two are what the bools meant.
+check("target_error/0.0 still fits the abstain-on-everything cut",
+      fit_abstention_thresholds(_small, [1.0, 1.0, 1.0], {}, target_error=0.0, min_bucket_n=1),
+      {"choice:3-5": 1.0})
+check("target_error/1.0 still fits the ungated cut",
+      fit_abstention_thresholds(_small, [1.0, 1.0, 1.0], {}, target_error=1.0, min_bucket_n=1),
+      {"choice:3-5": 0.9})
 
 BOGUS = {
     "choice:2-5": "an invented band",

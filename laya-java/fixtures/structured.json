@@ -3204,7 +3204,7 @@
           }
         }
       },
-      "error": "properties.x: only 'Optional[...]' unions (one non-null branch) are supported, got 0"
+      "error": "properties.x: unsupported schema {'anyOf': 'abc'}"
     },
     {
       "case": "truthy-non-array-anyof-with-a-oneof-to-shadow",
@@ -3226,7 +3226,31 @@
           }
         }
       },
-      "error": "properties.x: only 'Optional[...]' unions (one non-null branch) are supported, got 0"
+      "error": "properties.x: unsupported schema {'anyOf': {'a': 1}, 'oneOf': [{'type': 'boolean'}, {'type': 'null'}]}"
+    },
+    {
+      "case": "truthy-non-array-anyof-number",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "anyOf": 5
+          }
+        }
+      },
+      "error": "properties.x: unsupported schema {'anyOf': 5}"
+    },
+    {
+      "case": "truthy-non-array-oneof-boolean",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "oneOf": true
+          }
+        }
+      },
+      "error": "properties.x: unsupported schema {'oneOf': True}"
     },
     {
       "case": "top-level-is-null",

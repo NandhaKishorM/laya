@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="4"
+	failures="0"
+	disabled="1"
+	skipped="1"
+	hostname=""
+	time="0"
+	timestamp=""
+	>
+	<testcase name="Version.IsSemver" classname="Version.IsSemver" time="0.0194895" status="run">
+		<properties/>
+		<system-out/>
+	</testcase>
+	<testcase name="Extra.Off" classname="Extra.Off" time="0" status="disabled">
+		<properties/>
+		<system-out/>
+	</testcase>
+	<testcase name="Extra.Skipped" classname="Extra.Skipped" time="0.0104455" status="notrun">
+		<skipped message="SKIP_REGULAR_EXPRESSION_MATCHED"/>
+		<properties/>
+		<system-out/>
+	</testcase>
+	<testcase name="compile_flags" classname="compile_flags" time="0.0162012" status="run">
+		<properties/>
+		<system-out/>
+	</testcase>
+</testsuite>

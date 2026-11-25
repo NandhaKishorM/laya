@@ -1,0 +1,27 @@
+# Build output
+target/
+
+# Backup files from rustfmt
+**/*.rs.bk
+
+# Profiling / coverage
+*.profraw
+*.profdata
+flamegraph.svg
+perf.data*
+
+# IDE
+.vscode/
+.idea/
+
+# Downloaded model artifacts
+*.onnx
+*.onnx_data
+
+# Python tool caches (tools/)
+__pycache__/
+*.pyc
+
+# The repository root ignores `hf_token*` to keep credentials out of git; that pattern also
+# matches this source file, so re-include it here.
+!src/tokenization/hf_tokenizer.rs

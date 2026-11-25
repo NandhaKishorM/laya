@@ -1,0 +1,15 @@
+[package]
+name = "laya-routing"
+version = "0.1.0"
+edition = "2024"
+description = "Combined LayaRouter / language detection / email cleaning / shortlist sample for the Rust SDK."
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "laya-routing"
+path = "src/main.rs"
+
+[dependencies]
+laya = { package = "laya-onnx", path = "../.." }
+serde_json = "1"

@@ -1,0 +1,30 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {"major": 3, "minor": 25, "patch": 0},
+  "configurePresets": [
+    {"name": "base", "hidden": true, "binaryDir": "${sourceDir}/build/${presetName}",
+     "cacheVariables": {"LAYA_BUILD_TESTS": "ON"}},
+    {"name": "debug", "inherits": "base", "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug"}},
+    {"name": "asan-ubsan", "inherits": "base",
+     "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug",
+       "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer",
+       "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined"}},
+    {"name": "tsan", "inherits": "base",
+     "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug",
+       "CMAKE_CXX_FLAGS": "-fsanitize=thread",
+       "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=thread"}},
+    {"name": "release", "inherits": "base", "cacheVariables": {"CMAKE_BUILD_TYPE": "Release"}}
+  ],
+  "buildPresets": [
+    {"name": "debug", "configurePreset": "debug"},
+    {"name": "asan-ubsan", "configurePreset": "asan-ubsan"},
+    {"name": "tsan", "configurePreset": "tsan"},
+    {"name": "release", "configurePreset": "release"}
+  ],
+  "testPresets": [
+    {"name": "debug", "configurePreset": "debug", "output": {"outputOnFailure": true}},
+    {"name": "asan-ubsan", "configurePreset": "asan-ubsan", "output": {"outputOnFailure": true}},
+    {"name": "tsan", "configurePreset": "tsan", "output": {"outputOnFailure": true}},
+    {"name": "release", "configurePreset": "release", "output": {"outputOnFailure": true}}
+  ]
+}

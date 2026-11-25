@@ -1,0 +1,48 @@
+{
+  "workflow_url": "https://github.com/bahram-po/laya/actions/runs/42090052470",
+  "workflow_branch": "validation/cpu-combined",
+  "workflow_commit": "d93c0c031b64633696c08b9729c3c3eaa72e2323",
+  "implementation_commit": "6290eed206fc2ab3beefedf6abb191319d547d41",
+  "runner": "ubuntu-24.04",
+  "checkpoints": {
+    "english": {
+      "architecture": "x86_64",
+      "cpu_model": "AMD EPYC 7763 64-Core Processor",
+      "available_cpus": 4,
+      "packages": {
+        "torch": "2.15.0+cpu",
+        "transformers": "5.22.1",
+        "numpy": "2.4.6",
+        "safetensors": "0.8.0",
+        "tokenizers": "0.23.3",
+        "huggingface_hub": "2.4.0"
+      }
+    },
+    "multilingual": {
+      "architecture": "x86_64",
+      "cpu_model": "AMD EPYC 7763 64-Core Processor",
+      "available_cpus": 4,
+      "packages": {
+        "torch": "2.15.0+cpu",
+        "transformers": "5.22.1",
+        "numpy": "2.4.6",
+        "safetensors": "0.8.0",
+        "tokenizers": "0.23.3",
+        "huggingface_hub": "2.4.0"
+      }
+    },
+    "typed-decisions": {
+      "architecture": "x86_64",
+      "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+      "available_cpus": 4,
+      "packages": {
+        "torch": "2.15.0+cpu",
+        "transformers": "5.22.1",
+        "numpy": "2.4.6",
+        "safetensors": "0.8.0",
+        "tokenizers": "0.23.3",
+        "huggingface_hub": "2.4.0"
+      }
+    }
+  }
+}

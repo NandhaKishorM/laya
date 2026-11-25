@@ -34,7 +34,11 @@ STROKE = 5.0
 ARC_FROM, ARC_TO = 118.0, 300.0      # degrees, measured counter-clockwise from +x
 N_DOTS = 10
 DOT_MAX, DOT_MIN = 3.1, 0.85
-OP_MAX, OP_MIN = 0.95, 0.42
+# The ramp is the mark's whole idea: the points fade as they spiral in, so the eye closes the
+# loop. It has to START at full ink, though -- the first point reads as the stroke continuing,
+# and at 0.95 the artwork looked washed out on both themes rather than dissolving. The faint
+# end is the design; a faint beginning was not.
+OP_MAX, OP_MIN = 1.0, 0.42
 
 
 def pt(deg, r=R):
@@ -81,7 +85,7 @@ def mark_svg(color, use_current=False):
   <desc>An open stroke whose end breaks into points that spiral inward and shrink to a single
   point: becoming, then dissolving into one.</desc>
   <g fill="none" stroke="none">
-    <path d="%s" stroke="%s" stroke-width="%.1f" stroke-linecap="round" opacity="0.95"/>
+    <path d="%s" stroke="%s" stroke-width="%.1f" stroke-linecap="round"/>
 %s
   </g>
 </svg>
@@ -101,13 +105,13 @@ def lockup_svg(color, text=INK):
      width="%d" height="%d" role="img" aria-label="Laya">
   <title>Laya</title>
   <g transform="translate(%.2f,%.2f) scale(%.3f)">
-    <path d="%s" fill="none" stroke="%s" stroke-width="%.1f" stroke-linecap="round" opacity="0.95"/>
+    <path d="%s" fill="none" stroke="%s" stroke-width="%.1f" stroke-linecap="round"/>
 %s
   </g>
   <text x="70" y="%d" font-family="DejaVu Sans, Helvetica Neue, Helvetica, Arial, sans-serif"
         font-size="34" font-weight="600" letter-spacing="0.5" fill="%s">laya</text>
   <text x="71.5" y="%d" font-family="DejaVu Sans, Helvetica Neue, Helvetica, Arial, sans-serif"
-        font-size="10.5" letter-spacing="2.6" fill="%s" opacity="0.62">DECISIONS, NOT TEXT</text>
+        font-size="10.5" letter-spacing="2.6" fill="%s" opacity="0.78">DECISIONS, NOT TEXT</text>
 </svg>
 ''' % (w, h, w, h, tx, ty, s, arc_path(), color, STROKE, dots(color), 42, text, 57, text)
 

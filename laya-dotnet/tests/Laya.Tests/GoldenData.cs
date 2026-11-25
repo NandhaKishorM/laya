@@ -5,7 +5,8 @@ namespace Laya.Tests;
 /// <summary>One entry of <c>index.json</c>.</summary>
 /// <param name="Kind">
 /// <see langword="null"/> for a standard parity case; <c>"shortlist"</c> for a case recorded
-/// through <c>predict_shortlist</c> rather than <c>system_one</c> directly. Standard case
+/// through <c>predict_shortlist</c>, or <c>"long"</c> through ONNXAgent.predict_long.
+/// Standard case
 /// enumeration excludes non-null kinds, since their <c>result</c> shape and recording flow differ
 /// from the plain parity cases <see cref="CheckpointGoldenData.SuccessCases"/> /
 /// <see cref="CheckpointGoldenData.ErrorCases"/> are meant for.
@@ -80,6 +81,20 @@ public sealed class CheckpointGoldenData
     /// </summary>
     public IEnumerable<object[]> ShortlistCases() =>
         Index.Where(c => c.Kind == "shortlist").Select(c => new object[] { c });
+
+    /// <summary>
+    /// The <c>lang_temperatures</c> table the language cases were recorded with (one table serves them all), or
+    /// <see langword="null"/> when this directory predates them. An engine that answers those cases is created with it.
+    /// </summary>
+    internal IEnumerable<KeyValuePair<string, LayaLangTemperature?>>? LangTemperatures
+    {
+        get
+        {
+            if (DirectoryOrNull is null || !File.Exists(Path.Combine(Directory, "case_lang_replace_de.json"))) return null;
+            using var doc = Load("case_lang_replace_de.json");
+            return CallOptions.LangTemperatures(doc.RootElement);
+        }
+    }
 
     /// <summary>Parse one golden file. The caller owns the returned document.</summary>
     public JsonDocument Load(string fileName) =>

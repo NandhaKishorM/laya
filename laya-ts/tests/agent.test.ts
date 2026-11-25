@@ -85,5 +85,23 @@ describe("agent", () => {
     });
     expect(result.answers.q.type).toBe("noul");
   });
+
+  it("decideBatch projects schema across states", async () => {
+    const a = new Agent({ provider: fakeProvider() } as any);
+    const schema = {
+      type: "object",
+      properties: { flag: { type: "boolean" } },
+    };
+    const res1 = await a.decideBatch(["s1", "s2"], schema);
+    expect(res1).toHaveLength(2);
+    expect(typeof res1[0].flag).toBe("boolean");
+    expect(typeof res1[1].flag).toBe("boolean");
+
+    const res2 = await a.decideBatch(["s1"], schema, { returnDetails: true });
+    expect(res2).toHaveLength(1);
+    expect(res2[0].values.flag).toBeDefined();
+    expect(res2[0].confidence).toBeDefined();
+    expect(res2[0].answerConfidence).toBeDefined();
+  });
 });
 

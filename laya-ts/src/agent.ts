@@ -17,11 +17,15 @@ import {
   serializeState,
   softmax,
   tempBucket,
+  unpermuteProbs,
 } from "./common.js";
-import type { BinningMap, MinConfidence, OptionStats, SequenceStats } from "./common.js";
+import type { BinningMap, InternalQ, MinConfidence, OptionStats, SequenceStats } from "./common.js";
 import type { Batch, SessionProvider } from "./providers.js";
+import type { OptionStabilityReport } from "./option-stability.js";
+import { predictLong, recordLongResults, finishLongResults, isLongCall, type LongPredictOptions, type LongResult } from "./predict-long.js";
+export type { LongPredictOptions, LongResult, LongUsage, LongAnswer, LongWindow } from "./predict-long.js";
 import { encodeWithData, parseTokenizerJson, type TokenizerLike } from "./tokenizer.js";
-import { decide, type DecideOptions, type DecisionResult } from "./structured.js";
+import { decide, decideBatch, type DecideOptions, type DecideBatchOptions, type DecisionResult } from "./structured.js";
 import {
   HookRegistry,
   PredictContext,
@@ -30,6 +34,7 @@ import {
   defaultsAlreadyRan,
   dispatchAsync,
   normaliseHooks,
+  validateHooksTimeout,
   type HookArg,
   type PredictHook,
 } from "./hooks.js";
@@ -55,6 +60,7 @@ export interface ChoiceAnswer {
   answer_confidence: number;
   action: ActionInfo;
   low_confidence?: boolean;
+  reliability?: OptionStabilityReport;
 }
 
 export interface ScoreAnswer {
@@ -153,7 +159,12 @@ export interface PredictOptions {
   onPredictStart?: PredictHook;
   onPredictEnd?: PredictHook;
   hooksRaise?: boolean;
-  /** Timeout for each hook call in seconds (null = no limit). */
+  /**
+   * Timeout for each hook call in seconds (null = no limit). Applies on the paths that wait for
+   * their hooks -- `Agent.systemOne`/`predict` and `Router.load`/`Router.predict`. `Router`'s batch
+   * and routing paths dispatch hooks without waiting for a promise, so a limit there is not a
+   * deadline the request can miss.
+   */
   hooksTimeout?: number | null;
   /** Per-call token-budget overrides; null = agent config. A start hook may also set them. */
   maxLen?: number | null;
@@ -168,6 +179,15 @@ export interface PredictOptions {
 
 function qidStr(qid: string): string {
   return JSON.stringify(qid);
+}
+
+/** How many options a validated question definition renders to -- `laya.agent._option_count`
+ * (`laya/agent.py:321-330`): a choice has one per criterion, a score one per level, a noul is always
+ * the pair [false, true]. */
+function optionCount(qdef: Record<string, unknown>): number {
+  if (qdef["type"] === "noul") return 2;
+  const crit = qdef["criteria"];
+  return Array.isArray(crit) || (typeof crit === "object" && crit !== null) ? Object.keys(crit).length : 0;
 }
 
 export function checkQuestion(qid: string, qdef: unknown): void {
@@ -290,6 +310,29 @@ export function checkQuestion(qid: string, qdef: unknown): void {
       );
     }
   }
+  // Slot `s` of the head's row shows option `order[s]`, so an order that is not a permutation of the
+  // option indices would either drop an option or show one twice. Python refuses it here
+  // (`laya/agent.py:1088-1099`) rather than let it reach the encoder, and the same numbers say why:
+  // the decoder un-permutes by the same list, so a short order leaves slots unmapped.
+  if (Object.hasOwn(q, "option_order")) {
+    const order = q["option_order"];
+    const n = optionCount(q);
+    const ints = Array.isArray(order)
+      // Python keeps `isinstance(i, int) and not isinstance(i, bool)`, which rejects a float option
+      // index; JavaScript has one number type, so an integral value is the closest match, and
+      // `[1.0, 0.0]` is not a value a caller can even write here.
+      ? order.filter((i) => typeof i === "number" && Number.isInteger(i))
+      : null;
+    const isPermutation =
+      ints !== null && ints.length === n &&
+      [...ints].sort((a, b) => a - b).join(",") === Array.from({ length: n }, (_, i) => i).join(",");
+    if (!isPermutation) {
+      throw new Error(
+        `question ${qidStr(qid)}: 'option_order' must be a permutation of range(${n}) -- one slot per ` +
+          `option, each option once -- got ${JSON.stringify(order)}`,
+      );
+    }
+  }
   if ("labels" in q && t !== "noul") {
     throw new Error(`question ${qidStr(qid)}: 'labels' is only supported for noul questions`);
   }
@@ -332,7 +375,7 @@ function isEmptyOverride(v: unknown): boolean {
   return Array.isArray(v) && v.length === 0; // [] -- truthy in JavaScript
 }
 
-export function toInternal(qdef: QuestionDef): { t: "choice" | "score" | "noul"; ins: string; crit: unknown; labels?: { false: string; true: string } } {
+export function toInternal(qdef: QuestionDef): InternalQ {
   const t = qdef["type"] as "choice" | "score" | "noul";
   let crit: unknown = qdef["criteria"];
   if (t === "choice" && Array.isArray(crit)) {
@@ -342,12 +385,18 @@ export function toInternal(qdef: QuestionDef): { t: "choice" | "score" | "noul";
   }
   let ins: unknown = qdef["instructions"];
   if (typeof ins !== "string") ins = serializeState(ins);
-  const out: { t: "choice" | "score" | "noul"; ins: string; crit: unknown; labels?: { false: string; true: string } } = {
+  const out: InternalQ = {
     t, ins: ins as string, crit,
   };
   if (t === "noul" && qdef["labels"] && typeof qdef["labels"] === "object" && !Array.isArray(qdef["labels"])) {
     const labels = qdef["labels"] as Record<string, unknown>;
     out.labels = { false: String(labels["false"]).trim(), true: String(labels["true"]).trim() };
+  }
+  // `Agent._to_internal` carries the validated order onto the internal question (`laya/agent.py:1128-1129`),
+  // which is what lets one object drive both halves: `_encodeItems` presents options in it and
+  // `_decodeRow` inverts the row back out of it.
+  if (Object.hasOwn(qdef, "option_order")) {
+    out.optionOrder = (qdef["option_order"] as number[]).map((i) => Math.trunc(Number(i)));
   }
   return out;
 }
@@ -378,6 +427,7 @@ function tokenizerFromHF(tokenizerJson: unknown): TokenizerLike | null {
     padId: data.ids.pad,
     maskToken: data.maskToken,
     encode: (text: string) => encodeWithData(data, text),
+    ...(data.decode ? { decode: data.decode } : {}),
   };
 }
 
@@ -410,7 +460,7 @@ export class Agent extends HookRegistry {
     // Hooks are opt-in; an unset hook list is a no-op. See hooks.ts.
     this.hooks = normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd);
     this.hooksRaise = opts.hooksRaise ?? true;
-    this.hooksTimeout = opts.hooksTimeout ?? null;
+    this.hooksTimeout = validateHooksTimeout(opts.hooksTimeout ?? null);
     const cfg = { ...(opts.cfg ?? {}) } as AgentCfg;
     if (opts.max_len !== undefined) cfg.max_len = opts.max_len;
     if (opts.head_max_len !== undefined) cfg.head_max_len = opts.head_max_len;
@@ -447,7 +497,10 @@ export class Agent extends HookRegistry {
     ];
     const rejected: string[] = [];
     for (const [name, rawV, applied] of entries) {
-      if (Number(rawV) === applied) continue;
+      // `clampTemperature` refuses a bool and installs the neutral 1.0, and `Number(true)` is
+      // exactly that 1.0, so comparing the two numbers alone read a JSON `true` as an accepted
+      // temperature and loaded it in silence. `false` was reported only because it floats to 0.0.
+      if (typeof rawV !== "boolean" && Number(rawV) === applied) continue;
       rejected.push(`${name}=${JSON.stringify(rawV) ?? String(rawV)} -> ${applied}`);
     }
     if (rejected.length > 0) {
@@ -516,8 +569,8 @@ export class Agent extends HookRegistry {
       ? [...this.hooks, ...normaliseHooks(opts.hooks, opts.onPredictStart, opts.onPredictEnd)]
       : composeHooks(this.hooks, opts.hooks, opts.onPredictStart, opts.onPredictEnd);
     const raiseErrors = opts.hooksRaise ?? this.hooksRaise;
-    const hooksTimeout = opts.hooksTimeout ?? this.hooksTimeout;
-    const timeoutMs = typeof hooksTimeout === "number" ? hooksTimeout * 1000 : null;
+    const hooksTimeout = validateHooksTimeout(opts.hooksTimeout ?? this.hooksTimeout);
+    const timeoutMs = hooksTimeout === null ? null : hooksTimeout * 1000;
     const ctx = new PredictContext({
       states,
       questions: questions as Record<string, unknown>,
@@ -570,11 +623,12 @@ export class Agent extends HookRegistry {
       throw err;
     } finally {
       ctx.markElapsed();
-      if (ctx.results !== null) {
+      if (ctx.results !== null && (!isLongCall(opts) || Array.isArray(ctx.results))) {
         ctx.usage = aggregateUsage(ctx.results);
         if (mc !== null) {
           flagLowConfidence(ctx.results as unknown as Record<string, unknown>[], mc);
         }
+        recordLongResults(opts, ctx);
       }
       try {
         await dispatchAsync(active, "onPredictEnd", ctx, { raiseErrors, timeoutMs });
@@ -583,6 +637,7 @@ export class Agent extends HookRegistry {
         if (ctx.error === null) throw hookErr;
       }
     }
+    finishLongResults(opts, ctx);
     return ctx.results as unknown as SystemOneResult[];
   }
 
@@ -590,7 +645,7 @@ export class Agent extends HookRegistry {
   private _encodeItems(
     state: unknown,
     ids: string[],
-    internals: { t: "choice" | "score" | "noul"; ins: string; crit: unknown }[],
+    internals: InternalQ[],
     maxLen: number,
     headMaxLen: number,
   ): { items: { ids: number[]; markers: number[]; qtype: number }[]; nTokens: number; stats: SequenceStats[] } {
@@ -602,7 +657,7 @@ export class Agent extends HookRegistry {
     for (let qi = 0; qi < ids.length; qi++) {
       const qid = ids[qi];
       const q = internals[qi];
-      const prefix = buildQuestionPrefix(this.tok, q, maxLen, headMaxLen);
+      const prefix = buildQuestionPrefix(this.tok, q, maxLen, headMaxLen, q.optionOrder);
       const seq = sequenceWithState(
         prefix,
         stAll,
@@ -686,7 +741,13 @@ export class Agent extends HookRegistry {
         for (let qi = 0; qi < ids.length; qi++) {
           answers[ids[qi]] = this._decodeRow(
             logits[row] as number[],
-            (act[row] as number[]) ?? [1, 0],
+            // The action head is normalised here, at the model boundary, as `laya/agent.py`'s
+            // `_forward` (agent.py:1329) and `laya/onnx_agent.py` (onnx_agent.py:805) do: the decode
+            // layer's contract -- the Java decoder's `actionProbabilities`, and the `act` rows in
+            // `laya-java/fixtures/decode.json` -- is a probability row. Softmaxing it a second time
+            // inside `_decodeRow` reported 0.6899 for the row `[0.9, 0.1]`, where the reference
+            // reports 0.9.
+            softmax((act[row] as number[]) ?? [1, 0]),
             internals[qi],
             built[s].items[qi].markers.length,
             opts.lang ?? null,
@@ -720,11 +781,15 @@ export class Agent extends HookRegistry {
     return out;
   }
 
-  /** Decode one head row into the answer for its question. */
+  /**
+   * Decode one head row into the answer for its question. `actRow` is the model boundary's
+   * normalised action-probability row, so its first entry is the reported `act_probability` --
+   * exactly what `Agent._decode_answers` reads as `act[r, 0]`.
+   */
   private _decodeRow(
     logitsRow: number[],
     actRow: number[],
-    q: { t: "choice" | "score" | "noul"; ins: string; crit: unknown },
+    q: InternalQ,
     k: number,
     lang: string | null = null,
   ): SystemAnswer {
@@ -738,9 +803,13 @@ export class Agent extends HookRegistry {
       ? (langCfg.temperatureByOptions[bucket] ?? langCfg.temperature[qt] ?? 1.0)
       : (this.temperatureByOptions[bucket] ?? this.temperature[qt] ?? 1.0);
     const z = logitsRow.slice(0, k).map((v) => v / scale);
-    const p = softmax(z);
-    const actP = softmax(actRow.slice(0, Math.max(2, actRow.length)));
-    const ext = { act_probability: r4(actP[0]) };
+    // The row comes back in slot order and everything below indexes by option, so invert it
+    // here -- `p.argmax()`/`keys[best]`, `i * p[i]` and `p[1]` are all option-indexed. Same
+    // position as `laya/agent.py:1350`, immediately after the softmax.
+    const p = unpermuteProbs(softmax(z), q.optionOrder);
+    // Read, not re-normalised: the row arrives as probabilities. The `slice(0, Math.max(2, ...))`
+    // this replaces could only pad an Act row that validation had already refused for being empty.
+    const ext = { act_probability: r4(actRow[0]) };
     // Same quantity on every question type (max(p)), so callers can gate across types on
     // one number; `confidence` stays as-is for existing callers (entropy for choice/score).
     // Histogram-binning recalibration (issue #871, Python parity) recalibrates ans_raw
@@ -822,6 +891,19 @@ export class Agent extends HookRegistry {
     return this._predictHooked(states, questions, opts);
   }
 
+  /** Scan overlapping token windows locally and keep each question's strongest answer.
+   * Attribution refers to the original candidate token slice; decoding and re-encoding can
+   * change its length. Confidence belongs to the winning window, not the whole document.
+   * Agent hooks wrap one batch of windows. A hook budget change is checked after inference.
+   */
+  async predictLong(
+    state: unknown,
+    questions: Record<string, QuestionDef>,
+    opts: LongPredictOptions = {},
+  ): Promise<LongResult> {
+    return predictLong(this, state, questions, opts);
+  }
+
   /**
    * Answer `state` against a JSON schema (or explicit `opts.questions`) and return typed
    * values — see `structured.ts`. Pass exactly one of `schema` or `opts.questions`; other
@@ -843,6 +925,31 @@ export class Agent extends HookRegistry {
     opts: DecideOptions & PredictOptions = {},
   ): Promise<Record<string, unknown> | DecisionResult> {
     return decide(this, state, schema, opts);
+  }
+
+  /**
+   * Answer many states against one schema in one batched call, in input order.
+   *
+   * The throughput form of `decide`: the schema is planned once and evaluated
+   * over every state through `predictBatch` (shared forward passes, results in input order).
+   * See `structured.ts`.
+   */
+  async decideBatch(
+    states: unknown[],
+    schema: unknown,
+    opts: DecideBatchOptions & PredictOptions & { returnDetails: true },
+  ): Promise<DecisionResult[]>;
+  async decideBatch(
+    states: unknown[],
+    schema?: unknown,
+    opts?: DecideBatchOptions & PredictOptions,
+  ): Promise<Record<string, unknown>[]>;
+  async decideBatch(
+    states: unknown[],
+    schema?: unknown,
+    opts: DecideBatchOptions & PredictOptions = {},
+  ): Promise<Record<string, unknown>[] | DecisionResult[]> {
+    return decideBatch(this, states, schema, opts);
   }
 
   static async load(

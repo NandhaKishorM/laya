@@ -1,4 +1,5 @@
 """CLI tests. No model weights are loaded: the Router is stubbed throughout."""
+import builtins
 import io
 import os
 import sys
@@ -82,6 +83,85 @@ code, out, err, stub = run_cli(["some text"], router=BrokenRouter())
 check("error: exit code 2", code == 2, "got %r" % code)
 check("error: names the failure", "could not run Laya" in err, err)
 check("error: points at the fix", "Hugging Face hub" in err, err)
+
+# --------------------------------------------------------------------- interactive session
+# The page promises exit code 2 for a handled failure, and the interactive loop has to keep it:
+# `laya < requests.txt` is a script, so the session owes the code its requests earned.
+def run_session(lines, argv, router=None):
+    """Drive the interactive loop with `lines` as what gets typed, then Ctrl-D."""
+    stub = router or StubRouter()
+    original_router, original_input = cli.make_router, builtins.input
+    typed = iter(list(lines) + [None])
+
+    def fake_input(_prompt=""):
+        item = next(typed)
+        if item is None:
+            raise EOFError
+        return item
+
+    cli.make_router = lambda args: stub
+    out, err = io.StringIO(), io.StringIO()
+    try:
+        builtins.input = fake_input
+        with redirect_stdout(out), redirect_stderr(err):
+            code = cli.main(argv)
+    finally:
+        cli.make_router = original_router
+        builtins.input = original_input
+    return code, out.getvalue(), err.getvalue(), stub
+
+
+class AlwaysBrokenRouter:
+    """Fails every request but counts them, so a session cut short by one is visible."""
+
+    def __init__(self):
+        self.count = 0
+
+    def route(self, state, **kwargs):
+        self.count += 1
+        raise OSError("connection failed")
+
+
+class SecondRequestFails(AlwaysBrokenRouter):
+    def route(self, state, **kwargs):
+        if self.count:
+            raise OSError("connection failed")
+        self.count += 1
+        return StubDecision()
+
+
+class FirstRequestFails(SecondRequestFails):
+    def route(self, state, **kwargs):
+        if self.count:
+            self.count += 1
+            return StubDecision()
+        self.count += 1
+        raise OSError("connection failed")
+
+
+broken = AlwaysBrokenRouter()
+code, out, err, stub = run_session(["first request", "second request"], [], router=broken)
+check("interactive: a handled failure exits 2, not 0", code == 2, "got %r" % code)
+check("interactive: a handled failure keeps the session up",
+      broken.count == 2 and "could not run Laya" in err, "%d calls, err %r" % (broken.count, err))
+
+code, out, err, stub = run_session(["first request", "second request"], [])
+check("interactive: a clean session exits 0", code == 0, "got %r" % code)
+check("interactive: a clean session routes both lines",
+      [c[0] for c in stub.route_calls] == [{"text": "first request"}, {"text": "second request"}],
+      str(stub.route_calls))
+
+mixed = SecondRequestFails()
+code, out, err, stub = run_session(["ok", "bad"], [], router=mixed)
+check("interactive: one failed request is enough for exit 2", code == 2, "got %r" % code)
+
+mixed = FirstRequestFails()
+code, out, err, stub = run_session(["bad", "ok"], [], router=mixed)
+check("interactive: a later success does not erase an earlier failure",
+      code == 2 and mixed.count == 2, "code %r, %d calls" % (code, mixed.count))
+
+code, out, err, stub = run_session(["quit"], [], router=AlwaysBrokenRouter())
+check("interactive: leaving the prompt before a request exits 0", code == 0, "got %r" % code)
 
 # --------------------------------------------------------------------- explicit flags
 code, out, err, stub = run_cli(["--model", "english", "charged twice"])
@@ -304,6 +384,17 @@ code, out, err, stub = run_batch_cli(["--batch", os.path.join(tmp, "missing.txt"
 check("batch missing file: exit 2 with a named failure",
       code == 2 and "could not read" in err, "code %r err %r" % (code, err))
 
+# read_batch_lines opens FILE with encoding="utf-8", so a non-UTF-8 file fails inside the read
+# with a UnicodeDecodeError -- a ValueError, not an OSError -- which the old `except OSError`
+# let escape as a traceback with exit 1, naming no file. It is a usage error about this file.
+bad_bytes = os.path.join(tmp, "latin1.txt")
+with open(bad_bytes, "wb") as handle:
+    handle.write(b"caf\xe9 ticket\nsecond line\n")
+code, out, err, stub = run_batch_cli(["--batch", bad_bytes])
+check("batch non-UTF-8 file: exit 2 naming the file, not a traceback",
+      code == 2 and "could not read" in err and bad_bytes in err,
+      "code %r err %r" % (code, err))
+
 code, out, err, stub = run_batch_cli(["--batch", path, "inline text"])
 check("batch: text and --batch are mutually exclusive",
       code == 2 and "not both" in err, "code %r err %r" % (code, err))
@@ -314,6 +405,29 @@ code, out, err, stub = run_batch_cli(["--batch", empty, "--predict"])
 check("batch empty file: exit 2, no calls",
       code == 2 and "no requests" in err and stub.predict_batch_calls == [],
       "code %r err %r" % (code, err))
+
+# Same BOM, one reader over: a batch file saved by a Windows editor used to send U+FEFF as the
+# first character of the first request, which the model then read as part of the text.
+bom_batch = os.path.join(tmp, "bom-requests.txt")
+with open(bom_batch, "wb") as handle:
+    handle.write(b"\xef\xbb\xbffirst ticket\nsecond ticket\n")
+code, out, err, stub = run_batch_cli(["--batch", bom_batch, "--predict"])
+requests = stub.predict_batch_calls[0][0] if stub.predict_batch_calls else []
+check("batch: a UTF-8 BOM does not become part of the first request",
+      code == 0 and [r["state"]["request"] for r in requests] == ["first ticket", "second ticket"],
+      "code %r states %r err %r" % (code, [r["state"] for r in requests], err))
+
+_bom_stdin = io.TextIOWrapper(io.BytesIO(b"\xef\xbb\xbffirst ticket\nsecond ticket\n"), encoding="utf-8")
+_original_stdin = sys.stdin
+sys.stdin = _bom_stdin
+try:
+    code, out, err, stub = run_batch_cli(["--batch", "-", "--predict"])
+finally:
+    sys.stdin = _original_stdin
+requests = stub.predict_batch_calls[0][0] if stub.predict_batch_calls else []
+check("batch -: a UTF-8 BOM on a piped stream is not part of the first request",
+      code == 0 and [r["state"]["request"] for r in requests] == ["first ticket", "second ticket"],
+      "code %r states %r err %r" % (code, [r["state"] for r in requests], err))
 
 _original_stdin = sys.stdin
 sys.stdin = io.StringIO("piped one\npiped two\n")
@@ -588,6 +702,56 @@ code, out, err, stub = run_cli(["hi", "--questions", os.path.join(_TMP, "missing
                                router=QuestionRecorder())
 check("questions: missing file is a handled error",
       code == 2 and "no such --questions file" in err, "code %r, err %r" % (code, err))
+
+
+def write_raw(name, data):
+    path = os.path.join(_TMP, name)
+    with open(path, "wb") as handle:
+        handle.write(data)
+    return path
+
+
+# A file that is not valid JSON, not UTF-8, or nested past what json.load can read used to leak
+# out of load_questions as a bare JSONDecodeError / UnicodeDecodeError / RecursionError: the first
+# two named the fault but not the file, and RecursionError was swallowed by run()'s
+# `except (ImportError, OSError, RuntimeError)` and reported as a checkpoint/download problem --
+# a false diagnosis for a corrupt question file. Each is now a path-naming ValueError (exit 2).
+not_json_path = write_raw("not_json.json", b"{ this is not json }")
+code, out, err, stub = run_cli(["hi", "--questions", not_json_path], router=QuestionRecorder())
+check("questions: invalid JSON is exit 2 naming the file",
+      code == 2 and "not valid JSON" in err and not_json_path in err, "code %r err %r" % (code, err))
+
+non_utf8_path = write_raw("latin1.json", b'{"\xe9": {"type": "noul"}}')
+code, out, err, stub = run_cli(["hi", "--questions", non_utf8_path], router=QuestionRecorder())
+check("questions: non-UTF-8 file is exit 2 naming the file",
+      code == 2 and "not UTF-8 text" in err and non_utf8_path in err, "code %r err %r" % (code, err))
+
+# Depth past the C scanner's limit raises RecursionError, not a decode/parse error.
+deep_path = write_raw("deep.json", b"[" * 100000 + b"]" * 100000)
+code, out, err, stub = run_cli(["hi", "--questions", deep_path], router=QuestionRecorder())
+check("questions: too-deep JSON is exit 2, not a download-error message",
+      code == 2 and "nested deeper" in err and "checkpoint" not in err,
+      "code %r err %r" % (code, err))
+
+# A path that exists but is not a readable file -- here a directory -- is the same fault one step
+# further out: `open()` raises IsADirectoryError, an OSError that run()'s
+# `except (ImportError, OSError, RuntimeError)` reports as "could not run Laya" with advice to check
+# the network. It has to name the path and stay a usage error, like the three cases above.
+questions_dir = os.path.join(_TMP, "a-directory")
+os.makedirs(questions_dir, exist_ok=True)
+code, out, err, stub = run_cli(["hi", "--questions", questions_dir], router=QuestionRecorder())
+check("questions: a directory is exit 2 naming the file, not a runtime error",
+      code == 2 and "cannot be read" in err and questions_dir in err and "could not run Laya" not in err,
+      "code %r err %r" % (code, err))
+check("questions: a directory never reaches predict", stub.questions is None, str(stub.questions))
+
+# A UTF-8 BOM is what Notepad and Excel write. The other file readers in this repo open with
+# `utf-8-sig` for exactly that reason (docker/entrypoint.py, laya/train.py), but this one read
+# plain utf-8, so the BOM became U+FEFF and a valid questions file was refused as "not valid JSON".
+bom_questions = write_raw("bom-questions.json", b"\xef\xbb\xbf" + _json.dumps(INTENTS).encode("utf-8"))
+code, out, err, stub = run_cli(["hello", "--questions", bom_questions], router=QuestionRecorder())
+check("questions: a UTF-8 BOM file is read, not refused as invalid JSON",
+      code == 0 and stub.questions == INTENTS, "code %r err %r" % (code, err))
 
 code, out, err, stub = run_cli(["hi", "--questions", INTENTS_PATH, "--preset", "triage"],
                                router=QuestionRecorder())

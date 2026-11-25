@@ -22,8 +22,10 @@ skip is the failure mode described above. The batch behaviour this PR adds is ch
 columns by `tests/test_langchain.py`; what only a real install can check is here: the pydantic
 fields that gate a decision, and being a `Runnable` at all.
 """
+import asyncio
 import os
 import sys
+from typing import TypedDict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -156,6 +158,77 @@ shared = BatchingAgent(0.5)
 check("batch/runner with predict_batch answers each input",
       outcome(lambda: LayaRouter(agent=shared, **BATCH_KW).batch(INPUTS)), ["human", "human"])
 check("batch/one call per batch", outcome(lambda: shared.batch_calls), [2])
+
+# --------------------------------------------------------------- 5. Native policy is a real field
+class NativeAgent:
+    def __init__(self):
+        self.batch_calls = []
+
+    def predict(self, state, questions, **kwargs):
+        answer = {"choice": "billing_agent", "answer_confidence": 0.99}
+        if state != "broken":
+            answer["route"] = "review" if state == "review" else "auto"
+        return {"answers": {qid: dict(answer) for qid in questions}}
+
+    def predict_batch(self, states, questions, **kwargs):
+        self.batch_calls.append(list(states))
+        return [self.predict(state, questions, **kwargs) for state in states]
+
+
+native_agent = NativeAgent()
+native_router = LayaRouter(criteria=CRITERIA, agent=native_agent, fallback="human",
+                           decision_policy="native", confidence_threshold="0")
+check_true("native/declared-field", "decision_policy" in LayaRouter.model_fields)
+settings = native_router.model_dump(exclude={"agent", "last_decision"})
+check("native/serialized-policy", settings["decision_policy"], "native")
+restored = LayaRouter.model_validate(dict(settings, agent=native_agent))
+check("native/restored-policy-decides", restored.invoke("review"), "human")
+for field, value in (("decision_policy", "typo"), ("fallback", ""), ("confidence_threshold", 0.8)):
+    copied = native_router.model_copy(update={field: value})
+    check_raises(f"native/copied-{field}-revalidated", lambda: copied.invoke("auto"), ValueError)
+
+# --------------------------------------------------------------- 6. Async and graph destinations
+async def native_async_checks():
+    check("native/ainvoke", await native_router.ainvoke("review"), "human")
+    inputs = ["review", "auto", "review"]
+    check("native/abatch", await native_router.abatch(inputs), ["human", "billing_agent", "human"])
+    check("native/abatch-shared-call", native_agent.batch_calls, [inputs])
+    mixed = await native_router.abatch(["auto", "broken", "review"], return_exceptions=True)
+    check("native/async-exception-neighbors", [mixed[0], mixed[2]], ["billing_agent", "human"])
+    check_true("native/async-malformed-error", isinstance(mixed[1], RuntimeError)
+               and "Malformed decision response" in str(mixed[1]))
+    check("native/concurrent-invocations",
+          await asyncio.gather(*(native_router.ainvoke(item) for item in inputs)),
+          ["human", "billing_agent", "human"])
+
+
+asyncio.run(native_async_checks())
+
+from langgraph.graph import END, StateGraph  # noqa: E402
+
+
+class WorkflowState(TypedDict):
+    input: str
+    visited: list
+
+
+def destination(name):
+    def visit(state):
+        return {"visited": state.get("visited", []) + [name]}
+    return visit
+
+
+workflow = StateGraph(WorkflowState)
+destinations = {name: name for name in ("billing_agent", "tech", "human")}
+for name in destinations:
+    workflow.add_node(name, destination(name))
+    workflow.add_edge(name, END)
+workflow.set_conditional_entry_point(native_router.invoke, destinations)
+app = workflow.compile()
+check("native/graph-review-executes-only-fallback", app.invoke({"input": "review"})["visited"], ["human"])
+check("native/graph-auto-executes-only-choice", app.invoke({"input": "auto"})["visited"], ["billing_agent"])
+check("native/graph-async-review", asyncio.run(app.ainvoke({"input": "review"}))["visited"], ["human"])
+check_raises("native/graph-malformed-answer", lambda: app.invoke({"input": "broken"}), RuntimeError)
 
 # --------------------------------------------------------------- Summary
 print(f"PASS: {len(PASS)}")

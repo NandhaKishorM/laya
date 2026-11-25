@@ -3,6 +3,8 @@ export interface TokenizerLike {
   readonly maskId: number; readonly padId: number;
   readonly maskToken: string;
   encode(text: string): number[];
+  /** Decode without removing special tokens; needed only when predictLong splits the state. */
+  decode?(ids: readonly number[]): string;
 }
 
 /** Special ids of the laya ModernBERT checkpoint (HF added_tokens). */
@@ -31,6 +33,8 @@ export interface TokenizerData {
   byteFallback?: boolean;
   /** Tokens cut out of the text before it is tokenized (HF added_tokens). */
   added?: AddedToken[];
+  /** Absent when tokenizer.json uses a decoder this runtime does not implement. */
+  decode?: (ids: readonly number[]) => string;
 }
 
 export interface AddedToken { content: string; id: number; normalized: boolean; lstrip: boolean; rstrip: boolean }
@@ -411,6 +415,64 @@ function collectReplaces(node: unknown, out: Array<[string, string]>): void {
   for (const c of childNodes(node)) collectReplaces(c, out);
 }
 
+/** Compile the two checkpoint decoders, retaining HF's skip_special_tokens=False behavior. */
+function checkpointDecoder(
+  raw: unknown, vocab: Map<string, number>, added: AddedToken[],
+): ((ids: readonly number[]) => string) | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const decoder = raw as Record<string, unknown>;
+  let decodeTokens: (tokens: string[]) => string;
+  // ignoreBOM preserves U+FEFF in a decoded window, just as the HF decoder does.
+  const utf8 = new TextDecoder("utf-8", { ignoreBOM: true });
+  if (decoder.type === "ByteLevel") {
+    decodeTokens = (tokens) => {
+      const bytes: number[] = [];
+      const { u2b } = maps();
+      for (const token of tokens) {
+        const mapped = Array.from(token, (ch) => u2b.get(ch));
+        // HF falls back to the whole token's UTF-8 bytes if any character is unmapped.
+        const part = mapped.every((b) => b !== undefined)
+          ? mapped as number[] : (sharedEncoder ??= new TextEncoder()).encode(token);
+        for (const b of part) bytes.push(b);
+      }
+      return utf8.decode(new Uint8Array(bytes));
+    };
+  } else if (decoder.type === "Sequence" && Array.isArray(decoder.decoders)) {
+    const steps = decoder.decoders as Array<Record<string, unknown> | null>;
+    const pattern = steps[0]?.pattern as Record<string, unknown> | undefined;
+    if (steps.length !== 3 || steps[0]?.type !== "Replace"
+        || typeof pattern?.String !== "string" || pattern.String.length === 0
+        || typeof steps[0].content !== "string"
+        || steps[1]?.type !== "ByteFallback" || steps[2]?.type !== "Fuse") return undefined;
+    const from = pattern.String, to = steps[0].content;
+    const strict = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+    decodeTokens = (tokens) => {
+      const out: string[] = [], bytes: number[] = [];
+      const flush = (): void => {
+        if (bytes.length === 0) return;
+        // ByteFallback rejects an entire invalid run, including any otherwise valid prefix.
+        try { out.push(strict.decode(new Uint8Array(bytes))); }
+        catch { out.push("\uFFFD".repeat(bytes.length)); }
+        bytes.length = 0;
+      };
+      for (const token of tokens) {
+        const replaced = token.split(from).join(to);
+        const match = /^<0x([\dA-Fa-f]{2})>$/.exec(replaced);
+        if (match) bytes.push(parseInt(match[1], 16));
+        else { flush(); out.push(replaced); }
+      }
+      flush();
+      return out.join("");
+    };
+  } else return undefined;
+  const byId = new Map(Array.from(vocab, ([token, id]) => [id, token]));
+  for (const token of added) byId.set(token.id, token.content);
+  return (ids) => decodeTokens(ids.flatMap((id) => {
+    const token = byId.get(id);
+    return token === undefined ? [] : [token];
+  }));
+}
+
 /** Parse an HF tokenizer.json ({model vocab/merges, normalizer, pre_tokenizer, added_tokens}). */
 export function parseTokenizerJson(raw: unknown): TokenizerData | null {
   try {
@@ -418,6 +480,7 @@ export function parseTokenizerJson(raw: unknown): TokenizerData | null {
       model?: { vocab?: Record<string, number>; merges?: Array<string | [string, string]>; byte_fallback?: boolean };
       normalizer?: unknown;
       pre_tokenizer?: unknown;
+      decoder?: unknown;
       added_tokens?: Array<{ id?: number; content?: string; normalized?: boolean; lstrip?: boolean; rstrip?: boolean }>;
     };
     const vocabObj = r?.model?.vocab;
@@ -463,6 +526,7 @@ export function parseTokenizerJson(raw: unknown): TokenizerData | null {
       replaces,
       byteFallback: r.model?.byte_fallback === true,
       added: addedTokens,
+      decode: checkpointDecoder(r.decoder, vocab, addedTokens),
     };
   } catch {
     return null;

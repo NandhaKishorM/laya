@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   answersToJson,
   decide,
+  decideBatch,
   planFromJsonSchema,
   questionsFromJsonSchema,
   SchemaError,
@@ -108,6 +109,61 @@ describe("structured/projection", () => {
       { type: "object", properties: { x: { enum: ["a", null] } } });
     expect(v.x).toBe(null);
   });
+
+  // Mirrors the non-dict-answer block in tests/test_structured.py. The answers this port projects
+  // come from parsed remote JSON, so a field's entry can be a string, number, boolean, array or
+  // null instead of an answer object. Python skips those (`isinstance(answer, dict)`) and omits the
+  // field, as it omits an absent answer; `answer == null` let a primitive through and each field
+  // read invented a value for it -- "undefined" for a choice, `minimum + 0` for a score, false for
+  // a noul, measured across 4 fields x 6 shapes against `laya/structured.py`.
+  const EXPECTED_VALUES: Record<string, unknown> = {
+    department: "billing", urgency: 2, needs_human: true, priority: 2,
+  };
+  const FIELDS = Object.keys(EXPECTED_VALUES);
+  const NON_OBJECT: Array<[string, unknown]> = [
+    ["string", "oops"],
+    ["list", ["not", "an", "answer"]],
+    ["int", 7],
+    ["float", 0.5],
+    ["bool", true],
+    ["null", null],
+  ];
+  for (const [label, body] of NON_OBJECT) {
+    it(`omits a non-object answer (${label}) and still projects the fields beside it`, () => {
+      for (const field of FIELDS) {
+        const values = answersToJson({ ...ANSWERS, [field]: body } as any, SCHEMA);
+        expect(Object.prototype.hasOwnProperty.call(values, field)).toBe(false);
+        for (const other of FIELDS.filter((f) => f !== field)) {
+          expect(values[other]).toEqual(EXPECTED_VALUES[other]);
+        }
+      }
+    });
+  }
+  it("all answers non-object yields no values", () => {
+    expect(answersToJson({ department: 5, urgency: "x" } as any, SCHEMA)).toEqual({});
+  });
+
+  // The same entry reaches `decide` through a runner, not only through answersToJson, and
+  // `returnDetails` walks it a second time to build the per-field maps. Python omits it from all
+  // four (`values`, `confidence`, `answer_confidence`, `probabilities`); the unguarded loop added a
+  // confidence of 0.0 for a question that was never answered.
+  const fakeRunner = (answers: Record<string, any>) => ({
+    async predict() {
+      return { model: "fake", answers: JSON.parse(JSON.stringify(answers)) };
+    },
+  });
+  for (const [label, body] of NON_OBJECT) {
+    it(`decide omits a non-object answer (${label}) from the details too`, async () => {
+      const det = await decide(fakeRunner({ ...ANSWERS, department: body }), "s", SCHEMA, {
+        returnDetails: true,
+      }) as any;
+      for (const map of ["values", "confidence", "answerConfidence", "probabilities"]) {
+        expect(Object.prototype.hasOwnProperty.call(det[map], "department")).toBe(false);
+      }
+      expect(det.values.urgency).toBe(2);
+      expect(det.confidence.needs_human).toBe(0.8);
+    });
+  }
 });
 
 describe("structured/rejections", () => {
@@ -363,3 +419,317 @@ describe("structured/min_confidence", () => {
   });
 });
 
+describe("structured/answerConfidence", () => {
+  const fakeRunner = (answers: Record<string, any>) => ({
+    async predict(state: unknown, questions: any, opts: any) {
+      return { model: "fake", answers: JSON.parse(JSON.stringify(answers)) };
+    },
+  });
+
+  it("exposes answerConfidence per field on DecisionResult", async () => {
+    const calAnswers = {
+      department: { type: "choice", choice: "billing", confidence: 0.3, answer_confidence: 0.95 },
+      urgency: {
+        type: "score",
+        score: 2.0,
+        confidence: 0.9,
+        answer_confidence: 0.4,
+        probabilities: { "0": 0.1, "1": 0.5, "2": 0.4 },
+      },
+    };
+    const runner = fakeRunner(calAnswers);
+    const det = await decide(runner, "state", SCHEMA, { returnDetails: true });
+
+    expect(det.confidence.department).toBe(0.3);
+    expect(det.confidence.urgency).toBe(0.9);
+    expect(det.answerConfidence.department).toBe(0.95);
+    expect(det.answerConfidence.urgency).toBe(0.4);
+
+    // Entropy conf ranks urgency > department, whereas answerConfidence reverses it
+    expect(det.confidence.department).toBeLessThan(det.confidence.urgency);
+    expect(det.answerConfidence.department).toBeGreaterThan(det.answerConfidence.urgency!);
+  });
+
+  it("maps absent or non-finite answer_confidence to null", async () => {
+    const runner = fakeRunner({
+      department: { type: "choice", choice: "billing", confidence: 0.8 },
+      urgency: { type: "score", score: 1.0, confidence: 0.5, answer_confidence: NaN },
+      needs_human: { type: "noul", noul: 0.9, confidence: 0.9, answer_confidence: true as any },
+    });
+    const det = await decide(runner, "state", SCHEMA, { returnDetails: true });
+    expect(det.answerConfidence.department).toBeNull();
+    expect(det.answerConfidence.urgency).toBeNull();
+    expect(det.answerConfidence.needs_human).toBeNull();
+  });
+});
+
+describe("structured/boolean enums", () => {
+  // Python parity (laya/structured.py::_enum_field): the noul shortcut is exactly two distinct
+  // booleans. A single-value enum plans as a one-option choice there, and a duplicate enum raises
+  // the duplicate-label SchemaError -- both of which this side used to plan as a noul, changing
+  // the question type and the projected value type ("true" vs boolean).
+  it("plans a two-value boolean enum as a noul", () => {
+    const [f] = planFromJsonSchema({ type: "object", properties: { a: { enum: [true, false] } } });
+    expect(f.kind).toBe("noul");
+    expect(f.question.type).toBe("noul");
+  });
+
+  it("plans a single-value boolean enum as a one-option choice", () => {
+    const fields = planFromJsonSchema({ type: "object", properties: { a: { enum: [true] } } });
+    expect(fields[0].kind).toBe("choice");
+    expect(fields[0].question.type).toBe("choice");
+    expect(fields[0].question.criteria).toEqual({ true: null });
+  });
+
+  it("refuses a duplicate boolean enum instead of planning a noul", () => {
+    expect(() => planFromJsonSchema({ type: "object", properties: { a: { enum: [true, true] } } })).toThrow(
+      SchemaError,
+    );
+    expect(() => planFromJsonSchema({ type: "object", properties: { a: { enum: [false, false] } } })).toThrow(
+      /duplicate choice labels/,
+    );
+  });
+
+  it("projects the one-option choice back to the boolean value", async () => {
+    const runner = {
+      async predict() {
+        return {
+          model: "fake",
+          answers: { a: { type: "choice", choice: "true", confidence: 0.9, probabilities: { true: 0.9 } } },
+        };
+      },
+    };
+    expect(await decide(runner as any, "state", { type: "object", properties: { a: { enum: [true] } } })).toEqual({
+      a: true,
+    });
+  });
+});
+
+describe("structured/decideBatch", () => {
+  const fakeBatchRunner = (answersPerState: Record<string, any>[]) => ({
+    calls: [] as any[],
+    async predict(state: unknown, questions: any, opts: any) {
+      return { model: "fake", answers: answersPerState[0] };
+    },
+    async predictBatch(states: unknown[], questions: any, opts: any) {
+      this.calls.push({ states, questions, opts });
+      return states.map((_s, i) => ({
+        model: "fake",
+        answers: JSON.parse(JSON.stringify(answersPerState[i % answersPerState.length])),
+      }));
+    },
+  });
+
+  it("evaluates a batch of states against a schema in input order", async () => {
+    const a1 = { ...ANSWERS, department: { type: "choice", choice: "sales", confidence: 0.9 } };
+    const a2 = { ...ANSWERS, department: { type: "choice", choice: "billing", confidence: 0.9 } };
+    const runner = fakeBatchRunner([a1, a2]);
+
+    const results = await decideBatch(runner, ["state 1", "state 2"], SCHEMA);
+    expect(results).toHaveLength(2);
+    expect(results[0].department).toBe("sales");
+    expect(results[1].department).toBe("billing");
+    expect(runner.calls).toHaveLength(1);
+    expect(runner.calls[0].states).toEqual(["state 1", "state 2"]);
+  });
+
+  it("supports returnDetails: true returning DecisionResult array", async () => {
+    const calAnswer = {
+      department: { type: "choice", choice: "billing", confidence: 0.3, answer_confidence: 0.95 },
+      urgency: { type: "score", score: 2.0, confidence: 0.8, answer_confidence: 0.85, probabilities: { "2": 0.85 } },
+    };
+    const runner = fakeBatchRunner([calAnswer]);
+    const results = await decideBatch(runner, ["s1", "s2"], SCHEMA, { returnDetails: true });
+    expect(results).toHaveLength(2);
+    expect(results[0].values.department).toBe("billing");
+    expect(results[0].answerConfidence.department).toBe(0.95);
+    expect(results[0].confidence.department).toBe(0.3);
+    expect(results[1].values.department).toBe("billing");
+    expect(results[1].answerConfidence.department).toBe(0.95);
+  });
+
+  it("evaluates with explicit questions instead of schema", async () => {
+    const qs = questionsFromJsonSchema(SCHEMA);
+    const runner = fakeBatchRunner([ANSWERS]);
+    const results = await decideBatch(runner, ["s1"], undefined, { questions: qs });
+    expect(results).toHaveLength(1);
+    expect(results[0].department.choice).toBe("billing");
+  });
+
+  it("gates low confidence answers when minConfidence is provided", async () => {
+    const answersWithLowConf = {
+      department: { type: "choice", choice: "billing", confidence: 0.9, answer_confidence: 0.95 },
+      urgency: { type: "score", score: 2.0, confidence: 0.4, answer_confidence: 0.4 },
+    };
+    const runner = fakeBatchRunner([answersWithLowConf]);
+    const results = await decideBatch(runner, ["s1"], SCHEMA, { minConfidence: 0.85, returnDetails: true });
+    expect(results[0].values.department).toBe("billing");
+    expect(results[0].values.urgency).toBeNull();
+    expect((results[0].answers.urgency as any).low_confidence).toBe(true);
+  });
+
+  it("accepts python parity alias min_confidence in decideBatch", async () => {
+    const answersWithLowConf = {
+      department: { type: "choice", choice: "billing", confidence: 0.9, answer_confidence: 0.95 },
+      urgency: { type: "score", score: 2.0, confidence: 0.4, answer_confidence: 0.4 },
+    };
+    const runner = fakeBatchRunner([answersWithLowConf]);
+    const results = await decideBatch(runner, ["s1"], SCHEMA, {
+      min_confidence: 0.85,
+      returnDetails: true,
+    });
+
+    expect(results[0].values.department).toBe("billing");
+    expect(results[0].values.urgency).toBeNull();
+    expect((results[0].answers.urgency as any).low_confidence).toBe(true);
+  });
+
+  it("handles empty states array cleanly", async () => {
+    const runner = fakeBatchRunner([ANSWERS]);
+    const results = await decideBatch(runner, [], SCHEMA);
+    expect(results).toEqual([]);
+  });
+
+  it("throws TypeError if states is not an array", async () => {
+    const runner = fakeBatchRunner([ANSWERS]);
+    await expect(decideBatch(runner, "not-an-array" as any, SCHEMA)).rejects.toThrow(TypeError);
+    await expect(decideBatch(runner, 123 as any, SCHEMA)).rejects.toThrow(TypeError);
+    await expect(decideBatch(runner, null as any, SCHEMA)).rejects.toThrow(TypeError);
+  });
+
+  it("throws Error if neither or both schema and questions are passed", async () => {
+    const runner = fakeBatchRunner([ANSWERS]);
+    await expect(decideBatch(runner, ["s1"])).rejects.toThrow("pass exactly one of schema= or questions=");
+    await expect(decideBatch(runner, ["s1"], SCHEMA, { questions: {} as any })).rejects.toThrow(
+      "pass exactly one of schema= or questions=",
+    );
+  });
+
+  it("throws TypeError if runner has no predictBatch", async () => {
+    const plainRunner = {
+      async predict() {
+        return { answers: {} };
+      },
+    };
+    await expect(decideBatch(plainRunner as any, ["s1"], SCHEMA)).rejects.toThrow(/has no predictBatch/);
+  });
+
+  it("routes batch using routeBatch Router convention", async () => {
+    const routerRunner = {
+      calls: [] as any[],
+      routeBatch(reqs: any[]) {
+        return reqs.map(() => ({ model: "router-m" }));
+      },
+      async predictBatch(requests: any[], batchSize?: number | null) {
+        this.calls.push({ requests, batchSize });
+        return requests.map((r: any) => ({
+          model: "router-m",
+          answers: JSON.parse(JSON.stringify(ANSWERS)),
+        }));
+      },
+      async predict() {
+        return { answers: ANSWERS };
+      },
+    };
+
+    const results = await decideBatch(routerRunner as any, ["req1", "req2"], SCHEMA, { batchSize: 4 });
+    expect(results).toHaveLength(2);
+    expect(routerRunner.calls).toHaveLength(1);
+    expect(routerRunner.calls[0].batchSize).toBe(4);
+    expect(routerRunner.calls[0].requests).toHaveLength(2);
+    expect(routerRunner.calls[0].requests[0].state).toBe("req1");
+    expect(routerRunner.calls[0].requests[1].state).toBe("req2");
+  });
+});
+
+
+
+describe("structured/decideBatch Router token budgets", () => {
+  it.each([32, 512])("matches single encoding when overriding the Agent default of %s", async (maxLen) => {
+    const encoderLengths: number[][] = [];
+    const agent = new Agent({
+      max_len: maxLen,
+      provider: {
+        async runEncoder(batch) {
+          encoderLengths.push(batch.inputIds.map((row) => row.length));
+          return { lastHidden: batch.inputIds.map(() => [[1, 0], [0, 1]]) };
+        },
+        async runHead(_hidden, batch) {
+          return {
+            logits: batch.inputIds.map(() => [2, 0]),
+            act: batch.inputIds.map(() => [3, 0]),
+          };
+        },
+      },
+    });
+    const router = new Router({ default: "english", loader: () => agent });
+    const schema = {
+      type: "object",
+      properties: { relevant: { type: "boolean", description: "Is the request relevant?" } },
+    };
+    const state = Array.from({ length: 160 }, (_, i) => `word${i}`).join(" ");
+    const opts = { model: "english", maxLen: 64, headMaxLen: 16, returnDetails: true as const };
+    const single = await router.decide(state, schema, opts);
+    const batch = await router.decideBatch([state, state], schema, opts);
+    expect(single.usage).toMatchObject({ input_tokens: 64, state_tokens_dropped: 114, truncated: true });
+    expect(batch.map((result) => result.usage)).toEqual([single.usage, single.usage]);
+    expect(batch.map((result) => result.values)).toEqual([single.values, single.values]);
+    expect(encoderLengths).toEqual([[64], [64, 64]]);
+  });
+});
+
+// `DecideBatchOptions` documents that anything it does not read itself is forwarded to the
+// runner, hooks included. On a Router-like runner the call used to spread those options into the
+// request objects and pass no third argument, so `Router.predictBatch` -- which reads hooks from
+// its options argument, not from each request -- never ran them: tracing and metrics hooks
+// observed nothing on the batch path while firing on the single-request and Agent paths.
+describe("structured/decideBatch Router hook forwarding", () => {
+  const provider = () => ({
+    async runEncoder(b: any) {
+      const n = b?.inputIds?.length ?? 1;
+      return { lastHidden: Array.from({ length: n }, () => [[1, 0], [0, 1]]) };
+    },
+    async runHead(_h: any, batch?: any) {
+      const n = batch?.inputIds?.length ?? 1;
+      return {
+        logits: Array.from({ length: n }, () => [2, 0, 1, 0]),
+        act: Array.from({ length: n }, () => [3, 0]),
+      };
+    },
+  });
+
+  const routerWithAgent = () =>
+    new Router({ default: "english", loader: () => new Agent({ provider: provider() } as any) } as any);
+
+  it("fires per-call hooks through decide() and decideBatch() on a Router", async () => {
+    const fired: string[] = [];
+    const hook = {
+      onPredictStart(ctx: any) {
+        fired.push(String(ctx.states[0]));
+      },
+    };
+    await decide(routerWithAgent(), "single", SCHEMA, { hooks: [hook] });
+    expect(fired).toEqual(["single"]);
+
+    fired.length = 0;
+    await decideBatch(routerWithAgent(), ["s1", "s2"], SCHEMA, { hooks: [hook] });
+    expect(fired).toEqual(["s1", "s2"]);
+  });
+
+  it("forwards the plain-callable form too, and does not put hooks on the request objects", async () => {
+    const fired: string[] = [];
+    const router = routerWithAgent();
+    const calls: any[] = [];
+    // Record what reaches the router's own predictBatch, then run the real one.
+    const realBatch = router.predictBatch.bind(router);
+    (router as any).predictBatch = (requests: any[], batchSize: any, opts: any) => {
+      calls.push({ requests, batchSize, opts });
+      return realBatch(requests, batchSize, opts);
+    };
+    await decideBatch(router, ["s1"], SCHEMA, { onPredictStart: (ctx) => fired.push(String(ctx.states[0])) });
+    expect(fired).toEqual(["s1"]);
+    expect(calls).toHaveLength(1);
+    expect("onPredictStart" in calls[0].requests[0]).toBe(false);
+    expect(typeof calls[0].opts.onPredictStart).toBe("function");
+  });
+});

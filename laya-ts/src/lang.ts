@@ -31,7 +31,18 @@ const SCRIPT_RANGES: ScriptRanges = [
 const STOP: Record<string, Set<string>> = {
   en: new Set(["the", "and", "is", "are", "was", "were", "to", "of", "in", "for", "with", "that",
     "this", "it", "you", "have", "has", "not", "but", "on", "at", "be", "as", "from",
-    "will", "can", "would", "there", "their", "what", "which", "please", "we", "i"]),
+    "will", "can", "would", "there", "their", "what", "which", "please", "we", "i",
+    // Question words, auxiliaries, pronouns and connectives, so a plain request such as "Why hasn't
+    // my card been delivered?" is not left undecided. See _STOP["en"] in laya/lang.py for how they
+    // were chosen and which words stay out.
+    "how", "why", "when", "where", "who", "whom", "does", "done", "doing", "been", "being",
+    "could", "should", "might", "must", "shall", "doesn", "didn", "isn", "aren", "wasn",
+    "weren", "haven", "hasn", "couldn", "wouldn", "won", "dont", "wont", "didnt", "doesnt",
+    "isnt", "wasnt", "havent", "ive", "youre", "thats", "whats", "any", "some", "many",
+    "much", "every", "each", "these", "those", "both", "few", "they", "them", "she", "him",
+    "his", "our", "your", "yours", "into", "onto", "between", "after", "before", "through",
+    "during", "without", "within", "down", "if", "nor", "than", "then", "because", "while",
+    "until", "here", "only", "very", "too", "ever", "never", "always", "already", "yet"]),
   fr: new Set(["le", "la", "les", "des", "une", "est", "pour", "dans", "que", "qui", "avec", "sur",
     "pas", "plus", "nous", "vous", "être", "cette", "mais", "sont", "ont", "aux", "ce",
     "et", "du", "au", "ou", "je", "tu", "il", "elle", "ils", "elles", "mon", "ton",
@@ -53,7 +64,14 @@ const STOP: Record<string, Set<string>> = {
     "ni", "dos", "tres", "fue", "fueron", "ser", "tiene", "tienen", "tengo", "puede",
     "pueden", "quiero", "necesito", "hemos", "han", "sobre", "entre", "cuando", "donde",
     "porque", "aunque", "también", "ya", "eso", "esto", "esa", "ese", "nada", "algo",
-    "aquí", "hoy", "gracias"]),
+    "aquí", "hoy", "gracias",
+    "puedo", "puedes", "pueda", "estoy", "estan", "están", "mis", "tus",
+    "nuestro", "nuestra", "hago", "hace", "hacer", "despues", "después",
+    "todavia", "todavía", "tambien", "ahora", "ayer", "siempre", "hasta", "desde",
+    "alguien", "nadie", "ninguna", "entonces", "nosotros", "ustedes", "usted",
+    "quien", "quién", "quienes", "cual", "cuál", "cuales", "cuáles",
+    "cuándo", "dónde", "cómo", "hola", "buenas", "tardes", "quisiera", "pues",
+    "luego", "otra", "tienes", "sabes"]),
   pt: new Set(["os", "as", "que", "em", "um", "uma", "para", "com", "não", "é", "se", "do", "da",
     "dos", "das", "mas", "são", "está", "este", "esta", "muito", "pelo", "pela",
     "o", "e", "na", "nas", "nos", "ao", "aos", "por", "foi", "era", "ser", "sou",
@@ -65,14 +83,17 @@ const STOP: Record<string, Set<string>> = {
     "gostaria", "obrigada", "também", "tambem", "estou", "estamos", "meus", "minhas",
     "nosso", "nossa", "consigo", "cadê", "boa", "tarde", "noite",
     "depois", "antes", "então", "entao", "ninguém", "ninguem", "alguém", "alguem", "nenhum",
-    "nenhuma", "estava", "ficou", "fiz", "deu"]),
+    "nenhuma", "estava", "ficou", "fiz", "deu",
+    "faço", "faco", "fazer", "faz", "eles", "elas", "nós", "estao", "estão",
+    "qual", "quais", "quem", "outra", "outros", "outras", "precisa",
+    "amanha", "amanhã"]),
   it: new Set(["il", "lo", "gli", "che", "di", "per", "con", "non", "è", "si", "del", "della", "sono",
     "questo", "questa", "anche", "come", "più", "sono", "nella", "alla",
     "la", "le", "un", "uno", "una", "e", "ed", "o", "da", "su", "tra", "fra", "mi",
     "ci", "ne", "ho", "hai", "ha", "abbiamo", "avete", "hanno", "era", "stato", "stata",
     "devo", "deve", "devono", "voglio", "vorrei", "mio", "mia", "tuo", "sua", "quando",
     "dove", "perche", "molto", "poco", "sempre", "mai", "già", "ancora", "adesso", "oggi",
-    "ieri", "grazie", "ciao", "scusa",
+    "ieri", "grazie", "ciao", "scusa", "qual",
     "nel", "nell", "negli", "sul", "sulla", "sulle", "dal", "dalla", "dallo", "dagli", "dei",
     "delle", "dello", "degli", "agli", "alle", "col"]),
   nl: new Set(["het", "een", "van", "is", "op", "te", "dat", "niet", "met", "voor", "zijn", "aan",
@@ -119,7 +140,14 @@ const NON_EN_DIACRITICS = new Set(
     "ğı" +                                 // Turkish (text is lowercased before matching)
     "āēģīķļņūž" +                          // Baltic
     "đ" +                                  // Serbo-Croatian / Vietnamese
-    "ə").split(""),                        // Azerbaijani
+    "ə" +                                  // Azerbaijani
+    // Vietnamese: no stopword list of its own, so its letters are the only signal that keeps
+    // it off the English checkpoint, and the tone-marked letters are precomposed codepoints
+    // of their own (see laya/lang.py for the same fix).
+    "ạảấầẩẫậắằẳẵặ" +
+    "ẹẻẽếềểễệỉị" +
+    "ọỏốồổỗộớờởỡợụủứừửữự" +
+    "ỳỵỷỹơư").split(""),
 );
 
 export const NON_EN_DIACRITIC_RATE = 0.02;
@@ -195,32 +223,92 @@ function scriptOf(ch: string): string | null {
   return null;
 }
 
-/** String leaves of a state. Keys are ignored: they are usually English field names. */
-function iterText(state: unknown, depth = 0): string[] {
+/** Python's `len()`: the number of code points, not of UTF-16 units. Python's `lang.py` divides
+ * the diacritic count by `len(lowered)`, and every other port counts code points too (Go
+ * `utf8.RuneCountInString`, Rust `chars().count()`, Java `codePointLength`, C++ `RuneCount`), so
+ * an astral character must count as one here as well. `String.length` counts it as two, which
+ * understated `diacriticRate` on any text carrying emoji -- e.g. `analyse()` on
+ * `"é\uD83D\uDE00\uD83D\uDE00" + "-".repeat(46)` read `isEnglish: true` in this port where
+ * Python answers `false`, routing the text to the English checkpoint. */
+function width(text: string): number {
+  let count = 0;
+  for (const _ch of text) count++;
+  return count;
+}
+
+/** Python's `text[:count]`: a prefix cut at code points, so a surrogate pair is never split
+ * in half. Python's `lang.py` slices the same budgets by code points (`state_text`,
+ * `_non_english_segment`, the 4000-character leaf samples), and the email port already cuts this
+ * way (`cutCodePoints` in `email.ts`, added when a budget cut an emoji in half). `String.slice`
+ * counts UTF-16 units, so `stateText("A".repeat(3999) + "\uD83D\uDE00" + "...")` used to return a
+ * string ending in the orphaned high half of the emoji -- text Python never produces, and a lone
+ * surrogate the serve side already refuses as malformed (#454, #814). */
+function cutCodePoints(text: string, count: number): string {
+  const chars = Array.from(text);
+  const end = count < 0 ? Math.max(0, chars.length + count) : Math.min(count, chars.length);
+  return chars.slice(0, end).join("");
+}
+
+type DiagnosticPath = Array<string | number> | null;
+const ARRAY_ITERATOR = Array.prototype[Symbol.iterator];
+
+function childPath(path: DiagnosticPath, key: string | number): DiagnosticPath {
+  if (path === null) return null;
+  if (typeof key === "string") {
+    let size = 0;
+    for (const _ch of key) if (++size > 128) return null;
+  }
+  return [...path, key];
+}
+
+/** String leaves of a state. Keys are ignored as text, but can locate diagnostic evidence. */
+function iterText(state: unknown, depth = 0, paths?: DiagnosticPath[], path: DiagnosticPath = []): string[] {
   if (depth > 6 || state == null) return [];
-  if (typeof state === "string") return [state];
+  if (typeof state === "string") {
+    paths?.push(path);
+    return [state];
+  }
   if (state instanceof Uint8Array) {
     try {
-      return [new TextDecoder("utf-8", { fatal: true }).decode(state)];
+      const text = new TextDecoder("utf-8", { fatal: true }).decode(state);
+      paths?.push(path);
+      return [text];
     } catch {
       return [];
     }
   }
   if (Array.isArray(state)) {
     const out: string[] = [];
-    for (const v of state) out.push(...iterText(v, depth + 1));
+    if (paths) {
+      // Read/call the iterator once, as for-of does. A custom iterator need not yield indices
+      // in array order; retain its traversal (including IteratorClose), but do not invent a path.
+      const iterator = state[Symbol.iterator];
+      const values = { [Symbol.iterator]: () => Reflect.apply(iterator, state, []) };
+      let index = 0;
+      for (const v of values) {
+        out.push(...iterText(v, depth + 1, paths, iterator === ARRAY_ITERATOR ? childPath(path, index) : null));
+        index++;
+      }
+    } else {
+      for (const v of state) out.push(...iterText(v, depth + 1));
+    }
     return out;
   }
   if (typeof state === "object") {
     const out: string[] = [];
-    for (const v of Object.values(state as object)) out.push(...iterText(v, depth + 1));
+    if (paths) {
+      // Like Object.values, entries snapshots all values before recursing into any of them.
+      for (const [key, v] of Object.entries(state)) out.push(...iterText(v, depth + 1, paths, childPath(path, key)));
+    } else {
+      for (const v of Object.values(state as object)) out.push(...iterText(v, depth + 1));
+    }
     return out;
   }
   return [];
 }
 
 export function stateText(state: unknown, maxChars = 4000): string {
-  return iterText(state).join(" ").slice(0, maxChars);
+  return cutCodePoints(iterText(state).join(" "), maxChars);
 }
 
 export function detectScript(text: string): string {
@@ -276,6 +364,13 @@ export function scriptProfile(text: string): Record<string, number> {
 // character carries far more than a letter. A short message needs a large share to count; a long
 // payload (ticket fields, English agent turns) dilutes the share, so there a sentence's worth of
 // letters counts too.
+// All-caps handling. A customer shouting in Portuguese is still Portuguese; an acronym block is not
+// French. A token of this many LETTERS is a word rather than an acronym, and on an all-caps line it
+// has to be a function word of the named language (or the line has to carry non-English
+// diacritics) before the line counts as prose in that language.
+const SHOUTED_MIN_WORD = 5;
+const SHOUTED_MIN_STOPWORD = 4;
+
 const NON_LATIN_FRACTION = 0.2;
 const NON_LATIN_MIN_FRACTION = 0.1;
 const NON_LATIN_MIN_LETTERS = 10;
@@ -317,6 +412,10 @@ export interface LatinProfile {
 }
 
 export function latinProfile(text: string): LatinProfile {
+  return latinProfileWithDiagnostic(text);
+}
+
+function latinProfileWithDiagnostic(text: string, diagnostic?: LanguageDiagnostic): LatinProfile {
   const stripped = text.replace(IDENTIFIER_RE, " ");
   const rawWords = stripped.match(WORD_RE) ?? [];
   const words = rawWords.map((w) => w.toLowerCase());
@@ -325,14 +424,16 @@ export function latinProfile(text: string): LatinProfile {
   for (const ch of lowered) {
     if (NON_EN_DIACRITICS.has(ch)) diac += 1;
   }
-  const diacRate = diac / Math.max(1, lowered.length);
+  const diacRate = diac / Math.max(1, width(lowered));
   const nonEnglish = diacRate >= NON_EN_DIACRITIC_RATE;
   const nordicOverlap = words.some((w) => NORDIC_OVERLAP_WORDS.has(w)) &&
     !words.some((w) => EN_ONLY_WORDS.has(w));
   if (words.length > 1 && words.length < 4 && words.some((w) => SHORT_SWEDISH_WORDS.has(w))) {
+    if (diagnostic) diagnostic.reason = "short_swedish";
     return { language: "sv", englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish };
   }
   if (words.length < 4) {
+    if (diagnostic) diagnostic.reason = "insufficient_words";
     return { language: null, englishHits: 0, diacriticRate: diacRate, looksNonEnglish: nonEnglish || nordicOverlap };
   }
   // A collision word counts once however often it repeats; every other word counts its hits.
@@ -366,11 +467,41 @@ export function latinProfile(text: string): LatinProfile {
   } else if (en && (!nonEnglish || englishRescuedByWords(wordSet, diacRate))) {
     lang = "en";
   }
+  if (diagnostic) diagnostic.reason = lang === null ? "no_language_evidence" : "language_evidence";
   return { language: lang, englishHits: en, diacriticRate: diacRate, looksNonEnglish: nonEnglish || (lang === null && nordicOverlap) };
 }
 
 export function guessLatinLanguage(text: string): string | null {
   return latinProfile(text).language;
+}
+
+export interface AnalyseOptions {
+  explain?: boolean;
+}
+
+export type LanguageDiagnosticReason =
+  | "no_letters" | "non_latin_script" | "short_swedish" | "insufficient_words"
+  | "language_evidence" | "no_language_evidence" | "caps_veto" | "caps_filtered"
+  | "non_english_markers" | "named_segment" | "named_value" | "non_latin_value" | "diacritic_value";
+
+/** The detector branch that decided the verdict; not a trace or a copy of the input text. */
+export interface LanguageDiagnostic {
+  stage: "whole_state" | "segment" | "value";
+  reason: LanguageDiagnosticReason;
+  source: {
+    leafIndex: number;
+    path: DiagnosticPath;
+    /** One-based within the selected leaf, when available. */
+    line: number | null;
+  } | null;
+}
+
+/** Shared runtime validation for the three routing-only explain entry points. */
+export function validateExplain(explain: unknown): boolean {
+  if (explain !== undefined && typeof explain !== "boolean") {
+    throw new TypeError("explain must be a boolean");
+  }
+  return explain === true;
 }
 
 export interface AnalyseResult {
@@ -382,6 +513,7 @@ export interface AnalyseResult {
   diacriticRate: number;
   nonLatinFraction: number;
   mixedSegment: string | null;
+  diagnostic?: LanguageDiagnostic;
 }
 
 // Code is not prose in any language, but split into words it reads as one: `os.path` is Portuguese
@@ -400,6 +532,32 @@ const JOINED_RE = /[^\W_][._/\\][^\W_]/;
 // entirely in capitals keeps its words -- a customer shouting in Portuguese is still Portuguese.
 const LETTER_RUN_RE = /[\p{L}]{2,}/gu;
 
+/** True for a CASED segment written entirely in capitals.
+ *
+ * The uppercase half is not redundant: a caseless script has no lowercase either, so testing only
+ * "has a lowercase letter" would call every Devanagari or CJK line shouted and hold it to a bar it
+ * cannot clear. Both caps bars stay off text that is partly caseless (`analyseText`), because a bar
+ * that works by discarding Latin evidence has nothing to say about the half it cannot read.
+ */
+function shouted(text: string): boolean {
+  let upper = false;
+  for (const ch of text) {
+    if (/\p{Ll}/u.test(ch)) return false;
+    if (/\p{Lu}|\p{Lt}/u.test(ch)) upper = true;
+  }
+  return upper;
+}
+
+/** Whether an all-caps line's evidence for `lang` is more than acronym-shaped tokens. */
+function shoutedEvidence(tokens: string[], lang: string, diacriticRate: number): boolean {
+  if (!tokens.some((t) => width(t) >= SHOUTED_MIN_WORD)) return false;
+  if (diacriticRate >= NON_EN_DIACRITIC_RATE) return true;
+  const stopSet = STOP[lang];
+  if (!stopSet) return false;
+  const matched = new Set(tokens.map((t) => t.toLowerCase()).filter((t) => stopSet.has(t)));
+  return [...matched].some((w) => width(w) >= SHOUTED_MIN_STOPWORD);
+}
+
 /** Language code for one non-code line, or null when it does not name a foreign language.
  *
  * Same evidence bar as `nonEnglishSegment`: four words, a language `latinProfile` will name,
@@ -407,16 +565,20 @@ const LETTER_RUN_RE = /[\p{L}]{2,}/gu;
  */
 function namedProseLanguage(segment: string): string | null {
   if (!segment.trim() || CODE_LINE_RE.test(segment)) return null;
-  const prose = segment.split(/\s+/).filter((tok) => !JOINED_RE.test(tok)).join(" ");
-  // In mixed-case text, replace all-caps runs with spaces (they are acronyms).
-  let cleaned = prose;
-  if ([...prose].some((ch) => /\p{Ll}/u.test(ch))) {
-    cleaned = prose.replace(LETTER_RUN_RE, (m) => (m === m.toUpperCase() ? " " : m));
+  let prose = segment.split(/\s+/).filter((tok) => !JOINED_RE.test(tok)).join(" ");
+  // A shouted segment keeps its acronym-shaped tokens -- shouting is not a foreign language, so it
+  // must also clear `shoutedEvidence` below. Mixed-case text blanks all-caps runs (they are
+  // acronyms) before the words are counted, which is Python's `_named_prose_language` split.
+  const isShouted = shouted(prose);
+  if (!isShouted) {
+    prose = prose.replace(LETTER_RUN_RE, (m) => (m === m.toUpperCase() ? " " : m));
   }
-  const tokens = cleaned.match(WORD_RE) ?? [];
+  const tokens = prose.match(WORD_RE) ?? [];
   if (tokens.length < 4) return null;
-  const lang = latinProfile(cleaned).language;
+  const prof = latinProfile(prose);
+  const lang = prof.language;
   if (lang === null || lang === "en") return null;
+  if (isShouted && !shoutedEvidence(tokens, lang, prof.diacriticRate)) return null;
   const stopSet = STOP[lang];
   if (!stopSet) return null;
   const distinctHits = new Set(tokens.map((w) => w.toLowerCase()).filter((w) => stopSet.has(w)));
@@ -433,34 +595,64 @@ function namedProseLanguage(segment: string): string | null {
  * compounds are not words. This adds no new way to call English text foreign; it only stops a
  * longer English part from outvoting a foreign one. Reads at most `maxChars` characters in all.
  */
-function nonEnglishSegment(state: unknown, maxChars = 4000): [string, string] | null {
+function nonEnglishSegment(state: unknown, maxChars = 4000, diagnostic?: LanguageDiagnostic): [string, string] | null {
   let seen = 0;
-  for (const leaf of iterText(state)) {
-    for (const seg of leaf.split("\n")) {
+  const paths = diagnostic ? [] as DiagnosticPath[] : undefined;
+  const leaves = iterText(state, 0, paths);
+  for (const [leafIndex, leaf] of leaves.entries()) {
+    for (const [lineIndex, seg] of leaf.split("\n").entries()) {
       if (seen >= maxChars) return null;
-      const capped = seg.slice(0, maxChars - seen);
-      seen += capped.length;
+      const capped = cutCodePoints(seg, maxChars - seen);
+      seen += [...capped].length;
       const lang = namedProseLanguage(capped);
-      if (lang) return [lang, capped.trim()];
+      if (lang) {
+        if (diagnostic) {
+          diagnostic.stage = "segment";
+          diagnostic.reason = "named_segment";
+          diagnostic.source = { leafIndex, path: paths![leafIndex], line: lineIndex + 1 };
+        }
+        return [lang, capped.trim()];
+      }
     }
   }
   return null;
 }
 
-function round4(x: number): number {
-  return Math.round(x * 10000) / 10000;
+/** Whether the non-Latin share of a Latin-plurality text is a real message, not a stray name. */
+function nonLatinCarries(nonLatin: number, nNonLatin: number): boolean {
+  return nonLatin >= NON_LATIN_FRACTION ||
+    (nonLatin >= NON_LATIN_MIN_FRACTION && nNonLatin >= NON_LATIN_MIN_LETTERS);
 }
 
-function analyseText(text: string): AnalyseResult {
+// Python's round(x, 4) rounds the exact binary value of the double, breaking a tie to the even
+// digit. Math.round instead rounds `x * 10000`, which differs in two ways: it breaks a tie away
+// from zero, and the multiplication invents a tie where the double is not one. Both are reachable
+// from a ratio of small counts. 1 diacritic in 32 characters is 0.03125 exactly, and Python
+// reports 0.0312 where Math.round reported 0.0313. 1 in 4000 is 0.00025 only to the decimal
+// reader -- the double is 0.0002500000000000000052, above the halfway point, so Python reports
+// 0.0003 while `0.00025 * 10000` lands on 2.5 exactly and a tie rule would report 0.0002. So the
+// digits are taken from the double's own decimal expansion, where "tie" means what it means to
+// Python, and only a real tie consults the parity of the digit before it.
+function round4(x: number): number {
+  const [whole, fraction = ""] = x.toFixed(20).split(".");
+  const kept = Number(whole + fraction.slice(0, 4).padEnd(4, "0"));
+  const rest = fraction.slice(4);
+  const first = rest.charAt(0);
+  const tail = rest.slice(1).replace(/0+$/, "");
+  if (first > "5" || (first === "5" && (tail.length > 0 || kept % 2 === 1))) {
+    return (kept + 1) / 10000;
+  }
+  return kept / 10000;
+}
+
+function analyseText(text: string, diagnostic?: LanguageDiagnostic): AnalyseResult {
   const prof = scriptProfile(text);
   let script = detectScript(text);
   const nonLatin = prof && Object.keys(prof).length ? round4(1.0 - (prof["latin"] ?? 0.0)) : 0.0;
   let nAlpha = 0;
   for (const ch of text) if (IS_ALPHA_RE.test(ch)) nAlpha += 1;
   const nNonLatin = Math.round(nonLatin * nAlpha);
-  if (script === "latin" && nonLatinWords(text).length > 0 &&
-      (nonLatin >= NON_LATIN_FRACTION ||
-        (nonLatin >= NON_LATIN_MIN_FRACTION && nNonLatin >= NON_LATIN_MIN_LETTERS))) {
+  if (script === "latin" && nonLatinWords(text).length > 0 && nonLatinCarries(nonLatin, nNonLatin)) {
     // The plurality said Latin, but the non-Latin share is a real message, not a stray name or
     // symbol: re-classify to the dominant non-Latin script, as Python's analyse does.
     let bestScript = script;
@@ -474,6 +666,7 @@ function analyseText(text: string): AnalyseResult {
     script = bestScript;
   }
   if (script === "unknown") {
+    if (diagnostic) diagnostic.reason = "no_letters";
     return {
       script: "unknown", scriptProfile: prof, language: null,
       isEnglish: true, languageUndecided: true, diacriticRate: 0.0,
@@ -481,16 +674,51 @@ function analyseText(text: string): AnalyseResult {
     };
   }
   if (script !== "latin") {
+    if (diagnostic) diagnostic.reason = "non_latin_script";
     return {
       script, scriptProfile: prof, language: null,
       isEnglish: false, languageUndecided: true, diacriticRate: 0.0,
       nonLatinFraction: nonLatin, mixedSegment: null,
     };
   }
-  const profLat = latinProfile(text);
-  const lang = profLat.language;
+  const profLat = latinProfileWithDiagnostic(text, diagnostic);
+  let lang = profLat.language;
+  // The acronym bar belongs here too, not only in the segment scan. That scan runs once a state
+  // already reads English overall, so a state that is *nothing but* an acronym line -- or one
+  // diluted by fewer English lines than it takes to tip this verdict -- never reached it and was
+  // named foreign outright: `MON DES EST LA` read French on its own. Vetoing here leaves the text
+  // undecided, so `looksNonEnglish` still decides it, and a shouted line with non-English
+  // diacritics is kept.
+  //
+  // Neither bar applies when the state is carried by a caseless script: both answer the verdict by
+  // taking evidence away from the Latin letters, and what is left is judged on Latin diacritics,
+  // which cannot see the caseless half -- so `ПРИВЕТ MON DES EST LA` would otherwise be sent to the
+  // English checkpoint on the strength of disbelieving the Latin part.
+  if (lang !== null && lang !== "en" && !nonLatinCarries(nonLatin, nNonLatin)) {
+    if (shouted(text)) {
+      if (!shoutedEvidence(text.match(WORD_RE) ?? [], lang, profLat.diacriticRate)) {
+        lang = null;
+        if (diagnostic) diagnostic.reason = "caps_veto";
+      }
+    } else {
+      // Mixed-case text: re-take the verdict without the all-caps runs that voted in it. Only
+      // ACRONYM-SHAPED runs are blanked -- a run of SHOUTED_MIN_WORD letters is a word, and a word
+      // is not blanked out of its own sentence (blanking every run deleted emphasis capitals, so
+      // `sag mir das HEUTIGE DATUM` lost its verdict). Diacritic evidence stays measured on the
+      // original text, so a shouted foreign word cannot be blanked out of the safety net.
+      const caps = (text.match(LETTER_RUN_RE) ?? []).filter((m) => m === m.toUpperCase());
+      if (caps.length > 0 && !caps.some((c) => width(c) >= SHOUTED_MIN_WORD)) {
+        const blanked = text.replace(LETTER_RUN_RE, (m) => (m === m.toUpperCase() ? " " : m));
+        if (blanked !== text) {
+          lang = latinProfile(blanked).language;
+          if (diagnostic) diagnostic.reason = "caps_filtered";
+        }
+      }
+    }
+  }
   const undecided = lang === null;
   const english = lang === "en" || (undecided && !profLat.looksNonEnglish);
+  if (diagnostic && undecided && !english) diagnostic.reason = "non_english_markers";
   return {
     script: "latin", scriptProfile: prof, language: lang,
     isEnglish: english, languageUndecided: undecided,
@@ -505,30 +733,66 @@ function alphaCount(text: string): number {
   return n;
 }
 
-/** A string value that is itself not safe for the English checkpoint, else null. */
-function leafNonEnglish(leaf: string): AnalyseResult | null {
-  const sample = leaf.slice(0, 4000);
-  if (!sample.trim()) return null;
-  const det = analyseText(sample);
-  if (det.isEnglish) return null;
-  if (det.language !== null && det.language !== "en") return det;
-  const nAlpha = alphaCount(sample);
-  if (det.script !== "latin" && det.script !== "unknown") {
-    if (nonLatinWords(sample).length > 0 && nAlpha >= NON_LATIN_MIN_LETTERS) return det;
-    return null;
+/** A string value that is itself not safe for the English checkpoint, else null.
+ *
+ * A one-word name ("José") and a capitalised non-Latin name stay out: the same rules
+ * `latinProfile` and `nonLatinWords` already use, so a name field cannot pull an English
+ * ticket onto the multilingual checkpoint. Code lines, acronyms and slash compounds stay out
+ * too, matching `nonEnglishSegment`, so a pasted traceback is not a message. Each line is
+ * capped at 4000 characters on its own. Unlike the segment scan, a long earlier line does
+ * not consume the budget of the next one (#384, #1449): sampling the first 4000 characters
+ * of the whole leaf hid a German line that followed a longer English prefix.
+ */
+function leafNonEnglish(leaf: string, diagnostic?: LanguageDiagnostic): AnalyseResult | null {
+  let bestN = -1;
+  let best: AnalyseResult | null = null;
+  for (const [lineIndex, line] of leaf.split("\n").entries()) {
+    // A line this short cannot be selected, so skip it before the slice, the blank check,
+    // the code-line scan and a full `analyseText` pass. Each branch below needs four word
+    // tokens or NON_LATIN_MIN_LETTERS letters. The word scan matches maximal runs of letters
+    // and letter-like numerals, so four tokens need three separators between them: seven
+    // characters, and ten letters need ten. What makes seven safe rather than six is that
+    // every one of those counts is taken on the raw line -- `İ` lowers to two code points,
+    // so counting on the lowered line would let a four-character line reach four tokens.
+    if (width(line) < 7) continue;
+    const sample = cutCodePoints(line, 4000);
+    if (!sample.trim() || CODE_LINE_RE.test(sample)) continue;
+    const det = analyseText(sample);
+    if (det.isEnglish) continue;
+    // A named language still has to survive `namedProseLanguage`: acronyms and slash
+    // compounds are not words. A veto is not a verdict of English, so a line that was named
+    // and then disbelieved falls through to the diacritic branch instead of being dropped.
+    // `languageUndecided` is not required: that line is in the same position as one never named.
+    const named = det.language !== null && det.language !== "en" && namedProseLanguage(sample) !== null;
+    const nAlpha = alphaCount(sample);
+    if (!named) {
+      if (det.script !== "latin" && det.script !== "unknown") {
+        if (nonLatinWords(sample).length === 0 || nAlpha < NON_LATIN_MIN_LETTERS) continue;
+      } else if (!(det.diacriticRate >= NON_EN_DIACRITIC_RATE && (sample.match(WORD_RE) ?? []).length >= 4)) {
+        continue;
+      }
+    }
+    if (nAlpha > bestN) {
+      bestN = nAlpha;
+      best = det;
+      if (diagnostic) {
+        diagnostic.reason = named ? "named_value"
+          : det.script !== "latin" && det.script !== "unknown" ? "non_latin_value" : "diacritic_value";
+        diagnostic.source!.line = lineIndex + 1;
+      }
+    }
   }
-  const words = sample.match(WORD_RE) ?? [];
-  if (det.languageUndecided && det.diacriticRate >= NON_EN_DIACRITIC_RATE && words.length >= 4) {
-    return det;
-  }
-  return null;
+  return best;
 }
 
-export function analyse(state: unknown): AnalyseResult {
+export function analyse(state: unknown, opts: AnalyseOptions = {}): AnalyseResult {
+  const diagnostic: LanguageDiagnostic | undefined = validateExplain(opts.explain)
+    ? { stage: "whole_state", reason: "no_letters", source: null } : undefined;
   // One non-English string value is enough. Joining every value let a long English
   // note fill the window, or outvote a short German message, and that message was
   // then sent to the English checkpoint.
-  const result = analyseText(stateText(state));
+  const result = analyseText(stateText(state), diagnostic);
+  if (diagnostic) result.diagnostic = diagnostic;
   if (result.script === "latin" && result.isEnglish) {
     // A Portuguese ticket with an English stack trace, error payload or form template reads as
     // English as a whole, because the English part is longer -- yet the part a question is about
@@ -537,7 +801,7 @@ export function analyse(state: unknown): AnalyseResult {
     const leaves = iterText(state);
     // a single line has no other part to be outvoted by, and was just read whole
     if (leaves.length > 1 || leaves.some((leaf) => leaf.includes("\n"))) {
-      const found = nonEnglishSegment(state);
+      const found = nonEnglishSegment(state, 4000, diagnostic);
       if (found) {
         const [lang, mixed] = found;
         return {
@@ -557,16 +821,37 @@ export function analyse(state: unknown): AnalyseResult {
   }
   let best: AnalyseResult | null = null;
   let bestN = -1;
-  for (const leaf of iterText(state)) {
-    const det = leafNonEnglish(leaf);
+  let bestDiagnostic: LanguageDiagnostic | undefined;
+  const paths = diagnostic ? [] as DiagnosticPath[] : undefined;
+  const leaves = iterText(state, 0, paths);
+  for (const [leafIndex, leaf] of leaves.entries()) {
+    const valueDiagnostic: LanguageDiagnostic | undefined = diagnostic
+      ? { stage: "value", reason: "named_value", source: { leafIndex, path: paths![leafIndex], line: null } }
+      : undefined;
+    const det = leafNonEnglish(leaf, valueDiagnostic);
     if (!det) continue;
-    const n = alphaCount(leaf.slice(0, 4000));
+    const n = alphaCount(cutCodePoints(leaf, 4000));
     if (n > bestN) {
       bestN = n;
       best = det;
+      bestDiagnostic = valueDiagnostic;
     }
   }
-  return best ?? result;
+  if (!best) return result;
+  if (bestDiagnostic) result.diagnostic = bestDiagnostic;
+  // The value pass answers `language` and `isEnglish` for the state, and leaves the script fields
+  // to the state. Returning `best` whole answered `script`, `scriptProfile` and `nonLatinFraction`
+  // from one leaf instead: a long English note above a short Russian message is 98.6% Latin, and
+  // the result said `script: "cyrillic"` with a profile of `{cyrillic: 1}` -- a description of the
+  // leaf that contradicts `scriptProfile(stateText(state))` for the same input, and that a caller
+  // reading `analyse(state).script` to report the language of a ticket cannot tell from the
+  // `isEnglish` flag beside it. Python's `analyse` overrides the same two fields and no others.
+  return {
+    ...result,
+    language: best.language,
+    isEnglish: false,
+    languageUndecided: best.languageUndecided,
+  };
 }
 
 export function isEnglish(state: unknown): boolean {

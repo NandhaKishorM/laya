@@ -23,7 +23,7 @@ from tokenizers.models import WordLevel  # noqa: E402
 from transformers import BertConfig, BertModel, PreTrainedTokenizerFast  # noqa: E402
 
 from laya import load  # noqa: E402
-from laya.common import DecisionModel  # noqa: E402
+from laya.common import TEMP_MAX, TEMP_MIN, DecisionModel, temperature_rejected  # noqa: E402
 
 
 class TemperatureLoadingTests(unittest.TestCase):
@@ -108,6 +108,24 @@ class TemperatureLoadingTests(unittest.TestCase):
                 self.assertIn(repr(value), messages[0])
                 self.assert_predictions(agent, choice=1.0, score=3.0, noul=4.0)
 
+    def test_boolean_entries_use_neutral_fallback_and_warn(self):
+        # A JSON `true`/`false` in a checkpoint config is not a temperature: `clamp_temperature`
+        # refuses a bool and installs the neutral 1.0. It loaded in silence for `true`, though,
+        # because the diagnostic compared `float(raw)` with the applied value and `float(True)` is
+        # exactly that 1.0 -- while `False` floated to 0.0, mismatched, and was reported.
+        for value in (True, False):
+            with self.subTest(value=value):
+                agent, messages = self.load_config(temperature=[value, 2.0, 3.0],
+                                                  temperature_by_options={"choice:2": value})
+                self.assertEqual(agent.temperature, [1.0, 2.0, 3.0])
+                self.assertEqual(agent.temperature_by_options, {"choice:2": 1.0})
+                self.assertEqual(len(messages), 1)
+                self.assertIn("temperature[0]", messages[0])
+                self.assertIn("choice:2", messages[0])
+                self.assertIn(repr(value), messages[0])
+                self.assertIn("uncalibrated", messages[0])
+                self.assert_predictions(agent, choice=1.0, score=2.0, noul=3.0)
+
     def test_nonfinite_values_keep_neutral_fallback_and_warn(self):
         for value in (float("nan"), float("inf"), float("-inf"), "NaN", "Infinity", "-Infinity"):
             with self.subTest(value=value):
@@ -119,6 +137,27 @@ class TemperatureLoadingTests(unittest.TestCase):
                 self.assertIn("temperature[0]", messages[0])
                 self.assertIn("noul:2", messages[0])
                 self.assert_predictions(agent, choice=1.0, score=2.0, noul=1.0)
+
+    def test_json_integer_wider_than_a_float_uses_neutral_fallback_and_warn(self):
+        # JSON keeps arbitrary precision, so a checkpoint whose `rl_agent_config.json` carries a
+        # temperature written out as hundreds of digits loads as an `int` and `float()` answers it
+        # with `OverflowError`. The clamp caught TypeError and ValueError only, so the failure was
+        # not a reported fallback but a load that died after reading the weights off disk -- while
+        # the same file with `1e400` parses as a float, arrives as `inf`, and has always loaded.
+        # `2 ** 1024` is the smallest power of two `float()` refuses.
+        for value in (10 ** 400, -(10 ** 400), 2 ** 1024):
+            with self.subTest(value=value):
+                agent, messages = self.load_config(temperature=[value, 2.0, 3.0],
+                                                   temperature_by_options={"choice:2": value})
+                self.assertEqual(agent.temperature, [1.0, 2.0, 3.0])
+                self.assertEqual(agent.temperature_by_options, {"choice:2": 1.0})
+                self.assertEqual(len(messages), 1)
+                self.assertIn("temperature[0]", messages[0])
+                self.assertIn("choice:2", messages[0])
+                self.assertIn("uncalibrated", messages[0])
+                # The value the clamp replaced is named in the warning, digit for digit.
+                self.assertIn(str(value), messages[0])
+                self.assert_predictions(agent, choice=1.0, score=2.0, noul=3.0)
 
     def test_out_of_range_values_keep_existing_clamps(self):
         agent, messages = self.load_config(temperature=[0.1, 10, -1],
@@ -149,6 +188,62 @@ class TemperatureLoadingTests(unittest.TestCase):
         self.assertEqual(agent.temperature_by_options, {})
         self.assertEqual(messages, [])
         self.assert_predictions(agent, choice=1.0, score=1.0, noul=1.0)
+
+
+class TemperatureRejectionPredicateTests(unittest.TestCase):
+    """The diagnostic every loader shares, without a checkpoint to build.
+
+    `Agent.__init__`, `ONNXAgent.__init__` and `calibrate._rejected_temperatures` all ask this one
+    question, so the table below is the ONNX site's coverage too -- that suite needs `onnxruntime`,
+    which is not installed for a plain checkout.
+    """
+
+    def test_rejection_matches_what_the_clamp_actually_accepted(self):
+        cases = [
+            # A bool is not a number to `clamp_temperature`, and `float(True)` is exactly the 1.0
+            # it installs instead, so an equality check alone called both of them accepted.
+            (True, 1.0, True),
+            (False, 1.0, True),
+            (1.5, 1.5, False),
+            (2, 2.0, False),
+            ("1.5", 1.5, False),
+            (0.1, TEMP_MIN, True),
+            (9.0, TEMP_MAX, True),
+            (None, 1.0, True),
+            ("x", 1.0, True),
+            ([], 1.0, True),
+            ({}, 1.0, True),
+            (float("nan"), 1.0, True),
+            (float("inf"), 1.0, True),
+            # A number `float()` cannot hold is the same answer: JSON keeps arbitrary precision,
+            # so these reach a loader as `int` and the clamp installs its neutral 1.0.
+            (10 ** 400, 1.0, True),
+            (-(10 ** 400), 1.0, True),
+            (2 ** 1024, 1.0, True),
+            # Wide but still convertible: `float()` reads this one, so the ordinary out-of-range
+            # comparison decides it, exactly as it decides the `9.0` row above.
+            (2 ** 1023, TEMP_MAX, True),
+        ]
+        for raw, applied, want in cases:
+            with self.subTest(raw=raw, applied=applied):
+                self.assertIs(temperature_rejected(raw, applied), want)
+
+    def test_no_loader_rederives_the_comparison(self):
+        # Three loaders each carried their own copy of the predicate, and one copy drifting from
+        # `clamp_temperature` is how a `true` temperature loaded unreported. Walk the package
+        # rather than naming files, so a re-derived fourth copy is caught the same way.
+        root = Path(__file__).resolve().parents[1]
+        paths = sorted((root / "laya").rglob("*.py"))
+        scanned = [p.relative_to(root).as_posix() for p in paths]
+        # Name one file the walk has to find, or a walk that silently matches nothing would report
+        # "no offenders" and guard nothing.
+        self.assertIn("laya/agent.py", scanned)
+        offenders = [name for name, p in zip(scanned, paths)
+                     # An explicit encoding is not decoration: `laya/email.py` and `laya/lang.py`
+                     # carry non-ASCII bytes, so a locale-default read dies on Windows' cp1252
+                     # before the scan can say anything about them.
+                     if "if float(raw) == applied:" in p.read_text(encoding="utf-8")]
+        self.assertEqual(offenders, [])
 
 
 if __name__ == "__main__":

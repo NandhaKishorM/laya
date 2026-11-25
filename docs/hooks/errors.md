@@ -121,15 +121,32 @@ from `predict`/`system_one` rather than at construction.
 
 ## Warnings
 
-With `hooks_raise=False`, each failing hook emits one `RuntimeWarning` naming the hook type and
+With `hooks_raise=False`, a failing hook emits one `RuntimeWarning` naming the hook type and
 event:
 
 ```
 laya: hook Metrics.on_predict_end failed: connection reset
 ```
 
-The warning is emitted once per failure, not once per hook definition, so a flaky hook under
-load can be noisy. Aggregate or rate-limit inside the hook if that matters.
+How many of those lines an operator actually sees is Python's warning filter, not Laya's. The emit is
+a plain `warnings.warn` and its text carries nothing unique to the call, so under the default filter
+for `RuntimeWarning` Python prints the first occurrence of each distinct message per call site and
+suppresses the identical repeats for the rest of the process. A hook that fails the same way on every
+one of a thousand calls prints one line. A hook whose error text varies with the call -- a request id,
+a retry counter, a timestamp -- prints one line per distinct text, and that is the case that can be
+noisy under load.
+
+What counts as distinct is the message text, and that text names the hook's *type* and the event. So two
+different hook classes failing in the same call are two lines, and one hook failing on both events is two
+lines -- but two instances of the *same* class failing the same way are one line, because they produce the
+same string. The warning's recorded location is the other half of the key, and each entry point calls
+`dispatch` from its own line: the same hook failing from an `Agent` call and from a `Router` call is the
+same text at two different locations, and prints twice.
+
+So the warning stream is not a failure counter. If the rate matters, count inside the hook, or set
+`hooks_raise=True` and handle the exception. To make the repeats print, a caller has to widen the
+filter itself (`warnings.simplefilter("always")`, which is what the test suite does in order to see
+each one).
 
 ## Timeouts
 
@@ -145,11 +162,14 @@ It can be set per instance or overridden per call on every public per-call surfa
 agents: `Agent.predict_batch`, `Agent.system_one`, `Agent.predict_long`, `Router.route`,
 `Router.route_batch`, `Router.predict`, `Router.predict_batch`, `Router.predict_long`,
 `ONNXAgent.system_one`, `ONNXAgent.predict_batch` and `ONNXAgent.predict_long`. The value must be a
-positive finite number; `0`, a negative number, `inf` and `nan` each raise `ValueError` at the point
-it is set, rather than racing on a zero-length `join` -- passed straight to the underlying thread
-`join`, `nan` would raise `ValueError` and an infinite value `OverflowError`, so neither bounds the
-wait the way a limit is meant to. `None` is how to ask for no limit, not an arbitrarily large
-number.
+positive finite number; `0`, a negative number, `inf`, `nan` and a bool each raise `ValueError` at
+the point it is set, rather than racing on a zero-length `join` -- passed straight to the underlying
+thread `join`, `nan` would raise `ValueError` and an infinite value `OverflowError`, so neither
+bounds the wait the way a limit is meant to. A bool is refused for its own reason: `float(True)` is
+`1.0`, so `hooks_timeout=True` would otherwise install a one-second deadline the caller never asked
+for, and `False` would be refused as a non-positive number rather than as a wrong type. Its message
+says `not a bool`, which is the only way a caller can tell the two refusals apart. `None` is how to
+ask for no limit, not an arbitrarily large number.
 
 A timed hook runs on a worker thread in a copy of the caller's `contextvars` context, so a
 request id or tracing span set by the caller is visible to the hook.

@@ -440,6 +440,17 @@ def main():
        == build_router().max_loaded,
        "%r vs %r" % (fresh._router_kwargs(fresh._CFG), build_router().max_loaded))
 
+    # A bad or non-positive LAYA_MAX_LOADED must fall back to "not asked for" the way
+    # laya.serve's `_resolve_max_loaded` documents ("a typo in a deployment file should not stop
+    # the server from starting"), not reach `int()` as an import crash and not forward a cap
+    # Router cannot honour. FAILS_ON_MAIN: the bare int() at module level aborts the reload.
+    for raw in ("abc", "2.5", "0", "-3", ""):
+        fresh = with_cap(raw)
+        ok("LAYA_MAX_LOADED=%r falls back to 'not asked for'" % raw,
+           "max_loaded" not in fresh._router_kwargs(fresh._CFG),
+           repr(fresh._router_kwargs(fresh._CFG)))
+    with_cap(None)   # leave the ambient env clean for the checks below
+
     # --- the routing fallback: derived, not copied --------------------------
     # The copy retired above said a number. The one beside it named a checkpoint: 3cf26cb moved
     # `Router(default=...)` from `english` to `multilingual` in 0.4.0, and `laya.serve` followed

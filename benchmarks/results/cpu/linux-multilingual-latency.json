@@ -1,0 +1,655 @@
+{
+  "checkpoint": "multilingual",
+  "checkpoint_sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+  "hub_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+  "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+  "processor": "x86_64",
+  "python": "3.11.18",
+  "torch": "2.15.0+cpu",
+  "transformers": "5.22.1",
+  "threads": 2,
+  "interop_threads": 1,
+  "repeats": 5,
+  "optimization": "combined",
+  "suite": "standard",
+  "common_sha256": "efb8558be8246810bc0d5ef0a1d152b1cd23a8fcc886befa013fdcbe8e7346d2",
+  "harness_sha256": "4327f3b3710031cccf7b534e5108c744fb1e213c0ae8caa8ff8c5d0effb4d9de",
+  "fixtures_sha256": "d3bd360edf1bf3e02edd7dc32a8257181ef253d750d7ea680c9120b5adadfa57",
+  "memory_variant": null,
+  "peak_rss_after_load_mib": 2358.9453125,
+  "cases": [
+    {
+      "name": "triage/0",
+      "questions": 5,
+      "max_logit_delta": 2.384185791015625e-07,
+      "max_action_logit_delta": 0.0001220703125,
+      "max_probability_delta": 2.9802322387695312e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          5,
+          123
+        ]
+      ],
+      "option_counts": [
+        [
+          6,
+          2,
+          4,
+          2,
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          995.912815,
+          984.406968,
+          970.404198,
+          982.505549,
+          982.812118
+        ],
+        "selected": [
+          946.364159,
+          942.680256,
+          948.025364,
+          934.954379,
+          938.420037
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1989.714559,
+          1968.287176,
+          1940.332466,
+          1962.089062,
+          1965.664388
+        ],
+        "selected": [
+          1893.249298,
+          1884.631334,
+          1895.898998,
+          1869.801674,
+          1877.108391
+        ]
+      },
+      "median_ms": {
+        "baseline": 982.812118,
+        "selected": 942.680256
+      },
+      "median_cpu_ms": {
+        "baseline": 1965.664388,
+        "selected": 1884.631334
+      }
+    },
+    {
+      "name": "long/512",
+      "questions": 1,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.0006103515625,
+      "max_probability_delta": 1.30385160446167e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          512
+        ]
+      ],
+      "option_counts": [
+        [
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          943.528826,
+          951.604111,
+          957.204271,
+          943.042325,
+          938.048044
+        ],
+        "selected": [
+          833.297638,
+          857.882819,
+          840.259813,
+          833.41087,
+          832.08604
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1886.432132,
+          1902.424183,
+          1913.569977,
+          1885.914207,
+          1875.920599
+        ],
+        "selected": [
+          1666.185592,
+          1715.771688,
+          1681.117199,
+          1666.284782,
+          1663.967348
+        ]
+      },
+      "median_ms": {
+        "baseline": 943.528826,
+        "selected": 833.41087
+      },
+      "median_cpu_ms": {
+        "baseline": 1886.432132,
+        "selected": 1666.284782
+      }
+    },
+    {
+      "name": "long/1024",
+      "questions": 1,
+      "max_logit_delta": 9.5367431640625e-07,
+      "max_action_logit_delta": 0.0003662109375,
+      "max_probability_delta": 1.4901161193847656e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          1024
+        ]
+      ],
+      "option_counts": [
+        [
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          2216.60017,
+          2208.095879,
+          2198.557194,
+          2232.322428,
+          2209.220618
+        ],
+        "selected": [
+          1748.121646,
+          1771.34169,
+          1732.957087,
+          1761.907361,
+          1732.059429
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          4427.513544,
+          4413.549573,
+          4394.957145,
+          4462.380727,
+          4415.196411
+        ],
+        "selected": [
+          3492.617252,
+          3537.575299,
+          3463.106727,
+          3516.660942,
+          3461.84016
+        ]
+      },
+      "median_ms": {
+        "baseline": 2209.220618,
+        "selected": 1748.121646
+      },
+      "median_cpu_ms": {
+        "baseline": 4415.196411,
+        "selected": 3492.617252
+      }
+    },
+    {
+      "name": "long/2048",
+      "questions": 1,
+      "max_logit_delta": 1.7881393432617188e-06,
+      "max_action_logit_delta": 0.0003662109375,
+      "max_probability_delta": 1.6763806343078613e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          2048
+        ]
+      ],
+      "option_counts": [
+        [
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          6149.204972,
+          6121.697126,
+          6137.853551,
+          5924.090611,
+          6130.009537
+        ],
+        "selected": [
+          3882.31689,
+          3886.181391,
+          3876.853351,
+          3882.173075,
+          3876.478869
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          12242.950955,
+          12194.072944,
+          12226.154328,
+          11803.991471,
+          12209.917181
+        ],
+        "selected": [
+          7751.196049,
+          7759.532539,
+          7741.103504,
+          7751.011865,
+          7738.743963
+        ]
+      },
+      "median_ms": {
+        "baseline": 6130.009537,
+        "selected": 3882.173075
+      },
+      "median_cpu_ms": {
+        "baseline": 12209.917181,
+        "selected": 7751.011865
+      }
+    },
+    {
+      "name": "long/4096",
+      "questions": 1,
+      "max_logit_delta": 1.430511474609375e-06,
+      "max_action_logit_delta": 0.000244140625,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          4096
+        ]
+      ],
+      "option_counts": [
+        [
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          18734.506267,
+          19027.886061,
+          19634.117072,
+          19900.529455,
+          19654.32174
+        ],
+        "selected": [
+          9844.215267,
+          10012.963223,
+          10329.129296,
+          10316.822075,
+          10247.960515
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          37121.317008,
+          37666.372561,
+          38948.758601,
+          39409.204142,
+          38944.510472
+        ],
+        "selected": [
+          19643.016365,
+          19976.993856,
+          20606.518224,
+          20570.256503,
+          20434.316745
+        ]
+      },
+      "median_ms": {
+        "baseline": 19634.117072,
+        "selected": 10247.960515
+      },
+      "median_cpu_ms": {
+        "baseline": 38944.510472,
+        "selected": 20434.316745
+      }
+    },
+    {
+      "name": "options/1",
+      "questions": 1,
+      "max_logit_delta": 0.0,
+      "max_action_logit_delta": 0.0001220703125,
+      "max_probability_delta": 0.0,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          30
+        ]
+      ],
+      "option_counts": [
+        [
+          1
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          100.25992,
+          100.585739,
+          108.093939,
+          102.844413,
+          101.933169
+        ],
+        "selected": [
+          99.024229,
+          101.433654,
+          102.966732,
+          103.702838,
+          101.10287
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          201.238514,
+          201.425803,
+          216.101641,
+          205.850342,
+          203.925954
+        ],
+        "selected": [
+          198.018954,
+          202.438142,
+          205.954667,
+          207.690591,
+          202.093209
+        ]
+      },
+      "median_ms": {
+        "baseline": 101.933169,
+        "selected": 101.433654
+      },
+      "median_cpu_ms": {
+        "baseline": 203.925954,
+        "selected": 202.438142
+      }
+    },
+    {
+      "name": "options/32",
+      "questions": 1,
+      "max_logit_delta": 9.5367431640625e-07,
+      "max_action_logit_delta": 0.0001220703125,
+      "max_probability_delta": 1.4551915228366852e-10,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          1,
+          322
+        ]
+      ],
+      "option_counts": [
+        [
+          32
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          613.316934,
+          606.976456,
+          608.574456,
+          606.270375,
+          615.861261
+        ],
+        "selected": [
+          576.398349,
+          580.407949,
+          572.832113,
+          569.709279,
+          564.766872
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          1226.292268,
+          1213.530399,
+          1217.503006,
+          1212.201272,
+          1225.280696
+        ],
+        "selected": [
+          1152.223807,
+          1160.37913,
+          1145.632774,
+          1139.52724,
+          1128.743029
+        ]
+      },
+      "median_ms": {
+        "baseline": 608.574456,
+        "selected": 572.832113
+      },
+      "median_cpu_ms": {
+        "baseline": 1217.503006,
+        "selected": 1145.632774
+      }
+    },
+    {
+      "name": "batch/padded",
+      "questions": 3,
+      "max_logit_delta": 1.9073486328125e-06,
+      "max_action_logit_delta": 0.000244140625,
+      "max_probability_delta": 4.172325134277344e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          2,
+          270
+        ],
+        [
+          1,
+          780
+        ]
+      ],
+      "option_counts": [
+        [
+          2,
+          2
+        ],
+        [
+          2
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          2548.964455,
+          2615.16846,
+          2598.648657,
+          2603.030871,
+          2567.314265
+        ],
+        "selected": [
+          2223.706842,
+          2263.219479,
+          2271.472109,
+          2263.117477,
+          2253.256798
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          5097.631393,
+          5230.515308,
+          5196.369293,
+          5205.742328,
+          5133.824815
+        ],
+        "selected": [
+          4446.390613,
+          4525.941423,
+          4542.237047,
+          4525.841527,
+          4505.948741
+        ]
+      },
+      "median_ms": {
+        "baseline": 2598.648657,
+        "selected": 2263.117477
+      },
+      "median_cpu_ms": {
+        "baseline": 5196.369293,
+        "selected": 4525.841527
+      }
+    },
+    {
+      "name": "structured/mixed",
+      "questions": 3,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.000244140625,
+      "max_probability_delta": 5.960464477539063e-08,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          3,
+          63
+        ]
+      ],
+      "option_counts": [
+        [
+          3,
+          2,
+          5
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          336.096947,
+          338.431553,
+          343.761911,
+          341.912103,
+          341.351233
+        ],
+        "selected": [
+          324.747623,
+          326.607862,
+          333.361543,
+          331.361382,
+          328.473963
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          671.88565,
+          676.245436,
+          687.748188,
+          683.901076,
+          683.336935
+        ],
+        "selected": [
+          649.737062,
+          652.574501,
+          666.355181,
+          663.203916,
+          656.328942
+        ]
+      },
+      "median_ms": {
+        "baseline": 341.351233,
+        "selected": 328.473963
+      },
+      "median_cpu_ms": {
+        "baseline": 683.336935,
+        "selected": 656.328942
+      }
+    },
+    {
+      "name": "structured/batch",
+      "questions": 6,
+      "max_logit_delta": 4.76837158203125e-07,
+      "max_action_logit_delta": 0.000244140625,
+      "max_probability_delta": 1.1920928955078125e-07,
+      "argmax_flips": 0,
+      "max_public_delta": 0.0,
+      "forward_shapes": [
+        [
+          6,
+          297
+        ]
+      ],
+      "option_counts": [
+        [
+          3,
+          2,
+          5,
+          3,
+          2,
+          5
+        ]
+      ],
+      "ms": {
+        "baseline": [
+          3155.981388,
+          3165.684992,
+          3150.495039,
+          3115.251798,
+          3103.174561
+        ],
+        "selected": [
+          2987.550759,
+          2926.472548,
+          2973.069222,
+          2915.744712,
+          2946.868985
+        ]
+      },
+      "cpu_ms": {
+        "baseline": [
+          6291.973469,
+          6313.147448,
+          6288.905053,
+          6207.308641,
+          6177.164234
+        ],
+        "selected": [
+          5975.243963,
+          5853.005803,
+          5942.778653,
+          5830.448625,
+          5891.668107
+        ]
+      },
+      "median_ms": {
+        "baseline": 3150.495039,
+        "selected": 2946.868985
+      },
+      "median_cpu_ms": {
+        "baseline": 6288.905053,
+        "selected": 5891.668107
+      }
+    }
+  ],
+  "peak_rss_mib": 3572.5078125,
+  "parameters_unchanged": true,
+  "summary": {
+    "questions": 23,
+    "argmax_flips": 0,
+    "max_logit_delta": 1.9073486328125e-06,
+    "max_action_logit_delta": 0.0006103515625,
+    "max_probability_delta": 4.172325134277344e-07,
+    "max_public_delta": 0.0,
+    "sum_median_ms": {
+      "baseline": 36700.690725,
+      "selected": 23867.072554000002
+    }
+  }
+}

@@ -291,7 +291,7 @@ def main() -> int:
     check_true("subset table/parsed rows", len(subset) == 11, "got %d" % len(subset))
     check_true("subset table/every row has three cells",
                all(len(r) == 3 for r in subset), [len(r) for r in subset])
-    check_true("rejections table/parsed rows", len(props) == 13, "got %d" % len(props))
+    check_true("rejections table/parsed rows", len(props) == 14, "got %d" % len(props))
     check_true("rejections table/every row has two cells",
                all(len(r) == 2 for r in props), [len(r) for r in props])
     check_true("entry point table/parsed rows", len(calls) == 7, "got %d" % len(calls))

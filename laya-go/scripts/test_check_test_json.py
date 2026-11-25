@@ -34,6 +34,17 @@ PASSING = [event("run", "TestA"), event("pass", "TestA"), event("run", "TestB"),
 
 
 class CheckerTest(unittest.TestCase):
+    def test_a_failed_test_shows_its_own_output(self):
+        said = json.dumps({"Action": "output", "Package": "example.com/m/pkg", "Test": "TestB",
+                           "Output": "    b_test.go:7: got 3, want 4\n"})
+        other = json.dumps({"Action": "output", "Package": "example.com/m/pkg", "Test": "TestA",
+                            "Output": "    a_test.go:1: a passing test's log\n"})
+        code, out = run([event("run", "TestA"), other, event("pass", "TestA"), event("run", "TestB"), said,
+                         event("fail", "TestB"), event("fail")], "--min-tests", "2")
+        self.assertEqual(code, 1, out)
+        self.assertIn("b_test.go:7: got 3, want 4", out)
+        self.assertNotIn("a passing test's log", out)
+
     def test_all_pass(self):
         code, out = run(PASSING, "--min-tests", "2")
         self.assertEqual(code, 0, out)

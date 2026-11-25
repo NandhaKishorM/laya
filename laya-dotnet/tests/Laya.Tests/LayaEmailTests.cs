@@ -168,10 +168,16 @@ public sealed class LayaEmailTests
         var body = e.GetProperty("body").GetString();
         var sender = e.GetProperty("sender").ValueKind == JsonValueKind.Null ? null : e.GetProperty("sender").GetString();
         var clean = e.GetProperty("clean").GetBoolean();
-        var extra = e.GetProperty("extra").EnumerateObject()
-            .Select(p => new KeyValuePair<string, object?>(p.Name, RoutingGoldenData.ToClr(p.Value)));
+        // max_chars is a named parameter of Python's email_state, so it is consumed, not an extra field.
+        var maxChars = 3000;
+        var extra = new List<KeyValuePair<string, object?>>();
+        foreach (var p in e.GetProperty("extra").EnumerateObject())
+        {
+            if (p.Name == "max_chars") maxChars = p.Value.GetInt32();
+            else extra.Add(new KeyValuePair<string, object?>(p.Name, RoutingGoldenData.ToClr(p.Value)));
+        }
 
-        var got = LayaEmail.State(subject, body, sender, clean, extra);
+        var got = LayaEmail.State(subject, body, sender, clean, extra, maxChars);
         var want = e.GetProperty("result");
 
         Assert.Equal(want.EnumerateObject().Select(p => p.Name), got.Keys);

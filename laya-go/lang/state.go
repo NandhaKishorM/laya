@@ -41,13 +41,15 @@ type Object []Member
 
 // UnmarshalJSON decodes a JSON object keeping its key order, as Python's json.loads does: a
 // repeated key keeps its first position and takes its last value. Nested objects become Objects
-// and arrays become []any; numbers become float64, which a state ignores anyway. JSON null leaves
+// and arrays become []any; numbers become json.Number, which keeps an int an int and a float
+// a float (a state's text ignores both, but a serializer must not). JSON null leaves
 // the Object unchanged, the encoding/json convention for an Unmarshaler.
 func (o *Object) UnmarshalJSON(data []byte) error {
 	if string(bytes.Trim(data, " \t\r\n")) == "null" { // JSON white space only
 		return nil
 	}
 	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
 	tok, err := dec.Token()
 	if err != nil {
 		return err
@@ -165,6 +167,8 @@ func collectText(state any, depth int, c *collector) {
 		return
 	}
 	switch v := state.(type) {
+	case json.Number:
+		return // a number is not text, though its Go kind is string
 	case string:
 		c.leaf(unicodedata.ToValid(v))
 		return
@@ -214,7 +218,10 @@ func collectText(state any, depth int, c *collector) {
 	collectReflect(reflect.ValueOf(state), depth, 0, c)
 }
 
-var objectType = reflect.TypeOf(Object(nil))
+var (
+	objectType = reflect.TypeOf(Object(nil))
+	numberType = reflect.TypeOf(json.Number(""))
+)
 
 // collectReflect walks every other shape the way lang.py walks a Mapping, list or tuple: the
 // values of any map (in sorted key order, since a Go map has no insertion order), slice and array
@@ -223,6 +230,9 @@ var objectType = reflect.TypeOf(Object(nil))
 // strings, bytes, mappings or lists.
 func collectReflect(v reflect.Value, depth, hops int, c *collector) {
 	if depth > MaxDepth || hops > maxHops || !v.IsValid() || c.done {
+		return
+	}
+	if v.Type() == numberType {
 		return
 	}
 	if v.Type() == objectType && v.CanInterface() {

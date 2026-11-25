@@ -100,6 +100,23 @@ def test_invalid_gold_and_out_of_shortlist_answer_fail():
         run(ChoiceAgent({}), Dataset([sample("one", "a", "ok")]), TableEmbed(), k=True)
 
 
+def test_a_row_built_in_python_names_the_row_instead_of_crashing():
+    # `Example.from_dict` makes these three checks for a JSONL row and `_validate_dataset` reads the
+    # same two fields as mappings, so a row built in Python died on `.items()` / `.get()` -- an
+    # unhandled traceback, which `laya-evals` reports with the exit code it reserves for a quality
+    # failure -- while an `expected` key with no question behind it was refused for the wrong reason
+    # ("shortlist evaluation requires a choice question"). All four now land as one row-naming
+    # refusal, before the first embedding and the first call.
+    for row, fragment in ((Example("one", QUESTION, True), "'expected' must be an object"),
+                          (Example("one", ["intent"], {"intent": "a"}), "'questions' must be an object"),
+                          (Example("one", QUESTION, {"nope": "a"}), "'expected' names unknown question")):
+        agent, embed = ChoiceAgent({}), TableEmbed()
+        with pytest.raises(EvalError, match=r"example 0 " + fragment):
+            run(agent, Dataset([row]), embed)
+        assert agent.received == [], row
+        assert embed.calls == [], row
+
+
 def test_malformed_shortlist_metadata_fails(monkeypatch):
     def malformed(*_args, **_kwargs):
         return {"answers": {"intent": {"type": "choice", "choice": "a"}},

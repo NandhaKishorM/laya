@@ -188,14 +188,15 @@ The C backend does accept:
 - `T.gemm` with a `T.alloc_local` accumulator, which lowers to a scalar triple loop.
 
 That list is now the specification of a CPU lowering, not an argument against one. Each of the five
-factories takes a keyword-only `cpu=False`, and `compile_cpu` (`laya/tl_kernels.py:258-268`) sets
+factories takes a keyword-only `cpu=False`, and `compile_cpu` (`laya/tl_kernels.py:261-271`) sets
 `cpu=True` with `dtype="float32"` and lowers the same `prim_func` on `target="c"` with
 `TIR_DISABLE_VECTORIZE`. The three rejected constructs are the three the selector swaps:
 `T.alloc_fragment` and `T.alloc_shared` become `T.alloc_local`, `T.Parallel` becomes `T.grid`, and
 16-bit activations become fp32. Everything else is shared with the GPU form — tile blocking,
 `T.Pipelined`, `T.gemm` with `GemmWarpPolicy`, `T.reduce_sum` / `T.reduce_max` — and the only
-construct the CPU branch drops is the swizzled shared-memory layout annotation
-(`laya/tl_kernels.py:215-216`), which is a GPU concern anyway.
+construct the CPU branch drops is the swizzled shared-memory layout annotation, the `if not cpu:`
+guard on `T.annotate_layout` inside `attn_kernel` (`laya/tl_kernels.py:218-219`), which is a GPU
+concern anyway.
 
 What this is *not* is still what the paragraph before it argued: not a faster way to run on CPU.
 `compile_cpu`'s own docstring calls it "a scalar correctness path, not an Agent.accelerate backend",

@@ -86,6 +86,32 @@ Repeat with each checkpoint you intend to run. A native ARM64 CPU test does not
 establish Blackwell kernel or GPU inference support. Jetson's platform-specific
 CUDA stack is not covered by the Spark override.
 
+## Optional cached HTTP inference check
+
+`/health` and Compose `up --wait` establish HTTP liveness. A resident checkpoint still needs a successful model request to establish inference. For an already-running server with bearer authentication, `scripts/http_inference_smoke.py` sends the existing Docker example through `/v1/systemone` and writes a JSON report. It rejects missing authentication, a failed request, malformed answers, a different checkpoint revision or device, and CPU fallback history.
+
+Start the server with `HF_HUB_OFFLINE=1` and an exact `LAYA_REVISION` SHA that is already in its cache. Use `LAYA_PRELOAD=0` to record the transition from an empty `loaded` list to a resident checkpoint. Keep the cache, and select a checkpoint and device that fit the host. The command does not start the server, disable its downloads, reserve a GPU or change its configuration. An offline cache miss fails instead of downloading weights.
+
+From the source checkout, using the same key file configured for the server:
+
+```bash
+python scripts/http_inference_smoke.py \
+  --api-key-file /path/to/laya_api_key \
+  --source-revision "$SOURCE_SHA" \
+  --checkpoint english --checkpoint-revision "$CHECKPOINT_SHA" \
+  --device cpu --output cpu-inference.json
+```
+
+Set `SOURCE_SHA` to the full commit used to build or mount the server source, and `CHECKPOINT_SHA` to the cached Hub commit selected by `LAYA_REVISION`. Verify the source against the image or source mount first: HTTP exposes checkpoint revisions, but it does not expose the server's source commit. The report labels the supplied source SHA as a declaration. Record the image ID, OS, architecture, torch version, resource limits and elapsed time beside the report. The command uses a 120-second timeout per request and does not retry inference. It exits nonzero on failure; a healthy lazy service alone never produces `inference_qualified: true`.
+
+For Spark, run on the actual Spark with `--device cuda` or the expected CUDA device index, and include `nvidia-smi`, the driver version and the GPU name. The report retains each checkpoint's actual device and fallback counters. A CUDA preference, library import or ARM64 CPU result does not qualify Spark. Repeat for each checkpoint you intend to serve. This checks transport, a model forward and answer shape; it does not measure answer accuracy or sustained load.
+
+The client regression checks run without models:
+
+```bash
+python scripts/check_http_inference_smoke.py
+```
+
 ## Apple Silicon
 
 Apple GPU acceleration needs native macOS PyTorch with MPS. Docker Desktop runs

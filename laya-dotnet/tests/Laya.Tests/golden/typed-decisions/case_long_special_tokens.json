@@ -1,0 +1,177 @@
+{
+  "name": "long_special_tokens",
+  "state": "The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos> [MASK] <mask> and emojis 😀 🚀. ",
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today"
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    }
+  },
+  "options": {
+    "window": 64,
+    "batch_size": 2
+  },
+  "state_tokens": 421,
+  "effective_window": 64,
+  "effective_stride": 32,
+  "effective_room": 990,
+  "windows": [
+    {
+      "token_start": 0,
+      "token_end": 64,
+      "text": "The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <"
+    },
+    {
+      "token_start": 32,
+      "token_end": 96,
+      "text": "[CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <e"
+    },
+    {
+      "token_start": 64,
+      "token_end": 128,
+      "text": "bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <"
+    },
+    {
+      "token_start": 96,
+      "token_end": 160,
+      "text": "os>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and em"
+    },
+    {
+      "token_start": 128,
+      "token_end": 192,
+      "text": "mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀"
+    },
+    {
+      "token_start": 160,
+      "token_end": 224,
+      "text": "ojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀."
+    },
+    {
+      "token_start": 192,
+      "token_end": 256,
+      "text": " 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes "
+    },
+    {
+      "token_start": 224,
+      "token_end": 288,
+      "text": " The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <"
+    },
+    {
+      "token_start": 256,
+      "token_end": 320,
+      "text": "[CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <e"
+    },
+    {
+      "token_start": 288,
+      "token_end": 352,
+      "text": "bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <"
+    },
+    {
+      "token_start": 320,
+      "token_end": 384,
+      "text": "os>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and em"
+    },
+    {
+      "token_start": 352,
+      "token_end": 416,
+      "text": "mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀"
+    },
+    {
+      "token_start": 384,
+      "token_end": 421,
+      "text": "ojis 😀 🚀. The text includes [CLS] [SEP] <bos> <eos>   <mask> and emojis 😀 🚀. "
+    }
+  ],
+  "result": {
+    "model": "laya-rl-agent-onnx",
+    "answers": {
+      "topic": {
+        "type": "choice",
+        "choice": "other",
+        "probabilities": {
+          "refund": 0.0893,
+          "technical": 0.259,
+          "other": 0.6516
+        },
+        "confidence": 0.231,
+        "answer_confidence": 0.6516,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 3,
+          "token_start": 96,
+          "token_end": 160,
+          "count": 13
+        }
+      },
+      "urgency": {
+        "type": "score",
+        "score": 1.3344,
+        "legend": {
+          "0": "not urgent",
+          "1": "this week",
+          "2": "today"
+        },
+        "probabilities": {
+          "0": 0.2168,
+          "1": 0.2319,
+          "2": 0.5512
+        },
+        "confidence": 0.091,
+        "answer_confidence": 0.5512,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 12,
+          "token_start": 384,
+          "token_end": 421,
+          "count": 13
+        }
+      },
+      "cancel": {
+        "type": "noul",
+        "noul": 0.2017,
+        "confidence": 0.7983,
+        "answer_confidence": 0.7983,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 12,
+          "token_start": 384,
+          "token_end": 421,
+          "count": 13
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 3637,
+      "output_tokens": 0,
+      "state_tokens": 805,
+      "state_tokens_dropped": 0,
+      "truncated": 0,
+      "truncated_questions": [],
+      "windows": 13
+    }
+  }
+}

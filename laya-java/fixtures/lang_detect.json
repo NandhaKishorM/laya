@@ -616,7 +616,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 5,
+        "english_hits": 6,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -4386,7 +4386,7 @@
       "latin_profile": {
         "language": null,
         "english_hits": 0,
-        "diacritic_rate": 0.2,
+        "diacritic_rate": 0.6,
         "looks_non_english": true
       },
       "analyse": {
@@ -4397,7 +4397,7 @@
         "language": null,
         "is_english": false,
         "language_undecided": true,
-        "diacritic_rate": 0.2,
+        "diacritic_rate": 0.6,
         "non_latin_fraction": 0.0,
         "mixed_segment": null
       },
@@ -4528,7 +4528,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 3,
+        "english_hits": 4,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -5100,7 +5100,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 5,
+        "english_hits": 6,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -5188,7 +5188,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 5,
+        "english_hits": 6,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -6386,7 +6386,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 1,
+        "english_hits": 3,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -6451,7 +6451,7 @@
         ],
         "count_alpha": 27,
         "code_point_length": 34,
-        "english_rescued_by_words": false
+        "english_rescued_by_words": true
       }
     },
     {
@@ -6655,7 +6655,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 18,
+        "english_hits": 19,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -6875,7 +6875,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 18,
+        "english_hits": 19,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -7095,7 +7095,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 19,
+        "english_hits": 20,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -7315,7 +7315,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 14,
+        "english_hits": 15,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -7513,7 +7513,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 14,
+        "english_hits": 15,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -7981,7 +7981,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 327,
+        "english_hits": 357,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -8015,7 +8015,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 327,
+        "english_hits": 357,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -8311,7 +8311,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 5,
+        "english_hits": 6,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },
@@ -8374,7 +8374,7 @@
       },
       "latin_profile": {
         "language": "en",
-        "english_hits": 327,
+        "english_hits": 357,
         "diacritic_rate": 0.0,
         "looks_non_english": false
       },

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "laya"
-version = "0.4.6"
+version = "0.5.3"
 description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,6 +30,14 @@ dependencies = [
     "safetensors>=0.4.0",
     "huggingface_hub>=0.20.0",
     "numpy>=1.20.0",
+    # vega's engine behind laya's surface, `laya.Agent(vegaml=True)` (laya/vega.py): conformal sets,
+    # abstain and unbound flags, heads fitted on your labels, a refit calibration, 73k tokens of context,
+    # images and speech, and continuous learning (`laya.Learner`, vegaml 0.17). A core dependency since
+    # 0.4.23 so a plain `pip install laya` carries it; the module itself is imported only when the argument
+    # is given or Learner is asked for, so `import laya` stays as light as before.
+    "vegaml>=0.18.0",
+    # Verifies the Ed25519 signature on policies exported from Embedding Studio (laya/policy.py).
+    "cryptography>=41",
 ]
 
 [tool.setuptools]
@@ -51,6 +59,14 @@ mcp = ["mcp>=2.2.0"]
 
 # `pip install laya[structured]` adds pydantic for the typed-model helpers (laya/structured.py).
 structured = ["pydantic>=2.0.0"]
+
+# `pip install laya[vision]` is what `Agent(vegaml=True).predict(image=...)`, `predict(video=...)` and the
+# Router's `--image`/`--video` need: the reader's image processor is built on Pillow and torchvision.
+# Text and speech need neither, which is why these are an extra and not core.
+vision = ["pillow>=9.0", "torchvision>=0.19"]
+# `pip install laya[audio]` decodes audio FILES (wav, flac, ogg, mp3) for `predict(audio=path)`; a numpy
+# waveform with `sampling_rate=` needs nothing extra.
+audio = ["soundfile>=0.12"]
 
 # `pip install laya[onnx]` adds ONNX Runtime for `laya.onnx_agent` and `onnxscript`, which
 # `torch.onnx.export` requires (`scripts/export_onnx.py`, `tests/test_onnx.py`).
@@ -88,6 +104,11 @@ llamaindex = [
 # `pip install laya[crewai]` adds the CrewAI multi-agent delegation router (laya.integrations).
 crewai = [
     "crewai>=0.28.0",
+]
+
+# `pip install laya[agno]` adds the Agno multi-agent team routing and guardrail integration (laya.integrations).
+agno = [
+    "agno>=1.1.14,<4",
 ]
 
 [project.scripts]

@@ -32,6 +32,57 @@ to the English checkpoint, and detected non-Latin scripts route to multilingual.
 `new Router({ default: "english" })` to restore the earlier fallback; explicit `model` and `lang`
 options still take precedence.
 
+## Local routing diagnostics
+
+Use `explain: true` on `analyse`, `Router.route`, or `Router.routeBatch` to inspect the
+detector's decisive branch without loading a checkpoint:
+
+```ts
+import { analyse, Router } from "laya-ts";
+
+const ticket = {
+  note: "This is an English note about the order. ".repeat(140),
+  customer: "status\nIch kann mich nicht anmelden und brauche Hilfe",
+};
+const router = new Router();
+const decision = router.route(ticket, {}, { explain: true });
+console.log(decision.detection?.diagnostic);
+// { stage: "value", reason: "named_value",
+//   source: { leafIndex: 1, path: ["customer"], line: 2 } }
+analyse(ticket, { explain: true });
+router.routeBatch([{ state: ticket, questions: {} }], { explain: true });
+```
+
+Omitting `explain` or setting it to `false` leaves the existing result shape unchanged;
+other supplied values throw `TypeError`, even for an empty batch or an explicit model.
+The option adds `diagnostic` to the analysis, or to a route's `detection`. It does not
+change detector thresholds, checkpoint selection, or the existing analysis fields.
+Explicit model/task choices, enabled typed workflows and decisive language hints still
+bypass detection (`detection: null`). `onRoute` sees the diagnostic and may replace the
+decision, including removing its detection. Prediction options are unchanged.
+
+`stage` is `whole_state`, `segment`, or `value`; `reason` identifies the branch that
+decided that verdict, not a confidence score or a full trace. Whole-state reasons cover
+missing letters, non-Latin scripts, insufficient words, language evidence, caps guards
+and non-English markers. Segment selection reports `named_segment`; the value fallback
+reports `named_value`, `non_latin_value`, or `diacritic_value`. The exported
+`LanguageDiagnosticReason` union lists the exact labels.
+
+Whole-state analysis has `source: null`. Otherwise, `source.leafIndex` is zero-based
+among decoded string leaves in the decisive traversal. `path` uses object keys as strings
+and ordinary array indices as numbers; a root string has `[]`. A key longer than 128
+Unicode code points or a custom array iterator makes the entire path `null`, retaining
+the leaf index. Paths describe ordinary objects and arrays as traversed; they are not
+a promise that a later read of a mutable object, getter or proxy returns the same value.
+
+Segment and value `line` numbers are one-based and count blank lines. The value fallback
+selects an eligible line with the most letters, retaining the first on a tie, and caps each
+line independently at 4000 Unicode code points. Diagnostics record the existing detector
+semantics without changing them. They add no input **value** excerpts,
+but paths contain field names, and legacy `mixedSegment` / route `reason` may still contain
+text. This is not a redaction facility. `AnalyseOptions`, `LanguageDiagnostic` and
+`RouteBatchOptions` are available from the package root.
+
 ## Browser (WebGPU → WASM fallback)
 
 ```ts
@@ -44,6 +95,83 @@ const out = await agent.predict("charged twice", {
 ```
 
 `onnxruntime-node` / `onnxruntime-web` are optional peer deps, imported lazily behind the provider you use.
+
+## Long documents (`predictLong`)
+
+`Agent.predictLong` and `Router.predictLong` scan overlapping token windows locally, in Node
+or the browser. This lets a question consider a long ticket or conversation beyond the single
+window used by `predict`. The Router chooses and loads a checkpoint once for the document.
+
+```ts
+const scanned = await router.predictLong(longTicket, {
+  refund: { type: "noul", instructions: "Does the customer request a refund?" },
+  action: { type: "choice", instructions: "Choose the next action", criteria: ["refund", "investigate"] },
+}, { window: 256, stride: 128, batchSize: 4 });
+console.log(scanned.answers.refund, scanned.usage.windows, scanned.routing);
+```
+
+The only aggregation mode is `"auto"`: `noul` takes the largest value; `choice` and `score`
+take the answer with the highest `answer_confidence`. Ties retain the first result. The
+winner keeps its metadata. Its confidence is a window score, not calibrated confidence for
+the whole document; scanning more windows can change which answer wins.
+
+The window is capped by the space left by the questions in the checkpoint's configured
+sequence budget. Its default is `max(64, max_len - head_max_len - 8)`, then capped; stride
+defaults to half that effective window. An explicit stride cannot leave gaps. `window`,
+`stride`, and `batchSize` must be positive safe integers when supplied; null/undefined use
+defaults. `maxLen`, `headMaxLen`, and `minConfidence` are deliberately absent from the long
+options. Window sizing and aggregation have different meanings from single-pass truncation
+and confidence gating. Ordinary prediction options and result types remain unchanged.
+
+Windows follow Python 0.4.18's decode → batch prediction → re-encode path. The official
+English and multilingual tokenizers support decoding. A custom encode-only tokenizer still
+supports ordinary predictions and the short-input fast path; splitting requires `decode`
+and throws if it is unavailable. Decoding and re-encoding can change the token count,
+particularly for multilingual text, so normal truncation can still occur. An answer's
+optional `window.token_start` / `token_end` identifies its **original candidate token slice**,
+not a guarantee that exactly those tokens reached the model.
+
+Agent hooks wrap one window batch; Router hooks wrap one document. Process defaults run
+once. Reordering result objects preserves identifiable origins, while rewriting/reordering
+states, replacing an answer object, or editing prediction fields removes window attribution.
+In-place reliability/action annotations preserve it. An end hook may uniformly remove its own
+temporary questions, but cannot silently remove a caller's question. Inconsistent answer
+schemas or window counts fail. A skipping hook must return exactly one document result;
+the result and usage are copied, a warning is emitted, and `usage.windows` is zero.
+The warning also covers short-input and Router cache hits, as agreed in #1316; Python
+0.4.18 itself only warns on the multi-window Agent skip path. Hook results are validated
+against the TypeScript return contract, which also rejects malformed payloads Python accepts.
+
+If a start hook changes questions or token budgets so planned windows no longer fit, the
+scan is refused **after inference**. This check is outside hook error suppression and hook
+timeouts; the forward-pass cost has already been incurred. The short path checks this too.
+`LongResult` / `RoutedLongResult` have separate usage types: `truncated` is a boolean on the
+short path and a numeric count on the multi-window path. Numeric usage is summed, dictionaries
+are shallow-merged, other values come from the last result, and `output_tokens` stays zero.
+
+Deterministic parity fixtures are recorded directly from Python `ONNXAgent.predict_long`
+at v0.4.18, with source hashes, and replayed by TypeScript tests. The generator's `--check`
+detects later reference behavior changes; these checks establish control-flow parity, not
+model quality or a speed improvement.
+
+To repeat the optional real-inference comparison with an English checkpoint and its split
+ONNX export (weights are not downloaded by these scripts):
+
+```bash
+# From laya-ts/, with numpy, torch, transformers and onnxruntime installed in Python.
+python scripts/predict_long_onnx_parity.py --python-root /path/to/laya-v0.4.18 \
+  --checkpoint /path/to/english-checkpoint --bundle /path/to/split-onnx --output python-long.json
+npm run build
+node scripts/predict_long_onnx_parity.mjs python-long.json comparison.json
+```
+
+The Python harness calls `ONNXAgent.predict_long` with an adapter joining the same encoder
+and head graphs used by TypeScript. It records source/artifact hashes and checks all three
+answer types on short, overlapping long, and structured inputs. The Node harness verifies
+artifact digests and compares actual token/marker/mask inputs, decoded answers, attribution,
+and usage at absolute tolerance
+`1e-4`, excluding the existing runtime model-name difference. It does not measure retrieval
+quality, accuracy, or performance, and does not cover browser GPU numerical differences.
 
 ## Hooks (observe or shape every decision)
 
@@ -63,7 +191,9 @@ await router.withHooks([auditHook], () => router.predict(state, questions)); // 
 
 // a start hook may rewrite ctx.states / ctx.questions, or serve a cached result:
 const cache = { onPredictStart(ctx) { const hit = lookup(ctx.states[0]); if (hit) ctx.skip([hit]); } };
-// an onRoute hook may replace ctx.decision (e.g. pin a checkpoint)
+// an onRoute hook may replace ctx.decision (e.g. pin a checkpoint). `predictBatch` groups by the
+// resolved checkpoint, so a pin that spells it as an alias ("ml") shares that checkpoint's batch:
+const pin = { onRoute(ctx) { if (isTicket(ctx.states[0])) ctx.decision = { ...ctx.decision, model: "ml" }; } };
 
 // subclass BaseHook to override only the events you need:
 class MetricsHook extends BaseHook {
@@ -74,6 +204,76 @@ class MetricsHook extends BaseHook {
 // so a tracer or metrics hook does not have to be threaded through every construction:
 setDefaultHooks([new MetricsHook()]);  // addDefaultHook(...) appends; clearDefaultHooks() resets
 ```
+
+### Option stability
+
+`OptionStabilityHook` adds opt-in `reliability` diagnostics to choice answers. It expands
+the questions with reorder and letter-rename probes and evaluates them through the existing
+batch path. The original answer stays in place; internal probe answers and their usage keys
+are removed before the result returns. Extra rows cost inference work even within one call.
+
+```ts
+import { Agent, OptionStabilityHook, calibrateReliability, decideReliability } from "laya-ts";
+
+const agent = await Agent.load("./dist/laya");
+agent.addHook(new OptionStabilityHook({
+  accept: null, escalate: null, variants: "fast", seed: "evaluation-v1",
+}));
+const result = await agent.predict("Please approve the request", {
+  action: { type: "choice", instructions: "Choose action", criteria: ["approve", "reject"] },
+});
+if (result.answers.action.type === "choice") {
+  console.log(result.answers.action.reliability);
+}
+
+// Fit on your labelled examples, using only probed numeric soft_stability values.
+// Keep these scores and cutoffs as numbers; round only a separate display string.
+function fitAndReplay(scores: number[], correct: boolean[], savedScore: number) {
+  const [accept, escalate] = calibrateReliability(scores, correct, { targetAccuracy: 0.9 });
+  return decideReliability(savedScore, accept, escalate);
+}
+```
+
+Both thresholds are required. `accept: null` disables categorical decisions;
+`escalate: null` disables only `ESCALATE`. No calibrated defaults are recommended.
+`ACCEPT` uses `soft_stability >= accept`; `ESCALATE` uses
+`soft_stability < escalate`; otherwise the decision is `VERIFY`. An unprobed question has
+null signals. The report keeps the unrounded mean used by the comparator, matching the
+Python precision correction in #1289. Other diagnostic fractions retain Python's
+four-decimal rounding. Historical rounded Python reports cannot recover the lost precision.
+
+Calibration requires equally sized, nonempty score/boolean-label arrays, finite scores in
+`[0, 1]`, and accuracy targets in `[0, 1]`. Invalid evidence is rejected rather than silently
+dropping unmatched rows. The helpers match Python on valid inputs; they do not copy its
+permissive handling of invalid calibration inputs.
+
+Options use camelCase (`nShuffles`, `renameMaxOptions`); result fields match Python's
+snake_case fields. `variants` accepts `"fast"`, `"full"`, or an array of variant names;
+`probes` accepts `"auto"`, `"reorder"`, `"rename"`, `"all"`, or a probe-name array.
+Renaming retains original label text for missing descriptions, including blank strings,
+as in #1286, and preserves nonblank descriptions and caller `option_order`.
+
+Explicit string seeds and the same ordered labels produce the same permutations as Python's
+CRC32-seeded shuffle. JavaScript enumerates integer-like object keys numerically, so preserve
+the intended label order when comparing inputs across languages.
+They reproduce probe selection, not model outputs. The default seed uses the single string
+state, or `"batch"` for multiple states. A single structured state uses the existing TS state
+serializer; Python uses `repr`, so supply the same explicit seed for cross-language replay.
+The shared fixtures record their Python version and source hashes. Numerical comparison is
+for those decoded inputs; different inference backends or Python floating-point accumulation
+versions can still produce different scores near a threshold.
+
+The hook reads `agent.cfg.option_layout` to choose probes automatically: a declared
+parallel layout selects rename-only probes; sequential selects both. This is probe selection,
+not an implementation of parallel attention. The current local ONNX runtime supports the
+sequential path; this hook adds no new checkpoint/backend support. It also does not add the
+feature to the separate HTTP SDK.
+
+Install the hook once at the Agent, Router, or process-default scope. `predictBatch` and
+concurrent calls can share one instance; plans are scoped to each prediction context and
+released on completion or error. A cache hit without probe answers does not gain a fabricated
+reliability score. The hook's own methods are synchronous and work within the existing async
+Agent/Router prediction lifecycle.
 
 ## Structured decisions (`decide`)
 
@@ -99,8 +299,14 @@ const values = await agent.decide(ticketText, {
 
 `router.decide(...)` works the same way (routing options are forwarded to `predict`), and the
 free `decide(runner, state, schema, opts)` accepts anything with a `predict` method. Pass
-`{ returnDetails: true }` for per-field confidence and probabilities, or `{ questions }`
-instead of a schema to get raw answers. Zod/TypeBox users can pass `z.toJSONSchema(Model)` —
+`{ returnDetails: true }` for per-field `confidence`, `answerConfidence` (calibrated `max(p)`),
+and probabilities, or `{ questions }` instead of a schema to get raw answers.
+
+For high throughput over multiple inputs, `agent.decideBatch(states, schema)` (and `router.decideBatch`,
+or the free `decideBatch(runner, states, schema, opts)`) plans the schema once and evaluates every state
+through shared forward passes on `predictBatch` (mirroring Python's `laya.decide_batch`).
+
+Zod/TypeBox users can pass `z.toJSONSchema(Model)` —
 any object with a `toJSONSchema()` method is accepted. `planFromJsonSchema`,
 `questionsFromJsonSchema` and `answersToJson` expose the planning and projection steps.
 
@@ -152,6 +358,14 @@ const results = await agent.predictBatch(states, questions, { batchSize: 32 });
 // in as few forward passes as possible. Results keep input order and carry `routing`.
 const decisions = router.routeBatch(requests);          // validate + route, nothing loads
 const routed = await router.predictBatch(requests, 32); // == router.predictMany(...)
+// Token budgets belong to each request; omitted/null values use the Agent config.
+const budgeted = await router.predictBatch([
+  { state: "ticket", questions, maxLen: 64, headMaxLen: 16 },
+]);
+// Abstention is the same opt-in knob predict takes (`minConfidence`, or Python's
+// `min_confidence`): answers below it come back marked `low_confidence: true`, before each
+// request's onPredictEnd runs, so an audit hook sees what the caller sees. Unset writes nothing.
+const gated = await router.predictBatch(requests, null, { minConfidence: 0.8 });
 // Per-call hooks are composed like predict: installed hooks first, then this list,
 // then onPredictStart / onPredictEnd. null and [] add nothing. hooksRaise overrides
 // the Router's policy for this call. The list runs once per request, including onRoute.
@@ -162,8 +376,8 @@ const traced = await router.predictBatch(requests, null, {
 });
 
 // requests routed to the same checkpoint still split into separate batches when their
-// question schemas differ (order-sensitively), when per-request start hooks set
-// different ctx.maxLen / ctx.headMaxLen overrides, or — for an agent carrying
+// question schemas differ (order-sensitively), when their maxLen / headMaxLen
+// budgets differ after start hooks (which can replace or clear them), or — for an agent carrying
 // lang_temperatures — when their languages differ: each request's effective language (an
 // explicit lang, otherwise the detected non-English one) is forwarded to the agent, so
 // the batched path scores exactly like predict. Router-level predict hooks run once per

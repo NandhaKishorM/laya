@@ -1,0 +1,104 @@
+{
+  "plan": {
+    "baseline_commit": "3293116c89425c3d04b22aa4d9464fef82e2c858",
+    "pr_commit": "b4e7c9a434671e6b08daadf30c572270d015cd48",
+    "checkpoint_repo": "convaiinnovations/laya",
+    "checkpoint_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+    "checkpoint_sha256": {
+      "english": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
+      "multilingual": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+      "typed-decisions": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e"
+    },
+    "unchanged_upstream_script_sha256": {
+      "verify/bench_devices.py": "af7e2d126122c01a388f167a67c2c8a53c9bf060f2c8fd0d2335cf4416da6cb1",
+      "research/scripts/bench_latency.py": "b83cdc954c33af7f8cff47a5490ce0fc060ef64d8936c8f335485056fc140c72",
+      "research/scripts/bench_long_context.py": "1867b70d672f2af871989c2ea4c1e4d1beb967518679c002a9fb4b063688a79f",
+      "verify/checkpoints.json": "b130131e4f2333695f24fd104584f45656406f805bbd648f578b14b204728a5e"
+    },
+    "protocol": "Run upstream scripts as-is with their default fixtures, warmups and repetitions in separate clean main/PR processes. Four OMP/MKL threads initially; bench_devices retains its native thread sweep. No custom fixture or timing function. Baseline and PR use identical verified public checkpoints."
+  },
+  "reports": {
+    "bench_latency-baseline.json": {
+      "sha256": "2c41c8aa7490b333345b65f2653dbdd31beede9fa4fb93aef040b7ef51fe8b0b",
+      "unchanged": true
+    },
+    "bench_latency-pr.json": {
+      "sha256": "c047bea98404ae56e258497b419745800f4f4565194f037ad8c80ebfea7ca900",
+      "unchanged": true
+    },
+    "bench_long_context-baseline.json": {
+      "sha256": "21f366dabbb9c0195142fc875ced8ab4cfd305208cd75c2e8c71e30d109adb10",
+      "unchanged": true
+    },
+    "bench_long_context-pr.json": {
+      "sha256": "f1eba84ffac9cac3a7e13c602c083ea60f8b175f2a0e5defdc7723c88f51eea3",
+      "unchanged": true
+    },
+    "completed.json": {
+      "sha256": "67863cee35836e9d85b64d24a48b116ad27aa0c70015e9e252e671e508808d56",
+      "unchanged": true
+    },
+    "device-repeat-completed.json": {
+      "sha256": "51ecca1c10147a7b5db0550200ba025f2cbc748b45cfb2519b9f62b8143f463f",
+      "unchanged": true
+    },
+    "device-repeat-plan.json": {
+      "sha256": "d3116f07770c05ae66e78231ea740e66ecc1b86af57836fe96fdbebfbe0ac305",
+      "unchanged": true
+    },
+    "plan.json": {
+      "sha256": "32d6432bff0bc9f7866053d4c542aab3d33b68ba24de5b6f44fe54640d35553e",
+      "unchanged": true
+    },
+    "bench_devices-baseline.log": {
+      "raw_sha256": "cdc327ffeddad41dc3d26c8af02af294997eb75f43bf659ae15a7541d33d7967",
+      "archived_sha256": "e5cfeab751f3307e1b3c58515b5c65565f35da56edeae9b2584e97154515cc93",
+      "transformation": "Replace local checkout/output paths with placeholders; preserve all metrics and warnings."
+    },
+    "bench_devices-pr.log": {
+      "raw_sha256": "f5089cd5b7d1457f82feb950adb81054e77415e29d13852744f107f362c4784d",
+      "archived_sha256": "f1b12a05cff8ac135912b74fbd9983a45262e4f045194d2641f6a25bdc3f6ad9",
+      "transformation": "Replace local checkout/output paths with placeholders; preserve all metrics and warnings."
+    },
+    "bench_devices-repeat1-baseline.log": {
+      "raw_sha256": "3eb1c71ea32d2a9a27dc7a77a14e83ab669c55fd676b47de6a847a19227e3533",
+      "archived_sha256": "032a631213ee4acf611f0a07af69439b0e02b3b2ca026b931a316ee4006f3732",
+      "transformation": "Replace local checkout/output paths with placeholders; preserve all metrics and warnings."
+    },
+    "bench_devices-repeat1-pr.log": {
+      "raw_sha256": "fe21821f13758bc7b96330014ffac01946f9c463a6033e27b7b04a6aa9a4163f",
+      "archived_sha256": "26781fbfc2427deb933d3ede3826b38d61e0f086c9c5bf0190a0d1fd3120297f",
+      "transformation": "Replace local checkout/output paths with placeholders; preserve all metrics and warnings."
+    },
+    "bench_devices-repeat2-baseline.log": {
+      "raw_sha256": "c054db0c96cec594dd58ba8e7175d3cb5469f4c0a6a5f80366ac20846d20d8ba",
+      "archived_sha256": "173bf296a39720e8e854b181cb0fd4f04a1adfd3547b25de1f32b649f28cf341",
+      "transformation": "Replace local checkout/output paths with placeholders; preserve all metrics and warnings."
+    },
+    "bench_devices-repeat2-pr.log": {
+      "raw_sha256": "db2f026f64bf08f01cacd79c19e36471704347429bb92f1db57b95a2bcbae500",
+      "archived_sha256": "0d4e73c4de5dd719590bf127e987b3f45aebaac061efa041d4a4c27fe1d70e4c",
+      "transformation": "Replace local checkout/output paths with placeholders; preserve all metrics and warnings."
+    },
+    "bench_latency-baseline.log": {
+      "raw_sha256": "e91ac49430e069fbcdd24dfe54ca7b34e2089727130b5f4994092eec5e6ab525",
+      "archived_sha256": "6cde00b2b2322228e7bd3f236c0a4d4749c0ff66b9390c51310c8e3983f207ea",
+      "transformation": "Replace local checkout/output paths with placeholders; preserve all metrics and warnings."
+    },
+    "bench_latency-pr.log": {
+      "raw_sha256": "b0a60fbd970ca72eb8feda28efd7a91c732147fdea679b5bc34aeeb7325a92d4",
+      "archived_sha256": "2ca8128727cc6165e6e8017c789fa3b9cda5c0fa6abce38cb95c41043dcb4ef8",
+      "transformation": "Replace local checkout/output paths with placeholders; preserve all metrics and warnings."
+    },
+    "bench_long_context-baseline.log": {
+      "raw_sha256": "c1f9406d3fb607e398b198e35a6e02501922c7c1d085f03acd1f2859788281a8",
+      "archived_sha256": "8236eb611d07cd642d8359ad9f5a751b31476d37967517caf1091e317daaac37",
+      "transformation": "Replace local checkout/output paths with placeholders; preserve all metrics and warnings."
+    },
+    "bench_long_context-pr.log": {
+      "raw_sha256": "57eda8ce2463e01589196089944f1ea3f2e11da256c3f3e4282e072ab287aa29",
+      "archived_sha256": "76fbe89afa7c0d37cd0b5933f66565e8755e55ee259b48f784b4aa9c18d579ae",
+      "transformation": "Replace local checkout/output paths with placeholders; preserve all metrics and warnings."
+    }
+  }
+}

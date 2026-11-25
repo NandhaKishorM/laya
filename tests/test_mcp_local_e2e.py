@@ -2,8 +2,9 @@
 
 Launches ``python -m laya.mcp.server`` as a subprocess and speaks MCP over
 stdin/stdout (newline-delimited JSON-RPC), exactly like a real MCP client.
-Exercises laya_predict, laya_predict_batch, laya_route, laya_route_batch, laya_decide,
-laya_preset, laya_shortlist and laya_status against the
+Exercises laya_predict, laya_predict_batch, laya_predict_long, laya_route,
+laya_route_batch, laya_decide, laya_preset, laya_shortlist, laya_tournament and
+laya_status against the
 live checkpoints (downloaded via huggingface_hub on first run, cached
 afterwards).
 
@@ -117,8 +118,9 @@ def main():
         tools = client.request("tools/list", {})
         names = sorted(t["name"] for t in tools.get("tools", []))
         ok("e2e/tool_names", names == ["laya_decide", "laya_predict", "laya_predict_batch",
-                                       "laya_preset", "laya_route", "laya_route_batch",
-                                       "laya_shortlist", "laya_status"], repr(names))
+                                       "laya_predict_long", "laya_preset", "laya_route",
+                                       "laya_route_batch", "laya_shortlist", "laya_status",
+                                       "laya_tournament"], repr(names))
 
         ticket = {
             "state": {
@@ -295,6 +297,65 @@ def main():
             ok("e2e/shortlist_latency", 0 < payload.get("latency_ms", -1) < 60_000,
                repr(payload.get("latency_ms")))
 
+            with open(os.path.join(ROOT, "laya-java", "fixtures", "tournament_golden.json"),
+                      encoding="utf-8") as fixture:
+                scenario = json.load(fixture)["cases"][0]
+            labels = scenario["questions"]["intent"]["criteria"]
+            tournament_call = {
+                "state": {"body": scenario["state"]},
+                "questions": {
+                    **ticket["questions"],
+                    "intent": {
+                        "type": "choice",
+                        "instructions": scenario["questions"]["intent"]["instructions"],
+                        "criteria": dict.fromkeys(labels),
+                        "option_order": list(reversed(range(len(labels)))),
+                    },
+                },
+                "model": "english", "lang": "en", "max_len": 512,
+                "head_max_len": 192, "min_confidence": 0.9,
+            }
+            for size, rounds in ((16, 1), (4, 2)):
+                call = dict(tournament_call, group_size=size)
+                result = client.request("tools/call", {"name": "laya_tournament", "arguments": call})
+                payload = json.loads(result["content"][0]["text"])
+                ok("e2e/tournament_%d_not_error" % size, not result.get("isError"), repr(payload)[:300])
+                meta = (payload.get("tournament") or {}).get("intent") or {}
+                finalists = meta.get("labels") or []
+                answer = (payload.get("answers") or {}).get("intent") or {}
+                ok("e2e/tournament_%d_rounds" % size,
+                   meta.get("n") == 40 and meta.get("rounds") == rounds and len(finalists) == 3, repr(meta))
+                ok("e2e/tournament_%d_finalists" % size,
+                   all(label in labels for label in finalists) and answer.get("choice") in finalists, repr(answer))
+                ok("e2e/tournament_%d_finalist_probabilities" % size,
+                   list(answer.get("probabilities") or {}) == finalists, repr(answer))
+                ok("e2e/tournament_%d_mixed_questions" % size,
+                   set(payload.get("answers") or {}) == {"department", "intent"}
+                   and payload.get("tournament", {}).get("department", {}).get("rounds") == 0)
+                ok("e2e/tournament_%d_order_drop" % size,
+                   payload.get("option_order_dropped") == {"intent": {"n": 40, "kept": 3}})
+                ok("e2e/tournament_%d_routing" % size, payload.get("routing", {}).get("model") == "english")
+                ok("e2e/tournament_%d_device" % size,
+                   payload.get("device") == EXPECT_DEVICE if EXPECT_DEVICE
+                   else payload.get("device") in ("cpu", "mps", "cuda"))
+                ok("e2e/tournament_%d_latency" % size, 0 < payload.get("latency_ms", -1) < 60_000)
+
+            passthrough = dict(ticket, model="english")
+            expected = json.loads(client.request(
+                "tools/call", {"name": "laya_predict", "arguments": passthrough})["content"][0]["text"])
+            result = client.request("tools/call", {"name": "laya_tournament", "arguments": passthrough})
+            payload = json.loads(result["content"][0]["text"])
+            ok("e2e/tournament_passthrough_not_error", not result.get("isError"))
+            ok("e2e/tournament_passthrough_answers_identical", payload.get("answers") == expected["answers"])
+            ok("e2e/tournament_passthrough_metadata", payload.get("tournament") == {
+                "department": {"labels": list(ticket["questions"]["department"]["criteria"]), "n": 2, "rounds": 0}})
+            result = client.request("tools/call", {
+                "name": "laya_tournament", "arguments": dict(passthrough, group_size=1)})
+            text = result["content"][0]["text"]
+            payload = json.loads(text[text.index("{"):])
+            ok("e2e/tournament_invalid_size", result.get("isError") is True
+               and payload.get("error") == "invalid_group_size", repr(payload))
+
             result = client.request("tools/call", {"name": "laya_status", "arguments": {}})
             payload = json.loads(result["content"][0]["text"])
             if EXPECT_DEVICE:
@@ -338,6 +399,7 @@ def main():
             by_name = {t["name"]: t for t in tools.get("tools", [])}
             for tname, args in (("laya_predict", ["task", "lang", "max_len", "head_max_len"]),
                                 ("laya_shortlist", ["task", "lang", "max_len", "head_max_len"]),
+                                ("laya_tournament", ["group_size", "task", "lang", "lang_guess", "max_len", "head_max_len", "min_confidence"]),
                                 ("laya_preset", ["task", "lang", "max_len", "head_max_len"]),
                                 ("laya_route", ["model", "task", "lang"])):
                 props = (by_name[tname].get("inputSchema") or {}).get("properties") or {}

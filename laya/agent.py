@@ -35,15 +35,16 @@ from .common import (
     collate_items,
     answer_confidence,
     confidence_from_probs,
+    check_batch_size,
     _resolve_noul_labels,
     _reuse_question_tokens,
     _disable_question_token_reuse,
     encode_text,
     render_criterion,
-    render_options,
     resolve_lang_temperatures,
     serialize_state,
     temp_bucket,
+    temperature_rejected,
     unpermute_probs,
     uses_parallel_layout,
     window_batch_cap,
@@ -296,16 +297,26 @@ def _mps_amp_min_rows() -> int:
 
 
 def _cuda_amp_dtype(checkpoint_default: Optional[str]) -> torch.dtype:
-    """Autocast dtype on CUDA at compute capability >= 8: the checkpoint's `amp_dtype` (bf16 for the
-    shipped checkpoints), or LAYA_CUDA_AMP=fp16|float16|bf16|bfloat16 when set. fp16 stays 2-10x
-    closer to the fp32 forward than bf16 on every shipped checkpoint at the same speed; anything
-    else is ignored. The long spellings count because they are what `agent.dtype` reports back, so
-    the precision a user reads off one response is one they can ask for on the next."""
-    raw = os.environ.get("LAYA_CUDA_AMP", "").lower()
+    """Precision asked for on CUDA: the checkpoint's `amp_dtype` (bf16 for the shipped checkpoints),
+    or LAYA_CUDA_AMP=fp16|float16|bf16|bfloat16|fp32|float32 when set. fp16 stays 2-10x closer to
+    the fp32 forward than bf16 on every shipped checkpoint at the same speed. float32 means no
+    autocast at all, and the caller turns it off rather than autocasting to float32. Below compute
+    capability 8 the caller runs fp16 for either half-precision ask. The long spellings count
+    because they are what `agent.dtype` reports back, so the precision a user reads off one
+    response is one they can ask for on the next. The value is trimmed and lower-cased, an empty
+    one means unset, and anything else raises ValueError: a typo fails the load instead of
+    silently serving the checkpoint's choice."""
+    raw = os.environ.get("LAYA_CUDA_AMP", "").strip().lower()
     if raw in ("fp16", "float16"):
         return torch.float16
     if raw in ("bf16", "bfloat16"):
         return torch.bfloat16
+    if raw in ("fp32", "float32"):
+        return torch.float32
+    if raw:
+        raise ValueError("LAYA_CUDA_AMP=%r is not a CUDA precision; use fp16, float16, bf16, bfloat16, "
+                         "fp32 or float32, or leave it unset for the checkpoint's own amp_dtype"
+                         % os.environ["LAYA_CUDA_AMP"])
     return amp_dtype(checkpoint_default)
 
 
@@ -313,7 +324,13 @@ def _cpu_amp_dtype() -> Optional[torch.dtype]:
     """Autocast dtype on CPU: bf16 when LAYA_CPU_AMP=bf16|bfloat16, None to leave the forward in
     fp32. No fp16 spelling is offered here, because CPU autocast has no fp16 fast path that beats
     fp32 -- bf16 is the only reduced precision worth asking for, and only on hardware with native
-    BF16 instructions, which is why it stays opt-in. Anything else is ignored."""
+    BF16 instructions, which is why it stays opt-in. Anything else is ignored.
+
+    On hardware without those instructions the failure is a native fault, not an exception:
+    oneDNN picks a kernel the CPU cannot execute and the process dies with SIGILL, or
+    `0xC000001D` on Windows. `_infer`'s autocast retry catches `RuntimeError`, so it cannot
+    see that and cannot fall back. Qualify the host first; `docs/reference/agent.md` has the
+    one-line child-process probe and the `get_cpu_capability()` reading to check."""
     if os.environ.get("LAYA_CPU_AMP", "").lower() in ("bf16", "bfloat16"):
         return torch.bfloat16
     return None
@@ -330,7 +347,25 @@ def _option_count(qdef: Dict) -> int:
     return len(crit) if isinstance(crit, (dict, list, tuple)) else 0
 
 
-def _start_evidence():
+def _scan_answer_values(answer):
+    # Reliability/action annotations do not change which prediction the model made. Keep the
+    # prediction fields independent of in-place edits to probabilities or a score's legend.
+    return {key: answer[key] for key in ("type", "choice", "noul", "score", "legend",
+                                         "probabilities", "confidence", "answer_confidence")
+            if key in answer}
+
+
+def _scan_answer_index(evidence, qid, answer, fallback):
+    recorded = evidence["answers"]
+    if recorded is None:
+        return fallback                         # a replacement batch never dispatched hooks
+    record = recorded.get((qid, id(answer)))
+    if record is not None and record[0] is answer and record[2] == _scan_answer_values(answer):
+        return record[1]
+    return None                                 # replaced, edited, or shared across windows
+
+
+def _start_evidence(track_answers=False):
     """A recorder for `predict_long`: what the start-hook chain left for inference to run on.
 
     Why a recorder at all: `ctx.skip()` only assigns `ctx.results` (see `laya.hooks.PredictContext`),
@@ -348,8 +383,21 @@ def _start_evidence():
     inference, `states` is a snapshot of the states that reached it (`None` if the probe never ran,
     which means `predict_batch` was replaced and no hook chain was dispatched).
     """
-    evidence = {"answered": False, "states": None, "question_types": None,
+    evidence = {"answered": False, "states": None, "question_types": None, "answers": None,
                 "max_len": None, "head_max_len": None, "questions": None}
+
+    def record_results(ctx):
+        if evidence["answered"]:
+            return
+        recorded = {}
+        for index, result in enumerate(ctx.results):
+            for qid, answer in result["answers"].items():
+                key = (qid, id(answer))
+                # Keep the object alive as well as its id. One object emitted for more than
+                # one window has no unique origin, even when all prediction fields agree.
+                recorded[key] = (None if key in recorded else
+                                 (answer, index, copy.deepcopy(_scan_answer_values(answer))))
+        evidence["answers"] = recorded
 
     def probe(ctx):
         evidence["answered"] = ctx.results is not None
@@ -370,6 +418,10 @@ def _start_evidence():
         evidence["max_len"] = ctx.max_len
         evidence["head_max_len"] = ctx.head_max_len
         evidence["questions"] = dict(ctx.questions) if ctx.questions else {}
+        if track_answers:
+            # predict_batch calls this before ANY end hook, including defaults and installed
+            # hooks. An end observer appended to the hook list would already see reordered rows.
+            ctx._record_scan_results = record_results
 
     return probe, evidence
 
@@ -447,7 +499,54 @@ def _option_logits(logits, items, offset):
     return [logits[offset + j, : len(item["markers"])] for j, item in enumerate(items)]
 
 
-class Agent(HookRegistry):
+
+#: Options that only mean something for the classic encoder checkpoints. Passing any of them keeps
+#: `laya.Agent()` / `laya.load()` on the classic model rather than vega.
+_CLASSIC_ONLY = ("subfolder", "fast", "compile", "backend", "expected_sha256", "lang_temperatures",
+                 "compile_warmup", "compile_cache", "compile_mode", "onnx_path")
+_warned_no_vegaml = []
+
+
+def wants_vega(args=(), kwargs=None) -> bool:
+    """Whether a `laya.Agent(...)` / `laya.load(...)` call gets vega. vega is the default since 0.5.0;
+    the classic encoder when the call names a checkpoint, says `vegaml=False` or passes a classic-only
+    option. With vegaml not importable the default falls back to the classic encoder, with one
+    warning."""
+    kwargs = kwargs or {}
+    choice = kwargs.get("vegaml")
+    if choice is False:
+        return False
+    if choice is not None:
+        return True
+    if (args and args[0] is not None) or kwargs.get("model_id_or_path") is not None:
+        return False
+    if any(k in kwargs for k in _CLASSIC_ONLY):
+        return False
+    import importlib.util
+
+    if importlib.util.find_spec("vegaml") is None:
+        if not _warned_no_vegaml:
+            _warned_no_vegaml.append(True)
+            import warnings
+
+            warnings.warn("vegaml is not installed, so laya.Agent() loads the classic encoder; "
+                          "pip install -U laya brings vega, the default since 0.5.0", stacklevel=3)
+        return False
+    return True
+
+class _AgentMeta(type):
+    """Since 0.5.0 `laya.Agent(...)` with no checkpoint named loads the new engine (VegaAgent). Decided
+    at the call rather than in __new__, so `Agent.__new__(Agent)` keeps making a bare classic agent."""
+
+    def __call__(cls, *args, **kwargs):
+        if cls is Agent and "vegaml" not in kwargs and wants_vega(args, kwargs):
+            from .vega import VegaAgent
+
+            return VegaAgent(*args, **kwargs)
+        return super().__call__(*args, **kwargs)
+
+
+class Agent(HookRegistry, metaclass=_AgentMeta):
     """System 1 decision model runtime: fast, non-autoregressive, calibrated decisions.
 
     `dtype` is the autocast target, not the precision of every call. On MPS a call
@@ -482,6 +581,19 @@ class Agent(HookRegistry):
     _reduce_overhead = False
     _gate = _InferenceGate()
 
+    def __new__(cls, *args, **kwargs):
+        # `laya.Agent(vegaml=True)` builds a VegaAgent: vegaml's engine behind laya's surface.
+        # The dispatch is here rather than in a factory so that the one argument is the whole
+        # change for a caller, and `isinstance(agent, laya.Agent)` stays true either way.
+        # VegaAgent overrides __new__ itself, so there is no recursion through this branch.
+        # The 0.5.0 default (no checkpoint named: the new engine) is decided in _AgentMeta.__call__,
+        # so `Agent.__new__(Agent)` still makes a bare classic agent.
+        vegaml = kwargs.get("vegaml")
+        if vegaml is not None and vegaml is not False and cls is Agent:
+            from .vega import VegaAgent
+            return VegaAgent.__new__(VegaAgent)
+        return object.__new__(cls)
+
     def __init__(
         self,
         model_id_or_path: str = "convaiinnovations/laya",
@@ -504,8 +616,13 @@ class Agent(HookRegistry):
         compile_warmup: bool = True,
         compile_cache: bool = False,
         compile_mode: str = "default",
+        vegaml: Union[bool, str, None] = None,
     ):
         """Load a Laya checkpoint.
+
+        `vegaml=True` (or a size, Hub id or directory) loads vegaml's engine instead and returns
+        a :class:`laya.vega.VegaAgent`; see that module. On this path the argument is accepted
+        so that `vegaml=False`/`None` are legal and mean the ordinary checkpoint.
 
         `backend` selects "eager", "auto", "compile" or "tilelang"; see `laya.backends`.
         It takes precedence over `fast` and `compile`. Omit it to keep those legacy flags.
@@ -728,13 +845,8 @@ class Agent(HookRegistry):
         entries += [("temperature[%d]" % i, t, self.temperature[i]) for i, t in enumerate(self.temperature_raw)]
         rejected = []
         for name, raw, applied in entries:
-            try:
-                if float(raw) == applied:
-                    continue
-            except (TypeError, ValueError):
-                # Invalid entries already have a neutral fallback; diagnostics must not
-                # repeat the failed conversion or prevent the checkpoint from loading.
-                pass
+            if not temperature_rejected(raw, applied):
+                continue
             rejected.append("%s=%r -> %g" % (name, raw, applied))
         if rejected:
             warnings.warn(
@@ -760,20 +872,26 @@ class Agent(HookRegistry):
         self.mps_amp_min_rows = _mps_amp_min_rows()
         if self.device.type == "cuda":
             self.amp_enabled = True
-            try:
-                major = torch.cuda.get_device_capability(self.device)[0]
-            except (RuntimeError, AttributeError):
-                # A driver that reports a GPU but cannot answer the capability query
-                # cannot be trusted with bf16 either; fp16 is the safe default and
-                # placement below still decides whether the device is usable at all.
-                warnings.warn("Warning: could not query CUDA capability; assuming fp16 defaults.",
-                              RuntimeWarning)
-                self.dtype = torch.float16
+            # Read on every CUDA device, so a value that does not parse fails here whatever the
+            # GPU, and fp32 means full precision on all of them (#443).
+            requested = _cuda_amp_dtype(self.cfg.get("amp_dtype", "fp16"))
+            if requested == torch.float32:
+                self.amp_enabled = False
             else:
-                if major < 8:
+                try:
+                    major = torch.cuda.get_device_capability(self.device)[0]
+                except (RuntimeError, AttributeError):
+                    # A driver that reports a GPU but cannot answer the capability query
+                    # cannot be trusted with bf16 either; fp16 is the safe default and
+                    # placement below still decides whether the device is usable at all.
+                    warnings.warn("Warning: could not query CUDA capability; assuming fp16 defaults.",
+                                  RuntimeWarning)
                     self.dtype = torch.float16
                 else:
-                    self.dtype = _cuda_amp_dtype(self.cfg.get("amp_dtype", "fp16"))
+                    if major < 8:
+                        self.dtype = torch.float16
+                    else:
+                        self.dtype = requested
         elif self.device.type == "mps":
             self.amp_enabled = True
             self.dtype = torch.float16
@@ -871,12 +989,21 @@ class Agent(HookRegistry):
         matches the stock forward it replaces within rounding (see benchmarks/parity_fast.py). After
         changing `agent.dtype`, call `deaccelerate()` then `accelerate()` to rebuild it. Returns True if
         enabled. With `strict=False` any failure (no CUDA, tilelang missing) leaves the stock path in place.
+        An fp32 agent (`LAYA_CUDA_AMP=fp32`) is such a failure: its kernels only run in 16 bits, so it
+        warns and keeps the stock forward, or raises with `strict=True`.
         """
         if self._fast is not None:
             return True
         if self.device.type != "cuda":
             if strict:
                 raise RuntimeError("laya fast path needs a CUDA device")
+            return False
+        if self.dtype not in (torch.bfloat16, torch.float16):
+            msg = ("laya fast path runs in bf16 or fp16 only and this agent runs %s; "
+                   "keeping the stock forward" % self.dtype)
+            if strict:
+                raise RuntimeError(msg)
+            warnings.warn("Warning: " + msg, RuntimeWarning)
             return False
         if self._backend is not None:
             self.deaccelerate()
@@ -1158,7 +1285,7 @@ class Agent(HookRegistry):
                 self.tok, state, q, max_len, head_max_len, option_order=q.get("option_order"),
                 truncate_left=truncate_left, state_ids=state_ids, return_stats=True,
                 return_truncation_stats=True, return_layout=self.parallel_options)
-            n_opts = len(render_options(q))
+            n_opts = stats["options"]
             if len(markers) != n_opts:
                 # The markers are placed at absolute positions and `build_sequence` then drops the
                 # ones past `max_len`, so this is about the question fitting in the sequence --
@@ -1344,7 +1471,7 @@ class Agent(HookRegistry):
                 t_scale = l_cfg["temperature_by_options"].get(temp_bucket(qt, k), l_cfg["temperature"][qt])
             z = raw_rows[j] / t_scale
             p = np.exp(z - z.max())
-            p = p / p.sum()
+            p /= p.sum()
 
             # The row comes back in slot order; everything below indexes by option.
             p = unpermute_probs(p, q.get("option_order"))
@@ -1428,7 +1555,9 @@ class Agent(HookRegistry):
                     The same `questions` are evaluated against every state.
             questions: Question definitions, exactly as accepted by `system_one`.
             batch_size: Optional cap on states per forward pass. `None` sends them all in one pass;
-                        set it to bound peak memory when batching many or long states.
+                        set it to bound peak memory when batching many or long states. A `float`,
+                        a `str` or a `bool` is refused by name -- the count is spent as a `range()`
+                        step, and `0` or a negative integer means the same "no cap" as `None`.
             hooks (HookArg): Per-call hooks, appended after any installed on the Agent.
                     See `laya.hooks`.
             on_predict_start (PredictHookArg): A per-call start hook. It may rewrite the
@@ -1451,6 +1580,7 @@ class Agent(HookRegistry):
             aligned with `states` by index.
         """
         mc = check_min_confidence(min_confidence) if min_confidence is not None else None
+        batch_size = check_batch_size(batch_size)
         active = compose_hooks(self.hooks, hooks, on_predict_start, on_predict_end)
         raise_errors = self.hooks_raise if hooks_raise is None else bool(hooks_raise)
         timeout = self.hooks_timeout if hooks_timeout is None else validate_timeout(hooks_timeout)
@@ -1588,6 +1718,9 @@ class Agent(HookRegistry):
                 ctx.usage = aggregate_usage(ctx.results)
                 apply_confidence_gate(ctx.results, mc)
             try:
+                record_scan = getattr(ctx, "_record_scan_results", None)
+                if ctx.error is None and ctx.results is not None and record_scan is not None:
+                    record_scan(ctx)
                 dispatch(active, "on_predict_end", ctx, raise_errors=raise_errors, lock=self._hooks_lock, timeout=timeout)
             except BaseException as hook_exc:
                 # End hooks run on the failure path too; do not let one mask the real error.
@@ -1642,6 +1775,10 @@ class Agent(HookRegistry):
           * a rewritten scan (`ctx.states` replaced, in any way): the answers are aggregated over
             the states that were scored, but no answer carries `answer["window"]` -- the offsets
             above describe this method's windows, not the text the model read
+
+        End hooks may reorder results without changing an answer's original window. Attribution
+        follows the original answer object, provided its prediction fields are unchanged. Cloned,
+        replaced or edited answers have no window attribution; added reliability metadata is kept.
 
         Args:
             window: state tokens per window. Defaults to the checkpoint's state budget,
@@ -1771,7 +1908,7 @@ class Agent(HookRegistry):
                 break
             i += step
 
-        probe, evidence = _start_evidence()
+        probe, evidence = _start_evidence(track_answers=True)
         # `list(windows)`, not `windows`: `ctx.states` is the list the hook receives, so a hook that
         # mutates it in place (`append`, `sort`) would otherwise also grow the split this call
         # attributes answers to, and the counts would agree while `starts` no longer lined up.
@@ -1830,6 +1967,14 @@ class Agent(HookRegistry):
             question_types = {qid: self._to_internal(qdef)["t"] for qid, qdef in questions.items()}
         answers = {}
         for qid, qtype in question_types.items():
+            missing = sum(qid not in r["answers"] for r in results)
+            if missing:
+                # End hooks may remove start-added questions, but must not hide a missing
+                # caller answer or an inconsistent set of answers across windows.
+                if missing == len(results) and qid not in asked and evidence["question_types"] is not None:
+                    continue
+                raise ValueError("predict_long: answer %r is missing from %d of %d windows after prediction hooks"
+                                 % (qid, missing, len(results)))
             per = [r["answers"][qid] for r in results]
             if qtype == "noul":
                 # Evidence anywhere: the strongest window decides. Its own P(true) and confidence
@@ -1840,12 +1985,15 @@ class Agent(HookRegistry):
                 # neutral document lets the neutral majority out-vote the one window that saw the
                 # deciding span; the single most-confident window preserves a localized signal.
                 best = max(range(len(per)), key=lambda j: float(per[j]["answer_confidence"]))
-            ans = per[best]
+            original = per[best]
+            index = None if rewritten else _scan_answer_index(evidence, qid, original, best)
+            ans = dict(original)
+            ans.pop("window", None)
             # Name the window that decided, so a caller can check the deciding span itself. The
             # probability here is that window's, NOT a document-level calibrated number.
-            if not rewritten:
-                ans["window"] = {"index": best, "token_start": starts[best],
-                                 "token_end": min(starts[best] + budget, len(state_ids)),
+            if index is not None:
+                ans["window"] = {"index": index, "token_start": starts[index],
+                                 "token_end": min(starts[index] + budget, len(state_ids)),
                                  "count": len(results)}
             answers[qid] = ans
         # Aggregate usage generically so fields predict_batch may grow later (e.g. the
@@ -2083,9 +2231,10 @@ def _is_local_checkpoint_arg(model_id_or_path: str) -> bool:
 
 if TYPE_CHECKING:  # pragma: no cover - the annotation below is the only use
     from .onnx_agent import ONNXAgent
+    from .vega import VegaAgent
 
 
-def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str] = None,
+def load(model_id_or_path: Optional[str] = None, device: Optional[str] = None,
          token: Optional[str] = None, subfolder: Optional[str] = None, fast: bool = False,
          compile: bool = False,
          revision: Optional[str] = None, expected_sha256: Optional[Dict[str, str]] = None,
@@ -2095,8 +2244,13 @@ def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str]
          hooks_timeout: Optional[float] = None,
          calibration: Optional[str] = None, backend: Optional[str] = None,
          onnx_path: Optional[str] = None, compile_warmup: bool = True,
-         compile_cache: bool = False, compile_mode: str = "default") -> Union[Agent, "ONNXAgent"]:
+         compile_cache: bool = False, compile_mode: str = "default",
+         vegaml: Union[bool, str, None] = None) -> Union[Agent, "ONNXAgent", "VegaAgent"]:
     """Load a Laya agent.
+
+        laya.load()                                                   # vega, the default since 0.5.0
+        laya.load(vegaml=True)                                        # the same, said explicitly
+        laya.load(vegaml="4b")                                        # a larger reader
 
     `subfolder` picks one checkpoint out of a repo that bundles several:
 
@@ -2121,6 +2275,24 @@ def load(model_id_or_path: str = "convaiinnovations/laya", device: Optional[str]
     `hooks` / `on_predict_start` / `on_predict_end` observe or shape every prediction; see
     `laya.hooks`. `calibration` is the same optional JSON path accepted by `Agent`.
     """
+    # vega is the default since 0.5.0: no checkpoint named and no classic-only option. Name one
+    # ("laya", "multilingual", "typed-decisions", a repo or a directory), or vegaml=False, for the
+    # classic encoder.
+    classic_opts = {k: v for k, v in (("subfolder", subfolder), ("fast", fast), ("compile", compile),
+                                      ("backend", backend), ("onnx_path", onnx_path),
+                                      ("expected_sha256", expected_sha256),
+                                      ("lang_temperatures", lang_temperatures)) if v}
+    if wants_vega((model_id_or_path,), dict(classic_opts, vegaml=vegaml)):
+        vegaml = vegaml or True
+    if model_id_or_path is None:
+        model_id_or_path = "convaiinnovations/laya"
+    if vegaml is not None and vegaml is not False:
+        # vegaml's engine behind laya's surface; everything laya-specific below (registry names,
+        # ONNX, TileLang, torch.compile) is about ModernBERT checkpoints and does not apply.
+        from .vega import VegaAgent
+        return VegaAgent(model_id_or_path if model_id_or_path != "convaiinnovations/laya" else None,
+                         device=device, token=token, vegaml=vegaml, revision=revision, hooks=hooks,
+                         on_predict_start=on_predict_start, on_predict_end=on_predict_end)
     # A registry name or alias resolves to the same (repo, subfolder) the Router would
     # pick, instead of being handed to the Hub as a repo id. A caller who spelled out a
     # subfolder is loading that subfolder of whatever repo they named, so the name is only

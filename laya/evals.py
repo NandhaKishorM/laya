@@ -66,6 +66,71 @@ class EvalError(ValueError):
     """A dataset or report is malformed; the message names the row or field."""
 
 
+def _metric_map(values: Any, label: str, *, allow_empty: bool = False) -> Dict[str, Any]:
+    """Return a report's metric map, naming any shape `compare` cannot do arithmetic on.
+
+    Both sides reach `compare` as JSON read from a file the caller named, and the loop subtracts
+    one value from the other for every shared metric. A JSON scalar or list, an `overall` that is
+    not an object, and a metric whose value is a string, null or dict each used to get that far:
+    they raised `AttributeError`/`TypeError` as an unhandled traceback, and `laya-evals` exits 1
+    for an unhandled traceback -- the code it reserves for a quality failure, so a broken baseline
+    file printed the same verdict as a regressed model. A bool was worse than a crash: `float()`
+    turns it into 1.0, so `"choice_accuracy": true` compared as a measurement of 100%.
+
+    An empty map is refused unless `allow_empty`, because it has no metric left that could fail:
+    the committed baseline that turns out to be `{}` or `null` would green the gate. `allow_empty`
+    is the run's own side, where losing a metric a baseline still has is a result to report
+    (`missing: True`) rather than a malformed document.
+    """
+    if not isinstance(values, dict):
+        raise EvalError("%s metrics must be an object of metric name to number, got %s"
+                        % (label, type(values).__name__))
+    if not values and not allow_empty:
+        raise EvalError("%s has no metrics to compare, so nothing in it could fail" % label)
+    for name, value in values.items():
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise EvalError("%s metric %r is not a number, got %s"
+                            % (label, name, type(value).__name__))
+    return values
+
+
+def _tolerance_map(tolerances: Any) -> Dict[str, Any]:
+    """Return a caller's tolerance map, naming any entry `compare` cannot gate on.
+
+    Both metric maps go through ``_metric_map`` for this reason; the tolerances reach the same
+    subtraction as a dict the caller built -- a hand-edited `thresholds.json` for
+    `research/evals/check_regression.py`, a config module for a test -- and were read with a bare
+    ``float(tolerances.get(metric, 0.0))``. A string, null, list or dict there raised ``TypeError``
+    from inside the arithmetic and a list or string given as the whole map raised
+    ``AttributeError``, so the gate died with exit 1 -- the code `laya-evals` reserves for a
+    quality failure -- on what is a broken gate parameter. The falsy shapes (`0`, `0.0`, `""`, `()`)
+    were quieter still: ``tolerances or {}`` read them as no tolerances at all. A bool was read as
+    1.0, which for a metric that lives in [0, 1] accepts any drift the run can report.
+
+    ``Infinity`` is the one number that cannot fail a comparison: every finite drift is inside it,
+    so naming a metric with it turns that metric's gate into a no-op while the run still exits 0
+    -- the code that means "the gate ran and the numbers passed". A NaN or a negative tolerance
+    decides the opposite way (every comparison with NaN is False, and no absolute difference is
+    ``<=`` a negative number), so those stay results rather than refusals; see
+    ``test_compare_refuses_a_tolerance_that_cannot_fail``. An empty map is a complete answer here,
+    unlike an empty metric map: it means every shared metric must match exactly.
+    """
+    if tolerances is None:
+        return {}
+    if not isinstance(tolerances, dict):
+        raise EvalError("tolerances must be an object of metric name to number, got %s"
+                        % type(tolerances).__name__)
+    import math as _math
+    for name, value in tolerances.items():
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise EvalError("tolerance for %r is not a number, got %s"
+                            % (name, type(value).__name__))
+        if _math.isinf(value) and value > 0:
+            raise EvalError("tolerance for %r is Infinity, so it accepts a drift of any size"
+                            % name)
+    return tolerances
+
+
 def compare_agreement(reference: Dict, repeat: Dict, student: Dict, *,
                       bootstrap_samples: int = 2000, seed: int = 0) -> Dict[str, Any]:
     """Compare saved teacher reference, teacher repeat, and student choice observations.
@@ -137,23 +202,75 @@ class Dataset:
 
     def __init__(self, examples: Iterable[Example]):
         self.examples: List[Example] = list(examples)
+        # `Example.from_dict` refuses a JSONL row whose `questions` or `expected` is not an object, or
+        # whose `expected` names a question `questions` does not carry. A row built in Python with
+        # `Example(...)` skipped all three, and every reader of it takes the two fields as mappings: a
+        # non-object `expected` died as an unhandled ``AttributeError``, in `evaluate` only after the
+        # runner had answered (`laya/evals.py:1205`), and a non-object `questions` leaked through
+        # `questions_fingerprint` (`laya/evals.py::questions_fingerprint`). An `expected` key with no
+        # question behind it was answered with "runner returned no answer for question 'x'" -- a
+        # verdict about the runner, paid for with a whole inference run, for a mistake in the
+        # caller's row. The two opt-in doors
+        # refused the same rows before calling anything, but as tracebacks
+        # (`laya/evals_shortlist.py:38`, `laya/evals_tournament.py:33`). Checking at the door all four
+        # readers share names the row and lands before a single call: a leaked traceback exits 1, the
+        # code `laya-evals` reserves for a failed threshold (`laya/evals_cli.py:591`).
+        for index, example in enumerate(self.examples):
+            # Both checks below read the row's own fields, so a row that is not a row at all died on the
+            # attribute before either could answer: `Dataset(json.load(handle))` -- the natural mistake
+            # when a dataset is a JSON *array* rather than JSONL, and the shape `Example.from_dict` exists
+            # to convert -- raised `AttributeError: 'dict' object has no attribute 'questions'` from
+            # inside the door. `docs/evals.md` ("Dataset format") promises this route fails as `EvalError`
+            # before the first model call, and a traceback names no row. The check is on the two attributes
+            # this door reads rather than on the type, so no row that works today starts being refused.
+            if not hasattr(example, "questions") or not hasattr(example, "expected"):
+                missing = "questions" if not hasattr(example, "questions") else "expected"
+                raise EvalError("example %d must be an Example, got %s with no %r; build each row "
+                                "with laya.evals.Example(...) or Example.from_dict(...)"
+                                % (index, type(example).__name__, missing))
+            if not isinstance(example.questions, dict):
+                raise EvalError("example %d 'questions' must be an object, got %s"
+                                % (index, type(example.questions).__name__))
+            if not isinstance(example.expected, dict):
+                raise EvalError("example %d 'expected' must be an object keyed by question id, got %s"
+                                % (index, type(example.expected).__name__))
+            unknown = sorted(set(example.expected) - set(example.questions))
+            if unknown:
+                raise EvalError("example %d 'expected' names unknown question(s): %s"
+                                % (index, ", ".join(unknown)))
 
     def __len__(self) -> int:
         return len(self.examples)
 
     @classmethod
     def from_jsonl(cls, path: str) -> "Dataset":
+        # `laya-evals` promises exit 2 on a usage error and exit 1 only when a threshold or a
+        # tolerance failed (`docs/evals.md`), and a dataset the caller cannot hand over is the
+        # caller's mistake. Four shapes of unreadable escaped that as a traceback and exit 1 -- a
+        # path that is a directory, a file without read permission, bytes that are not UTF-8 and a
+        # line nested deeper than `json` will walk -- while a line that is merely malformed JSON was
+        # already reported, three lines below. `file_fingerprint` above and `_load_report` in
+        # `laya/evals_cli.py` read a caller's path this way already; this makes the dataset reader
+        # agree with them. `UnicodeDecodeError` rather than `ValueError` on purpose: `EvalError`
+        # *is* a `ValueError`, so the wider class would re-wrap the row errors named just below.
         examples: List[Example] = []
-        with open(path, "r", encoding="utf-8") as handle:
-            for lineno, line in enumerate(handle, 1):
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                try:
-                    row = json.loads(line)
-                except ValueError as exc:
-                    raise EvalError("%s:%d is not valid JSON: %s" % (path, lineno, exc))
-                examples.append(Example.from_dict(row, where="%s:%d" % (path, lineno)))
+        try:
+            # `utf-8-sig`, not `utf-8`: a dataset exported from Excel or saved by Notepad starts
+            # with a BOM, and a plain `utf-8` read leaves it as U+FEFF on line 1, so `json` refuses a
+            # file that is valid JSON -- and says so with its own "decode using utf-8-sig" hint.
+            # `laya/cli.py`, `laya/train.py` and `laya/evidence.py` open a caller's file this way.
+            with open(path, "r", encoding="utf-8-sig") as handle:
+                for lineno, line in enumerate(handle, 1):
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except ValueError as exc:
+                        raise EvalError("%s:%d is not valid JSON: %s" % (path, lineno, exc))
+                    examples.append(Example.from_dict(row, where="%s:%d" % (path, lineno)))
+        except (OSError, UnicodeDecodeError, RecursionError) as exc:
+            raise EvalError("%s cannot be read: %s" % (path, exc)) from exc
         if not examples:
             raise EvalError("%s contains no examples" % path)
         return cls(examples)
@@ -201,7 +318,10 @@ def questions_fingerprint(dataset: "Dataset") -> str:
     Laya already applies to its own question identity: `laya/router.py::_question_schema` and this
     module's batch grouping (`laya/evals.py::evaluate`) both hash the whole questions dict.
     `tests/test_router_batch.py:543` pins that rewording `instructions` alone moves a row into its
-    own batch group.
+    own batch group. Those two need nothing when a question grows a field, because a whole-dict hash
+    takes whatever the dict holds; this one lists its fields, so a sixth field
+    `laya/agent.py::Agent._check_question` starts reading has to be added here as well or the
+    identity goes blind to it again.
 
     It is a function of the decision space, not of the rows, so scoring more states on the same
     questions leaves it unchanged.
@@ -217,15 +337,29 @@ def questions_fingerprint(dataset: "Dataset") -> str:
     the internal question, and that resolver is what turns it into the option text the model
     reads. Leaving it out let two question sets with different rendered options hash alike, which
     is the one thing this function exists to prevent.
+
+    `option_order` is the fifth and last field a question body can carry, and it was the one left
+    out: `laya/agent.py::Agent._check_question` accepts only a permutation of the option indices,
+    `Agent._to_internal` copies it into the internal question, and from there it reaches both the
+    tokenized head (`laya/common.py::build_sequence` through `build_head`) and the reported
+    probabilities (`laya/common.py::unpermute_probs`, applied in `Agent._decode_answers`). It is
+    hashed only when a row names it, so the digest of a question set that does not use the field
+    stays the number its committed baseline already carries.
     """
     schemas = set()
     for example in dataset.examples:
         for qid, question in example.questions.items():
             body = question if isinstance(question, dict) else {}
-            schemas.add(_canonical({"qid": qid, "type": body.get("type"),
-                                    "instructions": _as_tokenized_instructions(body),
-                                    "labels": body.get("labels"),
-                                    "criteria": body.get("criteria")}))
+            hashed = {"qid": qid, "type": body.get("type"),
+                      "instructions": _as_tokenized_instructions(body),
+                      "labels": body.get("labels"),
+                      "criteria": body.get("criteria")}
+            if "option_order" in body:
+                schemas.add(_canonical(dict(hashed, option_order=body["option_order"])))
+            else:
+                # Left out rather than hashed as `null`, so a dataset that never names the field
+                # keeps the digest its committed baseline already carries.
+                schemas.add(_canonical(hashed))
     digest = hashlib.sha256()
     for schema in sorted(schemas):
         digest.update(schema.encode("utf-8"))
@@ -379,10 +513,15 @@ def _answer_confidence(answer: Dict[str, Any]) -> Optional[float]:
     and the gap between them; `docs/evals.md` says so where an operator reads the metrics.
     """
     confidence = answer.get("answer_confidence")
-    if isinstance(confidence, (int, float)):
+    # `bool` is a subclass of `int`, so `isinstance(True, (int, float))` is true: a JSON
+    # `"answer_confidence": true` would be read as a confidence of 1.0 and mask the numeric
+    # `confidence` fallback below. A yes/no flag is not a probability, so it is skipped exactly
+    # like an absent or non-numeric field -- the same exclusion `confidence.py` and the schema
+    # guards apply to every other caller-supplied probability.
+    if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
         return float(confidence)
     confidence = answer.get("confidence")
-    if isinstance(confidence, (int, float)):
+    if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
         return float(confidence)
     if answer.get("type") == "noul":
         p = float(answer.get("noul", 0.0))
@@ -669,6 +808,27 @@ def _answered_model(result: Any) -> Optional[Any]:
     return result.get("model")
 
 
+def _markdown_cell(value: Any) -> str:
+    """One slice label, written as a Markdown table cell rather than as table syntax.
+
+    The group key is caller data straight off the dataset: `tags` and question ids are any string
+    the author wrote, and `Example.from_dict` coerces them with `str` rather than restricting them.
+    A table reader takes an unescaped `|` as the start of the next column and a newline as the end
+    of the row, so a group labelled `risk|high` shifts every number in its row one header to the
+    left and drops the last, and a label containing a newline takes its number out of the table
+    altogether. The label is what a reader of `laya-evals run --markdown` matches a number against,
+    so a shifted row is a wrong figure rather than a typo -- and only that group's row moves, which
+    is what makes it hard to spot in a rendered report.
+
+    `\\` is escaped before `|` so a backslash at the end of a label cannot swallow the escape that
+    follows it. `\\|` is the repository's own convention for a literal pipe inside a cell: the
+    parity table in `BENCHMARKS.md` spells its `max |p_fast - p_stock|` columns that way, and
+    `tests/test_doc_tables.py` turns the escape back into a pipe to read the header.
+    """
+    return (str(value).replace("\\", "\\\\").replace("|", "\\|")
+            .replace("\r", " ").replace("\n", " "))
+
+
 # --------------------------------------------------------------------------- evaluation
 @dataclass
 class EvalReport:
@@ -697,7 +857,7 @@ class EvalReport:
             for value in sorted(self.slices[dimension]):
                 cells = ["%.4f" % self.slices[dimension][value].get(m, float("nan"))
                          if m in self.slices[dimension][value] else "" for m in metrics]
-                lines.append("| %s | %s |" % (value, " | ".join(cells)))
+                lines.append("| %s | %s |" % (_markdown_cell(value), " | ".join(cells)))
         return "\n".join(lines) + "\n"
 
     def comparable_to(self, baseline: Dict[str, Any]) -> Tuple[bool, List[str]]:
@@ -726,6 +886,10 @@ class EvalReport:
                 continue
             reasons.append("%s (%s): baseline is %s, this run is %s"
                            % (key, _IDENTITY_LABELS[key], there, here))
+        if self.config.get("schema") == other.get("schema") == "laya-tournament-evals-report/1":
+            here, there = self.config.get("tournament_group_size"), other.get("tournament_group_size")
+            if here is None or there is None or here != there:
+                reasons.append("tournament group size: baseline is %s, this run is %s" % (there, here))
         return (not reasons), reasons
 
     def compare(self, baseline: Dict[str, Any], tolerances: Optional[Dict[str, float]] = None,
@@ -738,9 +902,21 @@ class EvalReport:
         every example errored under ``on_error="skip"`` has an empty ``overall``, and must not
         pass the gate by having nothing left to compare. A NaN metric, baseline or tolerance
         fails the comparison too.
+
+        Either side that is not a metric name to number map, a baseline with no metrics at all,
+        and a tolerance that is not a number or is ``Infinity`` raise ``EvalError`` rather than
+        reaching the subtraction: both documents are read from a path the caller names, and a shape
+        the gate cannot compare -- or a limit that cannot fail -- is a broken artifact.
+        See ``_metric_map`` and ``_tolerance_map``.
         """
-        base = (baseline or {}).get("overall", baseline or {})
-        tolerances = tolerances or {}
+        # A baseline may be a full report document or the metric map on its own, which is the
+        # shape `research/evals/check_regression.py` builds per language.
+        if not isinstance(baseline, dict):
+            raise EvalError("baseline report must be a JSON object, got %s"
+                            % type(baseline).__name__)
+        base = _metric_map(baseline.get("overall", baseline), "baseline")
+        overall = _metric_map(self.overall, "report", allow_empty=True)
+        tolerances = _tolerance_map(tolerances)
         deltas: Dict[str, Dict[str, float]] = {}
         ok = True
         for metric, base_value in base.items():
@@ -758,16 +934,16 @@ class EvalReport:
                 if conflict is not None:
                     deltas[metric] = {
                         "baseline": float(base_value),
-                        "value": float(self.overall.get(metric, float("nan"))),
+                        "value": float(overall.get(metric, float("nan"))),
                         "diff": float("nan"), "tolerance": allowed, "incomparable": conflict}
                     ok = False
                     continue
-            if metric not in self.overall:
+            if metric not in overall:
                 deltas[metric] = {"baseline": float(base_value), "value": float("nan"),
                                   "diff": float("nan"), "tolerance": allowed, "missing": True}
                 ok = False
                 continue
-            value = self.overall[metric]
+            value = overall[metric]
             diff = value - float(base_value)
             deltas[metric] = {"baseline": float(base_value), "value": value,
                               "diff": diff, "tolerance": allowed}
@@ -1040,6 +1216,25 @@ def evaluate(runner: Any, dataset: Dataset, evaluators: Optional[Sequence[Evalua
     examples = dataset.examples
     # Only worth grouping if the runner can be handed the group in one call at all.
     batch_form = _batch_form(runner) if batch_size is not None and batch_size > 1 else None
+    # The chunk grouping hashes the questions each row carries, but a `questions` dict is
+    # only equal as written: the same choice schema with two `criteria` dicts written in a
+    # different key order is a different signature, so rows that would share one forward pass
+    # are scored alone. Canonicalizing the key order is only safe where each row reaches the
+    # runner with its own `questions` object -- the per-request `_BATCH_REQUESTS` form. The
+    # positional `_BATCH_STATES` form hands the whole chunk `chunk[0].questions`, so folding
+    # key order there would render a later row with an earlier row's positional `criteria`
+    # order and silently move the metric. Gate the fold on the call shape: `sort_keys=True`
+    # for per-request runners, `sort_keys=False` (insertion order significant) for positional
+    # ones. This is a harness-side grouping relaxation and it is looser than core, which never
+    # relaxes: both `Router._question_schema` and `_canonical` above hash `sort_keys=False`
+    # unconditionally. On the per-request path two key orderings that share one harness chunk
+    # can therefore still split into separate groups inside the Router, which costs throughput
+    # and never correctness, because each request carries its own `questions`. A list-valued
+    # `criteria` is positional on both paths, and `sort_keys` leaves lists alone.
+    folded = batch_form == _BATCH_REQUESTS
+    chunk_signatures = [json.dumps(dict(sorted((example.questions or {}).items())),
+                                   sort_keys=folded, default=str)
+                        for example in examples]
     # The chunk shape travels with the calls that have one: a chunk of a single example is a plain
     # `predict`, which has no batch to reorder, and an off control is not sent at all.
     shape = ({"sort_by_length": True}
@@ -1058,11 +1253,10 @@ def evaluate(runner: Any, dataset: Dataset, evaluators: Optional[Sequence[Evalua
         # same checkpoint and identical questions. Otherwise every example is one predict.
         chunk = [examples[index]]
         if batch_form:
-            signature = (examples[index].model,
-                         json.dumps(examples[index].questions, sort_keys=False, default=str))
             while (index + len(chunk) < len(examples) and len(chunk) < batch_size
                    and (examples[index + len(chunk)].model,
-                        json.dumps(examples[index + len(chunk)].questions, sort_keys=False, default=str)) == signature):
+                        chunk_signatures[index + len(chunk)]) == (examples[index].model,
+                                                                  chunk_signatures[index])):
                 chunk.append(examples[index + len(chunk)])
         # Why these sit above the call and `waits`/`shares` below: the shape counters answer "what
         # did the harness issue", which is settled the moment the chunk is grouped, while the
@@ -1111,6 +1305,15 @@ def evaluate(runner: Any, dataset: Dataset, evaluators: Optional[Sequence[Evalua
                           for offset in range(len(chunk)))
             index += len(chunk)
             continue
+        # One result per row is the batch contract; `zip` below would silently pair the rest of
+        # the chunk with nothing, so a runner that drops a row would score a subset while
+        # `rows_grouped` still counted every row -- a report that under-scores itself, and a
+        # baseline gate that can pass on the subset.
+        results = list(results)
+        if len(results) != len(chunk):
+            raise EvalError(
+                "runner.predict_batch returned %d results for a chunk of %d rows; every row "
+                "needs its own result" % (len(results), len(chunk)))
         elapsed = (time.perf_counter() - started) * 1000.0
         # A chunk is one call, so each of its rows waited all of `elapsed`; the split figure is a
         # throughput share, not a latency, and putting the two in one list made a batched run
@@ -1143,6 +1346,9 @@ def evaluate(runner: Any, dataset: Dataset, evaluators: Optional[Sequence[Evalua
                 shortlist = (result or {}).get("shortlist")
                 if isinstance(shortlist, dict) and qid in shortlist:
                     case["shortlist"] = shortlist[qid]
+                tournament = (result or {}).get("tournament")
+                if isinstance(tournament, dict) and qid in tournament:
+                    case["tournament"] = tournament[qid]
                 cases.append(case)
         index += len(chunk)
 
@@ -1196,7 +1402,14 @@ def assert_regression(report: EvalReport, baseline: Dict[str, Any],
     """Raise AssertionError when `report` drifts from `baseline` beyond `tolerances`."""
     ok, deltas = report.compare(baseline, tolerances)
     if not ok:
+        # `compare()` fails three shapes, and only the numeric one makes `abs(diff) > tolerance`
+        # true: a missing metric and an incomparable coverage definition both store a NaN diff
+        # (laya/evals.py:928-936), and every comparison with NaN is False, which is exactly why
+        # compare() tests `not abs(diff) <= allowed` (comment at laya/evals.py:946-949). Filtering
+        # on `>` alone dropped both, so the gate raised "evaluation regressed: {}" and lost the
+        # metric and the reason compare() had already computed.
         failed = {m: d for m, d in deltas.items()
-                  if d.get("missing") or abs(d["diff"]) > d["tolerance"]}
+                  if d.get("missing") or d.get("incomparable")
+                  or not abs(d["diff"]) <= d["tolerance"]}
         raise AssertionError("evaluation regressed: %s" % json.dumps(failed, sort_keys=True))
     return deltas

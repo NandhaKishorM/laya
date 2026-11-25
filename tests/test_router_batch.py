@@ -558,3 +558,125 @@ def test_sort_by_length_is_dropped_for_agents_that_predate_it(monkeypatch):
     assert len(results) == 2
     assert [c["sort"] for c in calls] == ["unsupported"]  # one group, retry without the knob
     assert [r["routing"]["model"] for r in results] == ["english", "english"]
+
+
+
+def test_legacy_batch_optional_keywords_compose():
+    """A legacy attached agent may predate both language and length-sort forwarding."""
+    calls = []
+
+    class LegacyAgent:
+        lang_temperatures = {"en": [1.0, 1.0, 1.0]}
+
+        def predict_batch(self, states, questions, batch_size=None):
+            calls.append({"states": states, "batch_size": batch_size})
+            return [{"answers": {}, "state": state} for state in states]
+
+    router = Router(vega=False)
+    router.attach("english", LegacyAgent())
+    results = router.predict_batch([request("a", model="english", lang="en"),
+                                    request("b", model="english", lang="en")],
+                                   batch_size=1, sort_by_length=True)
+    assert [result["state"] for result in results] == ["a", "b"]
+    assert calls == [{"states": ["a", "b"], "batch_size": 1}]
+    assert [result["routing"]["model"] for result in results] == ["english", "english"]
+
+
+def test_legacy_batch_optional_keywords_keep_supported_values():
+    """Dropping one unsupported knob must preserve the other, whichever it is."""
+    calls = []
+
+    class LangAgent:
+        lang_temperatures = {"en": [1.0, 1.0, 1.0]}
+
+        def predict_batch(self, states, questions, batch_size=None, *, lang=None):
+            calls.append({"lang": lang})
+            return [{"answers": {}} for _ in states]
+
+    class SortAgent:
+        lang_temperatures = {"en": [1.0, 1.0, 1.0]}
+
+        def predict_batch(self, states, questions, batch_size=None, *, sort_by_length=False):
+            calls.append({"sort_by_length": sort_by_length})
+            return [{"answers": {}} for _ in states]
+
+    for agent in (LangAgent(), SortAgent()):
+        router = Router(vega=False)
+        router.attach("english", agent)
+        router.predict_batch([request("a", model="english", lang="en")], sort_by_length=True)
+    assert calls == [{"lang": "en"}, {"sort_by_length": True}]
+
+
+def test_legacy_batch_optional_keywords_preserve_prediction_errors():
+    """A TypeError from prediction itself is not a reason to retry the batch."""
+    calls = []
+    failure = TypeError("invalid prediction payload")
+
+    class BrokenAgent:
+        lang_temperatures = {"en": [1.0, 1.0, 1.0]}
+
+        def predict_batch(self, states, questions, batch_size=None, **kwargs):
+            calls.append(kwargs)
+            raise failure
+
+    router = Router(vega=False)
+    router.attach("english", BrokenAgent())
+    try:
+        router.predict_batch([request("a", model="english", lang="en")], sort_by_length=True)
+    except TypeError as exc:
+        assert exc is failure
+    else:
+        raise AssertionError("prediction TypeError was swallowed")
+    assert calls == [{"lang": "en", "sort_by_length": True}]
+
+def test_predict_batch_memoizes_identical_question_schema(monkeypatch):
+    """Router.predict_batch memoizes question schema serialization across consecutive requests
+    sharing the identical questions dictionary, avoiding redundant json.dumps() per item."""
+    import laya.router
+    calls = []
+    real_schema = laya.router._question_schema
+
+    def recording_schema(q):
+        calls.append(q)
+        return real_schema(q)
+
+    monkeypatch.setattr(laya.router, "_question_schema", recording_schema)
+    router, _ = _sort_recording_router(monkeypatch, accepts_sort=True)
+
+    shared_q = {"intent": {"type": "noul", "instructions": "Urgent?"}}
+    other_q = {"intent": {"type": "noul", "instructions": "Different?"}}
+
+    requests = [
+        {"state": "a", "questions": shared_q},
+        {"state": "b", "questions": shared_q},
+        {"state": "c", "questions": shared_q},
+        {"state": "d", "questions": other_q},
+    ]
+    results = router.predict_batch(requests)
+    assert len(results) == 4
+    # Exactly 2 schema serializations instead of 4
+    assert len(calls) == 2
+
+
+def test_route_batch_reaches_subclass_route_override():
+    """A subclass that overrides route() must have its override invoked by route_batch()."""
+    from laya.router import RouteDecision
+
+    class CustomRouter(Router):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.route_calls = []
+
+        def route(self, state, questions=None, **kwargs):
+            self.route_calls.append(state)
+            decision = super().route(state, questions, **kwargs)
+            return RouteDecision(dict(decision, reason="custom_override"))
+
+    router = CustomRouter()
+    items = [request("first request"), request("second request")]
+    decisions = router.route_batch(items)
+
+    assert router.route_calls == ["first request", "second request"]
+    assert len(decisions) == 2
+    assert [d["reason"] for d in decisions] == ["custom_override", "custom_override"]
+

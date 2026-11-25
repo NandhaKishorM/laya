@@ -3,7 +3,77 @@ namespace Laya;
 /// <summary>Token accounting for one <c>Predict</c> call. Laya emits no tokens, so output is 0.</summary>
 /// <param name="InputTokens">Non-padding tokens across every question in the batch.</param>
 /// <param name="OutputTokens">Always 0: a System 1 pass generates nothing.</param>
-public readonly record struct Usage(int InputTokens, int OutputTokens);
+public readonly record struct Usage(int InputTokens, int OutputTokens)
+{
+    /// <summary>Windows scored by PredictLong; null for a plain Predict call.</summary>
+    public int? Windows { get; init; }
+
+    /// <summary>State tokens read across scan windows, before per-question truncation.</summary>
+    public int? StateTokens { get; init; }
+
+    /// <summary>Sum of each window's worst per-question dropped-state count.</summary>
+    public int? StateTokensDropped { get; init; }
+
+    /// <summary>Number of scan windows with any truncated question (0 or 1 for a single window).</summary>
+    public int? Truncated { get; init; }
+
+    /// <summary>The last window's truncated question ids, matching Python's scan aggregation.</summary>
+    public IReadOnlyList<string>? TruncatedQuestions { get; init; }
+
+    /// <summary>Collapsed option spans, merged by question id across scan windows; null if none.</summary>
+    public IReadOnlyDictionary<string, OptionUsage>? Options { get; init; }
+
+    /// <summary>Value equality, including the contents of <see cref="TruncatedQuestions"/> and <see cref="Options"/>.</summary>
+    public bool Equals(Usage other) =>
+        InputTokens == other.InputTokens && OutputTokens == other.OutputTokens
+        && Windows == other.Windows && StateTokens == other.StateTokens
+        && StateTokensDropped == other.StateTokensDropped && Truncated == other.Truncated
+        && SameList(TruncatedQuestions, other.TruncatedQuestions) && SameMap(Options, other.Options);
+
+    /// <inheritdoc/>
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(InputTokens);
+        hash.Add(OutputTokens);
+        hash.Add(Windows);
+        hash.Add(StateTokens);
+        hash.Add(StateTokensDropped);
+        hash.Add(Truncated);
+        if (TruncatedQuestions is { } ids)
+            foreach (var id in ids) hash.Add(id, StringComparer.Ordinal);
+        // Order-independent, so equal maps hash equally whatever their enumeration order.
+        if (Options is { } options)
+            hash.Add(options.Aggregate(options.Count,
+                (acc, pair) => acc ^ HashCode.Combine(StringComparer.Ordinal.GetHashCode(pair.Key), pair.Value)));
+        return hash.ToHashCode();
+    }
+
+    private static bool SameList(IReadOnlyList<string>? a, IReadOnlyList<string>? b) =>
+        ReferenceEquals(a, b) || (a is not null && b is not null && a.SequenceEqual(b, StringComparer.Ordinal));
+
+    // Keys compare ordinally whatever comparer either map was built with, so equality stays
+    // symmetric and agrees with GetHashCode's ordinal key hashes.
+    private static bool SameMap(IReadOnlyDictionary<string, OptionUsage>? a, IReadOnlyDictionary<string, OptionUsage>? b) =>
+        ReferenceEquals(a, b) || (a is not null && b is not null && a.Count == b.Count
+            && a.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .Zip(b.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+                .All(pairs => string.Equals(pairs.First.Key, pairs.Second.Key, StringComparison.Ordinal)
+                    && pairs.First.Value == pairs.Second.Value));
+}
+
+/// <summary>Option-span diagnostics from Python's common.collapsed_options.</summary>
+/// <param name="Total">Number of declared options.</param>
+/// <param name="Distinct">Number of distinct capped token spans.</param>
+/// <param name="TokensPerOption">Cap including the marker, or null when no head-budget cap was needed.</param>
+public readonly record struct OptionUsage(int Total, int Distinct, int? TokensPerOption);
+
+/// <summary>The deciding window in the tokenized state; offsets are exclusive-end token indices.</summary>
+/// <param name="Index">Zero-based deciding window index.</param>
+/// <param name="TokenStart">First state token in the window.</param>
+/// <param name="TokenEnd">One past the last state token in the window.</param>
+/// <param name="Count">Total windows scored.</param>
+public readonly record struct WindowInfo(int Index, int TokenStart, int TokenEnd, int Count);
 
 /// <summary>
 /// The action head's read on whether the answer can be acted on directly.
@@ -47,6 +117,63 @@ public abstract class Answer
 
     /// <summary>The action head's output.</summary>
     public ActionInfo Action { get; }
+
+    /// <summary>
+    /// Deciding scan window, or null for Predict and the single-window PredictLong fast path.
+    /// Probabilities describe this window, not a calibrated whole-document probability.
+    /// </summary>
+    public WindowInfo? Window { get; private set; }
+
+    internal Answer WithWindow(WindowInfo window)
+    {
+        var answer = (Answer)MemberwiseClone();
+        answer.Window = window;
+        return answer;
+    }
+
+    /// <summary>
+    /// True only when a <see cref="MinConfidence"/> was set for the call and this answer's confidence fell
+    /// below its threshold (Python's <c>low_confidence: True</c>, which is absent otherwise). False for an
+    /// ungated call and for an answer that cleared the gate or could not be evaluated.
+    /// </summary>
+    public bool LowConfidence { get; private set; }
+
+    /// <summary>
+    /// What the abstention gate decided, one of <see cref="GateStates"/> (<c>passed</c>, <c>abstained</c>,
+    /// <c>unevaluated</c>), or <see langword="null"/> when the call set no <see cref="MinConfidence"/>
+    /// (Python writes no <c>abstention</c> key then).
+    /// </summary>
+    public string? Abstention { get; private set; }
+
+    /// <summary>
+    /// The threshold this answer was gated at: the scalar, or the map entry for its option-count bucket
+    /// (else the map's <c>default</c>, else 0.0). <see langword="null"/> when the call set no
+    /// <see cref="MinConfidence"/> (Python's <c>abstention_threshold</c>).
+    /// </summary>
+    public double? AbstentionThreshold { get; private set; }
+
+    /// <summary>
+    /// The <c>confidence</c> Jev would report for this answer's (rounded) probabilities, which is a different
+    /// formula from <see cref="Confidence"/> (Python's <c>jev_confidence</c>): for choice
+    /// <c>(max(p) - 1/n) / (1 - 1/n)</c>, for score <c>max(0, 1 - sum(p_i * |i - mode|) / D)</c>, both 1.0 for a
+    /// single option. <see langword="null"/> for a noul answer and for malformed probabilities (non-finite or negative).
+    /// </summary>
+    public double? JevConfidence() => this switch
+    {
+        ChoiceAnswer choice => ConfidenceGate.Jev(false, [.. choice.Probabilities.Select(kv => kv.Value)]),
+        ScoreAnswer score => ConfidenceGate.Jev(true, score.Probabilities),
+        _ => null,
+    };
+
+    /// <summary>A copy carrying the gate's verdict; the original stays as it was, so a reused answer never keeps a stale flag.</summary>
+    internal Answer WithGate(bool lowConfidence, string abstention, double threshold)
+    {
+        var answer = (Answer)MemberwiseClone();
+        answer.LowConfidence = lowConfidence;
+        answer.Abstention = abstention;
+        answer.AbstentionThreshold = threshold;
+        return answer;
+    }
 
     /// <summary>This answer as a choice answer.</summary>
     /// <exception cref="InvalidOperationException">If the question was not a choice question.</exception>
@@ -198,6 +325,10 @@ public sealed class LayaResult
     /// <summary>A copy of this result with <see cref="Shortlist"/> set. Used internally by <see cref="LayaShortlist"/>.</summary>
     internal LayaResult WithShortlist(IReadOnlyDictionary<string, ShortlistInfo> shortlist) =>
         new(Model, _order, _byId, Usage, Routing, shortlist);
+
+    /// <summary>A copy of this result with its answers replaced (same ids). Used internally by the abstention gate.</summary>
+    internal LayaResult WithAnswers(Dictionary<string, Answer> answers) =>
+        new(Model, _order, answers, Usage, Routing, Shortlist);
 
     /// <summary>The question ids, in the order they were asked.</summary>
     public IReadOnlyList<string> Ids => _order;

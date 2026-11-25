@@ -1,0 +1,129 @@
+{
+  "name": "long_dict",
+  "state": {
+    "notes": "Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. ",
+    "message": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account."
+  },
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today"
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    }
+  },
+  "options": {
+    "window": 96
+  },
+  "state_tokens": 179,
+  "effective_window": 96,
+  "effective_stride": 48,
+  "effective_room": 478,
+  "windows": [
+    {
+      "token_start": 0,
+      "token_end": 96,
+      "text": "{\"notes\": \"Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine"
+    },
+    {
+      "token_start": 48,
+      "token_end": 144,
+      "text": ". Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. Routine checks completed. \", \"message\": \"Subject: Double charged on invoice 88213\\n\\nHi, I was billed twice this month for the Pro plan"
+    },
+    {
+      "token_start": 96,
+      "token_end": 179,
+      "text": " checks completed. Routine checks completed. Routine checks completed. Routine checks completed. \", \"message\": \"Subject: Double charged on invoice 88213\\n\\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.\"}"
+    }
+  ],
+  "result": {
+    "model": "laya-rl-agent-onnx",
+    "answers": {
+      "topic": {
+        "type": "choice",
+        "choice": "refund",
+        "probabilities": {
+          "refund": 0.8794,
+          "technical": 0.0613,
+          "other": 0.0593
+        },
+        "confidence": 0.5889,
+        "answer_confidence": 0.8794,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 2,
+          "token_start": 96,
+          "token_end": 179,
+          "count": 3
+        }
+      },
+      "urgency": {
+        "type": "score",
+        "score": 0.4528,
+        "legend": {
+          "0": "not urgent",
+          "1": "this week",
+          "2": "today"
+        },
+        "probabilities": {
+          "0": 0.6652,
+          "1": 0.2168,
+          "2": 0.118
+        },
+        "confidence": 0.2219,
+        "answer_confidence": 0.6652,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 0,
+          "token_start": 0,
+          "token_end": 96,
+          "count": 3
+        }
+      },
+      "cancel": {
+        "type": "noul",
+        "noul": 0.8946,
+        "confidence": 0.8946,
+        "answer_confidence": 0.8946,
+        "action": {
+          "act_probability": 1.0
+        },
+        "window": {
+          "index": 2,
+          "token_start": 96,
+          "token_end": 179,
+          "count": 3
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 1107,
+      "output_tokens": 0,
+      "state_tokens": 275,
+      "state_tokens_dropped": 0,
+      "truncated": 0,
+      "truncated_questions": [],
+      "windows": 3
+    }
+  }
+}

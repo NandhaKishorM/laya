@@ -1,0 +1,276 @@
+name: C++
+
+# Build lane for laya-cpp. Like the Go, .NET and Java lanes it runs on every push and pull request
+# with no path filter. This first change carries a skeleton only (no library code, no goldens, no
+# ONNX Runtime), so there is no parity against the Python reference yet; what the lane proves is
+# that the toolchain builds, tests run, and the numeric flags are in force.
+#
+# The build job is ADVISORY (`continue-on-error`) for the reason the other ports are: the Python
+# package is the product and the port follows it.
+#
+# Two things hold the lane honest, each there because a green run could otherwise mean nothing:
+#
+#   * Fail on skip, and a floor: ctest reports a skipped test as success. Each cell writes JUnit
+#     XML and laya-cpp/scripts/check_test_xml.py counts instead of trusting the exit status: any
+#     skip, any failure and any shortfall below the floor fails the step.
+#   * The flags are tested: the `compile_flags` ctest fails if -ffp-contract=off or
+#     -fno-fast-math is missing from a laya-cpp translation unit.
+#
+# Goldens need HF_TOKEN (the tokenizer fetch) and the Python toolchain. A pull request from a fork
+# gets no secrets: the fetch then runs unauthenticated (rate-limited) and may fail, which marks this
+# advisory job red without blocking the PR, as in go.yml. Each matrix leg regenerates everything
+# because the job is the unit of isolation; the shared families are small, the cost is the torch install.
+#
+# The security job is NOT advisory, as in go.yml, and `build` needs it: the fetched GoogleTest
+# commit is verified against the upstream tag before anything is built. Be clear about what it is:
+# the pin check and the workflow-folding check only. There is NO static analyzer for C++ in this
+# change; the sanitizer presets (asan-ubsan) run in `build`. CodeQL for C++ is tracked as a TODO
+# row in security.yml's `codeql` matrix (it needs a manual build step and the maintainer's yes).
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cpp-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # The test floor: the number of ctest tests laya-cpp registers (the GoogleTest cases plus
+  # compile_flags). Raise it with every test added.
+  MIN_TESTS: "423"
+  # The onnx job registers the same tests plus the laya_onnx_tests cases.
+  MIN_TESTS_ONNX: "479"
+  GOLDENS: ${{ github.workspace }}/.cpp-goldens
+  LAYA_GOLDENS: ${{ github.workspace }}/.cpp-goldens
+  LAYA_CHECKPOINTS: ${{ github.workspace }}/laya-java/.work/checkpoints   # the tokenizer tests need both shipped checkpoints
+  LAYA_REQUIRE_GOLDENS: "1"   # a missing golden is a failure, never a skip
+
+jobs:
+  build:
+    name: build (${{ matrix.compiler }}, ${{ matrix.preset }})
+    runs-on: ubuntu-latest
+    needs: security           # the GoogleTest pin is verified before it is fetched and built
+    continue-on-error: true   # advisory: see the header
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+        preset: [debug, asan-ubsan]
+        include:
+          # The Agent claims thread safety; the whole suite runs under ThreadSanitizer once.
+          - compiler: clang++
+            preset: tsan
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: laya-dotnet/tools/requirements-regen.txt
+
+      - name: Checker tests
+        run: python laya-cpp/scripts/test_check_test_xml.py
+
+      # The Locale test needs a comma-decimal locale; a missing one is a skip and the floor check fails.
+      - name: Install a comma-decimal locale
+        run: sudo locale-gen de_DE.UTF-8
+
+      # Goldens are recorded from the Python reference at this commit, never read from a committed copy.
+      - name: Install the Python toolchain the goldens are recorded with
+        run: |
+          python -m pip install --upgrade pip
+          pip install "torch==2.14.0" --index-url https://download.pytorch.org/whl/cpu
+          pip install -r laya-dotnet/tools/requirements-regen.txt
+      - name: Fetch the tokenizers the goldens are recorded against
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          for c in english multilingual; do
+            python laya-java/scripts/prepare_checkpoint.py --checkpoint "$c" --no-graph
+          done
+      - name: Regenerate the goldens from Python
+        env:
+          LAYA_FIXTURE_CHECKPOINTS: ${{ github.workspace }}/laya-java/.work/checkpoints
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python laya-java/scripts/gen_fixtures.py --strict --out "$GOLDENS" --only lang_tables.json --only lang_detect.json --only python_json.json --only tokenizer_ids.json --only decode_text.json --only sequences.json --only window_plan.json --only decode.json
+          python laya-go/scripts/gen_go_fixtures.py --out "$GOLDENS"
+      - name: Compiled C++ tables match CPython
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python laya-go/scripts/gen_tables.py --lang cpp --check
+
+      - name: Configure
+        working-directory: laya-cpp
+        run: cmake --preset "${{ matrix.preset }}" -DCMAKE_CXX_COMPILER="${{ matrix.compiler }}"
+
+      - name: Build
+        working-directory: laya-cpp
+        run: cmake --build --preset "${{ matrix.preset }}"
+
+      - name: Test
+        working-directory: laya-cpp
+        run: ctest --preset "${{ matrix.preset }}" -j4 --output-junit "$RUNNER_TEMP/ctest.xml"
+
+      - name: Count tests (fail on skip, enforce the floor)
+        if: ${{ !cancelled() }}
+        run: python laya-cpp/scripts/check_test_xml.py "$RUNNER_TEMP/ctest.xml" --min-tests "$MIN_TESTS"
+
+  # The ONNX Runtime backend, mirroring go.yml's `onnx` job: real graphs for both shipped checkpoints, goldens
+  # recorded by Python's ONNXAgent on those graphs, and a floor on the tests that must run. The
+  # runtime comes from the release archive pinned by sha256 in laya-cpp/cmake/onnxruntime.cmake:
+  # CMake (URL_HASH) verifies it at the moment it is fetched, in every cell. Advisory like `build`,
+  # and like go.yml's `onnx` job, which is also `continue-on-error`: the MIN_TESTS_ONNX floor blocks
+  # nothing until this job and Go's are made blocking together.
+  onnx:
+    name: onnx (${{ matrix.compiler }}, ${{ matrix.preset }})
+    runs-on: ubuntu-latest
+    needs: security
+    continue-on-error: true   # advisory: see the header
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++]
+        preset: [debug]
+        include:
+          - compiler: clang++
+            preset: asan-ubsan
+          - compiler: clang++
+            preset: tsan
+    env:
+      ONNX_ROOT: ${{ github.workspace }}/laya-java/.work/onnx
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: laya-dotnet/tools/requirements-regen.txt
+      - name: Install a comma-decimal locale
+        run: sudo locale-gen de_DE.UTF-8
+      - name: Install the Python toolchain the goldens are recorded with
+        run: |
+          python -m pip install --upgrade pip
+          pip install "torch==2.14.0" --index-url https://download.pytorch.org/whl/cpu
+          pip install -r laya-dotnet/tools/requirements-regen.txt
+
+      # One cache per checkpoint, at its own path, under cpp-specific keys. java.yml caches only its
+      # multilingual graph, as a whole .work/onnx directory; sharing that entry would let this job
+      # save the english graph into it, and the english graph has no java entry to share. The hash
+      # inputs are java.yml's, so an exporter change invalidates both.
+      - name: Cache the multilingual graph
+        id: graph-multilingual
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: laya-java/.work/onnx/multilingual
+          key: laya-cpp-onnx-${{ runner.os }}-multilingual-${{ hashFiles('laya-java/scripts/prepare_checkpoint.py', 'scripts/export_onnx.py', 'laya/common.py', 'laya-dotnet/tools/requirements-regen.txt') }}
+      - name: Cache the english graph
+        id: graph-english
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: laya-java/.work/onnx/english
+          key: laya-cpp-onnx-${{ runner.os }}-english-${{ hashFiles('laya-java/scripts/prepare_checkpoint.py', 'scripts/export_onnx.py', 'laya/common.py', 'laya-dotnet/tools/requirements-regen.txt') }}
+      - name: Prepare both checkpoints and their graphs
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HIT_MULTILINGUAL: ${{ steps.graph-multilingual.outputs.cache-hit }}
+          HIT_ENGLISH: ${{ steps.graph-english.outputs.cache-hit }}
+        run: |
+          for c in multilingual english; do
+            hit=HIT_${c^^}
+            if [ "${!hit}" = "true" ]; then
+              python laya-java/scripts/prepare_checkpoint.py --checkpoint "$c" --no-graph
+            else
+              python laya-java/scripts/prepare_checkpoint.py --checkpoint "$c"
+            fi
+            for f in laya.onnx laya.onnx.data laya.onnx.laya-revision; do
+              test -s "$ONNX_ROOT/$c/$f" || { echo "::error::missing $c/$f"; exit 1; }
+            done
+          done
+
+      - name: Regenerate the goldens from Python
+        env:
+          LAYA_FIXTURE_CHECKPOINTS: ${{ github.workspace }}/laya-java/.work/checkpoints
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python laya-java/scripts/gen_fixtures.py --strict --out "$GOLDENS" --only lang_tables.json --only lang_detect.json --only python_json.json --only tokenizer_ids.json --only decode_text.json --only sequences.json --only window_plan.json --only decode.json
+          python laya-go/scripts/gen_go_fixtures.py --out "$GOLDENS"
+          # predict.json is recorded per checkpoint from that checkpoint's own graph.
+          for c in multilingual english; do
+            LAYA_ONNX_GRAPH="$ONNX_ROOT/$c/laya.onnx" LAYA_PREDICT_MODEL="$c" \
+              python laya-java/scripts/gen_fixtures.py --strict --out "$RUNNER_TEMP/predict-$c" --only predict.json
+          done
+          cp "$RUNNER_TEMP/predict-multilingual/predict.json" "$GOLDENS/predict.json"
+          cp "$RUNNER_TEMP/predict-english/predict.json" "$GOLDENS/predict-english.json"
+      - name: Compiled C++ tables match CPython
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python laya-go/scripts/gen_tables.py --lang cpp --check
+
+      - name: Configure (fetches the pinned ONNX Runtime and verifies its sha256)
+        working-directory: laya-cpp
+        run: cmake --preset "${{ matrix.preset }}" -DLAYA_ONNX=ON -DCMAKE_CXX_COMPILER="${{ matrix.compiler }}"
+      - name: Build
+        working-directory: laya-cpp
+        run: cmake --build --preset "${{ matrix.preset }}"
+      - name: Test
+        working-directory: laya-cpp
+        env:
+          LAYA_ONNX_GRAPH: ${{ env.ONNX_ROOT }}/multilingual/laya.onnx
+          LAYA_ONNX_GRAPH_ENGLISH: ${{ env.ONNX_ROOT }}/english/laya.onnx
+          # The ONNX Runtime this links is the prebuilt binary cmake/onnxruntime.cmake fetches,
+          # built without -fsanitize=thread. TSan cannot see the happens-before edges its mutexes
+          # and atomics establish, so it read every buffer that library's thread pool returned as
+          # a race: 342 reports, all with a libonnxruntime.so frame, all in memcpy or operator
+          # delete, failing 20 of 479 tests.
+          #
+          # This is the option built for that situation, and it is already the default on Darwin.
+          # A `called_from_lib:libonnxruntime.so` suppressions file was tried first and made it
+          # worse, 33 failures instead of 20: suppressing the library makes TSan ignore the locks
+          # it takes while still seeing the unlock that libstdc++ performs inside
+          # condition_variable::wait, which it then reports as unlocking a mutex nobody held, 151
+          # times. Ignoring the uninstrumented module keeps that bookkeeping consistent instead.
+          #
+          # What stays covered: a race between two laya threads on laya-owned state, in
+          # instrumented code, which is what OnnxRig.ConcurrentPredictAgreesWithASerialCall and
+          # CloseInterruptsARunInFlight exercise. Checked, not assumed: with this flag set, a
+          # deliberate race in instrumented code is still reported and still exits 134. What it
+          # gives up is any report whose access comes from inside an uninstrumented module, which
+          # TSan cannot adjudicate there anyway. Unused by the g++/debug and clang++/asan-ubsan
+          # cells, which link no TSan runtime. Inherited by laya_onnx_static_holder, whose exit
+          # status AStaticSessionAndAgentExitCleanly asserts and which TSan otherwise leaves at 66.
+          TSAN_OPTIONS: ignore_noninstrumented_modules=1
+        run: ctest --preset "${{ matrix.preset }}" --output-junit "$RUNNER_TEMP/ctest-onnx.xml"
+      - name: Count tests (fail on skip, enforce the onnx floor)
+        if: ${{ !cancelled() }}
+        run: python laya-cpp/scripts/check_test_xml.py "$RUNNER_TEMP/ctest-onnx.xml" --min-tests "$MIN_TESTS_ONNX"
+
+  security:
+    name: cpp security scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      # Standard library only, so no install step.
+      - name: No workflow folds a comment into a run block
+        run: python laya-java/scripts/check_workflow_folding.py
+
+      # FetchContent runs code from the fetched repository at build time, so the commit it pins
+      # must be the one the upstream tag names, checked on every run and not once by hand.
+      - name: GoogleTest pin matches the upstream tag
+        run: |
+          pinned=$(sed -n 's/^ *GIT_TAG \([0-9a-f]\{40\}\))*$/\1/p' laya-cpp/CMakeLists.txt)
+          tagged=$(git ls-remote https://github.com/google/googletest refs/tags/v1.18.0 | cut -f1)
+          echo "pinned=$pinned tagged=$tagged"
+          test -n "$pinned" && test "$pinned" = "$tagged"

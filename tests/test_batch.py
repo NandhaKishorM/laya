@@ -168,6 +168,48 @@ for batch_size in (None, 0, -1, 1, 100):
           plain.predict_batch(states, QUESTIONS, batch_size=batch_size))
     check("length/no-op grouping for batch_size=%r" % batch_size, grouped.batch_rows, plain.batch_rows)
 
+# ------------------------------------------------------------- the chunk count is a shape, not a sign
+# `batch_size` is spent as a `range()` step, so a value `range()` cannot spend used to leak the
+# interpreter's own error from the middle of the batch loop: measured on the fake above, `2.5`
+# raised `'float' object cannot be interpreted as an integer` and `"2"` raised `'>' not supported
+# between instances of 'str' and 'int'` -- the second one from the `> 0` test, before a single
+# state was encoded. `laya/mcp/tools.py` and `laya/serve.py` refused both shapes before the call
+# ever reached here, so only the Python route -- the documented one, and the one with no schema in
+# front of it -- met the raw `TypeError`. `common.check_batch_size` now refuses them by name, at
+# the entry, ahead of the hooks.
+for bad in (2.5, 2.0, "2", "", True, False, [2], {"n": 2}, float("nan"), float("inf")):
+    check_raises("chunk/batch_size %r is refused by name" % (bad,), ValueError,
+                 lambda b=bad: make_length_fake().predict_batch(states, QUESTIONS, batch_size=b))
+
+try:
+    make_length_fake().predict_batch(states, QUESTIONS, batch_size=2.5)
+except ValueError as exc:
+    check("chunk/the refusal names the value it cannot use", str(exc),
+          "batch_size must be an integer count of states, got 2.5")
+else:
+    check_true("chunk/the refusal names the value it cannot use", False, "no ValueError raised")
+
+# A `bool` is refused with the same argument `ece_score` makes for `bins`, but against a worse
+# failure than a crash: `True` *is* an `int` to `range()`, so it capped every pass at one state and
+# switched `sort_by_length` off, because that knob's own gate is `1 < chunk`. Both were silent, and
+# both are in the loop above now.
+
+# The three "no cap" spellings stay legal: `laya-java/fixtures/window_plan.json`'s `batch_cap` grid
+# replays `(None, 0, -1, 1, 8)` as unset-or-explicit through the Java, Go, C# and C++ ports, whose
+# typed `int` treats zero and negative as "unset". The guard stops at the shape, never at the sign.
+six = ["s%d" % i for i in range(6)]
+for unset in (None, 0, -1, 10 ** 400):
+    f = make_fake()
+    f.predict_batch(six, QUESTIONS, batch_size=unset)
+    check("chunk/batch_size=%r is one pass over every state" % (unset,), f._forward_calls, [12])
+
+# `Integral`, not `int`, is the test: `numpy.int64` spends in `range()` exactly as well, and a
+# caller who derives the cap from an array shape is the common case. `ece_score` accepts it for the
+# same reason.
+np_cap = make_fake()
+np_cap.predict_batch(six, QUESTIONS, batch_size=np.int64(3))
+check("chunk/a numpy integer cap is spent, not refused", np_cap._forward_calls, [6, 6])
+
 f = make_length_fake()
 check("length/empty inputs", f.predict_batch([], QUESTIONS, sort_by_length=True), [])
 check("length/empty questions", f.predict_batch(states[:1], {}, sort_by_length=True)[0]["answers"], {})

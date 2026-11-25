@@ -91,6 +91,22 @@ The README's [Automated Confidence Gating](https://github.com/NandhaKishorM/laya
 give the existing calibration and confidence context. Keep irreversible or high-cost actions behind
 an explicit review boundary even when their confidence is high.
 
+### Attacker-controlled context
+
+When a request includes text an attacker can influence, evaluate whether that text can steer the
+decision as well as whether the model is accurate on ordinary traffic. Keep paired cases with the
+same task and options: a clean state, then a version containing an instruction aimed at changing the
+answer. Include document-shaped and indirect instructions, and compare both the selected option and
+its confidence for each checkpoint and language you deploy. A confidence threshold fitted on clean
+data is not an injection detector; an attacker-steered answer can still be highly confident.
+
+The small probe reported in [#1229](https://github.com/NandhaKishorM/laya/issues/1229) found that
+confidence gating behaved differently across the English and multilingual checkpoints, and that the
+`guard` preset missed some document-shaped cases. Its eight requests per style establish a concrete
+failure mode, not a general attack rate or a reliable threshold. Use representative, reviewed cases
+from your own workflow, and keep high-impact actions behind an independent authorization or review
+boundary even when the decision and guard both pass.
+
 ## 4. Promote a bounded slice
 
 Promotion should be a measured, reversible change rather than a global on/off switch. Define an
@@ -143,3 +159,4 @@ real request
 - [README: Automated Confidence Gating](https://github.com/NandhaKishorM/laya#automated-confidence-gating) — confidence is a
   policy input, not a correctness guarantee.
 - [README: Calibration](https://github.com/NandhaKishorM/laya#calibration) and [Honest limits](https://github.com/NandhaKishorM/laya#honest-limits).
+

@@ -1,0 +1,31 @@
+{
+ "category": {
+  "type": "choice",
+  "instructions": "Which team should handle the email in `body`?",
+  "criteria": {
+   "billing": "invoices, payments, refunds",
+   "technical": "bugs, outages, integrations",
+   "sales": "pricing, demos, new purchases",
+   "security": "phishing, scams, account compromise",
+   "hr": "hiring, leave, payroll",
+   "other": "none of the above"
+  }
+ },
+ "is_spam": {
+  "type": "noul",
+  "instructions": "Is this email unsolicited spam or bulk marketing?"
+ },
+ "urgency": {
+  "type": "score",
+  "instructions": "How urgent is the request in `body`?",
+  "criteria": [
+   "no time pressure",
+   "needs attention soon",
+   "blocking issue or hard deadline"
+  ]
+ },
+ "needs_reply": {
+  "type": "noul",
+  "instructions": "Does the sender expect a reply?"
+ }
+}

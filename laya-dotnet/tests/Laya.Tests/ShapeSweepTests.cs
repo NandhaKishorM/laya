@@ -210,6 +210,7 @@ public sealed class ShapeSweepTests(AllEnginesFixture fixture)
     /// different artifact directory rather than a separate code path being exercised here.
     /// </summary>
     [Theory]
+    [Trait(TestArtifacts.LayoutTrait, TestArtifacts.SplitOnly)]
     [MemberData(nameof(CheckpointShapesSplit))]
     public void RunsAtEveryShapeForAllCheckpointsSplit(LayaCheckpoint checkpoint, int seq, int batch, int markers)
     {

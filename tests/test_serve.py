@@ -27,7 +27,11 @@ from laya.serve import (  # noqa: E402
     BATCH_BODY_ITEM_CONTROLS,
     BODY_CONTROLS,
     BODY_REFUSALS,
+    MEDIA_REFUSALS,
+    DEFAULT_BODY_READ_TIMEOUT,
+    DEFAULT_LOG_LEVEL,
     DEFAULT_MAX_TOKEN_BUDGET,
+    DEFAULT_PORT,
     MAX_BODY_BYTES,
     MAX_STATE_CHARS,
     _add_jev_confidence,
@@ -35,10 +39,13 @@ from laya.serve import (  # noqa: E402
     _check_request_limits,
     _env_bool,
     _LONE_SURROGATE_DETAIL,
+    _resolve_body_read_timeout,
+    _resolve_log_level,
     _resolve_max_token_budget,
     _resolve_idle_unload_seconds,
     _resolve_max_loaded,
     _resolve_model,
+    _resolve_port,
     _resolve_tournament_group,
     create_app,
 )
@@ -104,6 +111,23 @@ def test_root_path_from_environment_updates_openapi_and_keeps_routes(monkeypatch
     with TestClient(app) as client:
         assert client.get("/health").status_code == 200
         assert client.get("/openapi.json").json()["servers"] == [{"url": "/laya"}]
+
+
+@pytest.mark.parametrize("path", ["/openapi.json", "/docs", "/redoc"])
+def test_no_docs_or_schema_on_a_locked_down_deployment(monkeypatch, path):
+    """FastAPI's own documentation routes are not written by this module, so per-route auth never
+    covered them: with LAYA_API_KEY set they answered 200 to an unauthenticated caller, publishing
+    the API shape and an interactive console beside a service the operator had locked down."""
+    client, _ = _client(monkeypatch, api_key="s3cret")
+    assert client.get(path).status_code == 404
+    # The decision routes still refuse without the bearer, so the app itself is up.
+    assert client.post("/v1/systemone", json=REQ).status_code == 401
+
+
+def test_docs_and_schema_are_served_without_a_key(monkeypatch):
+    client, _ = _client(monkeypatch)
+    assert client.get("/openapi.json").status_code == 200
+    assert client.get("/docs").status_code == 200
 
 
 @pytest.mark.parametrize("root_path", [None, ""])
@@ -257,6 +281,198 @@ def test_jev_strict_leaves_an_unknown_answer_shape_unchanged(monkeypatch):
     assert "routing" not in body
 
 
+# A cut state is silent in the answer. The report lives on `usage`, and strict mode removes it,
+# so the server log is what an operator can alert on (#1425). These blocks are what `Agent`
+# publishes: `truncated` false with nothing dropped, and the same shape once tokens were lost.
+INTACT_USAGE = {"input_tokens": 42, "output_tokens": 0, "state_tokens": 12,
+                "state_tokens_dropped": 0, "truncated": False, "truncated_questions": []}
+CUT_USAGE = {"input_tokens": 42, "output_tokens": 0, "state_tokens": 935,
+             "state_tokens_dropped": 587, "truncated": True,
+             "truncated_questions": ["r0", "r1"]}
+
+
+class ScriptedUsageRouter(FakeRouter):
+    """FakeRouter that replaces `usage` from a per-call queue.
+
+    `None` drops the key. A state the queue does not cover keeps the base
+    `{input_tokens, output_tokens}` payload the other server tests assert.
+    """
+
+    def __init__(self, usages):
+        super().__init__()
+        self._usages = list(usages)
+
+    def predict(self, state, questions, model=None):
+        result = super().predict(state, questions, model=model)
+        if self._usages:
+            usage = self._usages.pop(0)
+            if usage is None:
+                result.pop("usage", None)
+            else:
+                result["usage"] = usage
+        return result
+
+    def predict_batch(self, requests, **kwargs):
+        return [self.predict(item["state"], item["questions"], model=item.get("model"))
+                for item in requests]
+
+
+def _state_truncated_logs(caplog):
+    return [r for r in caplog.records
+            if r.name == "laya.serve" and r.levelno == logging.WARNING
+            and "state truncated" in r.getMessage()]
+
+
+def test_truncated_state_is_logged_on_systemone(monkeypatch, caplog):
+    """A result that dropped state tokens warns once, and the JSON payload stays the result's."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    client = TestClient(create_app(router=ScriptedUsageRouter([dict(CUT_USAGE)])))
+
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        response = client.post("/v1/systemone", json=REQ)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert set(body) == {"model", "answers", "usage", "routing"}
+    assert body["usage"]["truncated"] is True
+    assert body["usage"]["state_tokens_dropped"] == 587
+    assert body["usage"]["truncated_questions"] == ["r0", "r1"]
+    assert body["answers"]["dept"]["choice"] == "billing"
+    logs = _state_truncated_logs(caplog)
+    assert len(logs) == 1, [r.getMessage() for r in caplog.records]
+    message = logs[0].getMessage()
+    assert message.startswith("state truncated on /v1/systemone ")
+    assert "state_tokens_dropped=587" in message
+    assert "r0" in message and "r1" in message
+    # two question ids, one line: not one warning per answer
+    assert message.count("state truncated") == 1
+
+
+def test_intact_responses_do_not_log_truncation(monkeypatch, caplog):
+    """An uncut result keeps today's payload and does not warn, on either decision route."""
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    client, _ = _client(monkeypatch)
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        single = client.post("/v1/systemone", json=REQ)
+        batch = client.post("/v1/systemone/batch", json={"states": ["one", "two"],
+                                                         "questions": REQ["questions"]})
+    assert single.status_code == 200 and batch.status_code == 200
+    assert single.json()["usage"] == {"input_tokens": 42, "output_tokens": 0}
+    assert [item["usage"] for item in batch.json()["results"]] == [
+        {"input_tokens": 42, "output_tokens": 0},
+        {"input_tokens": 42, "output_tokens": 0},
+    ]
+    assert batch.json()["total_usage"] == {"input_tokens": 84, "output_tokens": 0}
+    assert _state_truncated_logs(caplog) == []
+
+    # The fields the agent actually sends, when they say nothing was cut.
+    caplog.clear()
+    explicit = TestClient(create_app(router=ScriptedUsageRouter(
+        [dict(INTACT_USAGE), dict(INTACT_USAGE), dict(INTACT_USAGE)])))
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        kept = explicit.post("/v1/systemone", json=REQ)
+        kept_batch = explicit.post("/v1/systemone/batch", json={"states": ["one", "two"],
+                                                                "questions": REQ["questions"]})
+    assert kept.status_code == 200 and kept_batch.status_code == 200
+    assert kept.json()["usage"]["truncated"] is False
+    assert kept.json()["usage"]["state_tokens_dropped"] == 0
+    assert all(item["usage"] == INTACT_USAGE for item in kept_batch.json()["results"])
+    assert _state_truncated_logs(caplog) == []
+
+
+def test_batch_logs_mixed_truncation_once(monkeypatch, caplog):
+    """One truncated item and one intact item produce one aggregate warning, not one per answer."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    client = TestClient(create_app(router=ScriptedUsageRouter([dict(CUT_USAGE), dict(INTACT_USAGE)])))
+
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        response = client.post("/v1/systemone/batch", json={"states": ["cut", "kept"],
+                                                            "questions": REQ["questions"]})
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["results"][0]["usage"]["truncated"] is True
+    assert data["results"][0]["usage"]["state_tokens_dropped"] == 587
+    assert data["results"][1]["usage"]["truncated"] is False
+    assert data["results"][1]["usage"]["state_tokens_dropped"] == 0
+    assert data["total_usage"] == {"input_tokens": 84, "output_tokens": 0}
+    logs = _state_truncated_logs(caplog)
+    assert len(logs) == 1, [r.getMessage() for r in caplog.records]
+    message = logs[0].getMessage()
+    assert message.startswith("state truncated on /v1/systemone/batch ")
+    assert "results=1/2" in message
+    assert "indices=[0]" in message
+    assert "state_tokens_dropped=[587]" in message
+    assert "r0" in message and "r1" in message
+
+
+def test_strict_mode_logs_truncation_before_projection(monkeypatch, caplog):
+    """The warning is read before LAYA_JEV_STRICT strips the truncation fields from the body."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_JEV_STRICT", "1")
+    client = TestClient(create_app(router=ScriptedUsageRouter([dict(CUT_USAGE), dict(CUT_USAGE), dict(INTACT_USAGE)])))
+
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        single = client.post("/v1/systemone", json=REQ)
+    assert single.status_code == 200, single.text
+    body = single.json()
+    assert set(body) == {"model", "answers", "usage"}
+    assert body["usage"] == {"input_tokens": 42, "output_tokens": 0}
+    assert "truncated" not in body["usage"]
+    assert "x_jev_confidence" not in body["answers"]["dept"]
+    logs = _state_truncated_logs(caplog)
+    assert len(logs) == 1, [r.getMessage() for r in caplog.records]
+    assert "state_tokens_dropped=587" in logs[0].getMessage()
+    assert "r0" in logs[0].getMessage() and "r1" in logs[0].getMessage()
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        batch = client.post("/v1/systemone/batch", json={"states": ["cut", "kept"],
+                                                         "questions": REQ["questions"]})
+    assert batch.status_code == 200, batch.text
+    data = batch.json()
+    assert [item["usage"] for item in data["results"]] == [
+        {"input_tokens": 42, "output_tokens": 0},
+        {"input_tokens": 42, "output_tokens": 0},
+    ]
+    assert all("routing" not in item for item in data["results"])
+    assert data["total_usage"] == {"input_tokens": 84, "output_tokens": 0}
+    logs = _state_truncated_logs(caplog)
+    assert len(logs) == 1, [r.getMessage() for r in caplog.records]
+    message = logs[0].getMessage()
+    assert "results=1/2" in message
+    assert "indices=[0]" in message
+    assert "state_tokens_dropped=[587]" in message
+    assert "state_tokens_dropped" not in batch.text
+
+
+@pytest.mark.parametrize("usage", [None, {"input_tokens": 7, "output_tokens": 0,
+                                           "truncated": "yes", "state_tokens_dropped": "many"}])
+def test_missing_or_malformed_usage_stays_a_success(monkeypatch, caplog, usage):
+    """A router that omits the truncation report, or fills it with junk, still answers 200."""
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    client = TestClient(create_app(router=ScriptedUsageRouter([usage, usage, usage])))
+
+    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+        single = client.post("/v1/systemone", json=REQ)
+        batch = client.post("/v1/systemone/batch", json={"states": ["one", "two"],
+                                                         "questions": REQ["questions"]})
+
+    assert single.status_code == 200, single.text
+    assert batch.status_code == 200, batch.text
+    if usage is None:
+        assert "usage" not in single.json()
+        assert all("usage" not in item for item in batch.json()["results"])
+        assert batch.json()["total_usage"] == {"input_tokens": 0, "output_tokens": 0}
+    else:
+        assert single.json()["usage"] == usage
+        assert [item["usage"] for item in batch.json()["results"]] == [usage, usage]
+    assert _state_truncated_logs(caplog) == []
+
+
 def test_choice_and_score_answers_carry_jev_confidence(monkeypatch):
     """Each choice and score answer reports Jev's `confidence` beside Laya's own (#302)."""
     client, _ = _strict_client(monkeypatch, None)
@@ -353,6 +569,32 @@ def test_large_choice_is_refused_without_a_tournament(monkeypatch):
     assert fake.calls == []
 
 
+def test_tournament_refuses_unhashable_choice_labels_as_a_422(monkeypatch):
+    # A large choice is narrowed by elimination, and `_tournament_plan` reads the criteria labels
+    # (deduping them through a set) BEFORE `router.predict`, so core's `_check_question` -- which
+    # refuses a non-scalar label with a ValueError naming the question, as the no-tournament group=None
+    # case below already shows -- has not run yet. A `criteria` written as a list of JSON arrays used to
+    # leak the set-dedup `TypeError` through the endpoint's catch-all and answer 500 "inference failed".
+    client, fake = _tournament_client(monkeypatch, "2")
+    req = {"state": "I was charged twice, please refund one.",
+           "questions": {"queue": {"type": "choice", "instructions": "Which queue?",
+                                   "criteria": [["a", 1], ["b", 2], ["c", 3]]}}}
+    r = client.post("/v1/systemone", json=req)
+    assert r.status_code == 422, r.text
+    assert "queue" in r.json()["detail"]
+    assert fake.calls == []  # refused while planning, before any prediction
+
+
+def test_tournament_plan_names_the_question_on_unhashable_labels():
+    from laya import serve
+    with pytest.raises(ValueError, match="queue"):
+        serve._tournament_plan({"queue": {"type": "choice",
+                                          "criteria": [["a", 1], ["b", 2], ["c", 3]]}}, 2)
+    # Positive control: string-labelled criteria still plan (the guard is not over-strict).
+    assert serve._tournament_plan(
+        {"queue": {"type": "choice", "criteria": ["a", "b", "c"]}}, 2) == {"queue": ["a", "b", "c"]}
+
+
 def test_tournament_answers_a_large_choice_in_the_jev_shape(monkeypatch):
     client, fake = _tournament_client(monkeypatch, "16")
     r = client.post("/v1/systemone", json=_large_req(128))
@@ -427,11 +669,96 @@ def test_option_order_keeps_the_one_pass_path(monkeypatch):
     assert "x_tournament" not in answer
 
 
-def test_batch_keeps_the_one_pass_cap_with_a_tournament_group(monkeypatch):
+def _large_batch(n, states=("I was charged twice.", "Please refund one of the charges."), **question):
+    req = _large_req(n, **question)
+    return {"states": list(states), "questions": req["questions"]}
+
+
+def test_batch_answers_a_large_choice_per_state(monkeypatch):
+    client, fake = _tournament_client(monkeypatch, "16")
+    r = client.post("/v1/systemone/batch", json=_large_batch(128))
+    assert r.status_code == 200
+    data = r.json()
+    for item in data["results"]:
+        answer = item["answers"]["queue"]
+        assert list(answer["probabilities"]) == list(_queues(128))
+        assert answer["choice"] == "Queue 077" and answer["x_tournament"]["rounds"] == 1
+        assert item["usage"]["input_tokens"] == 90
+    # each state ran its own round and final call, and the envelope sums every call
+    assert [len(call) for call in fake.calls] == [8, 1, 8, 1]
+    assert data["total_usage"] == {"input_tokens": 180, "output_tokens": 0}
+
+
+def test_batch_cap_follows_the_tournament_group(monkeypatch):
+    client, _ = _tournament_client(monkeypatch, None)
+    r = client.post("/v1/systemone/batch", json=_large_batch(128))
+    assert r.status_code == 413 and "128 > 100" in r.json()["detail"]
     client, _ = _tournament_client(monkeypatch, "16")
-    req = _large_req(128)
-    r = client.post("/v1/systemone/batch", json={"states": [req["state"]], "questions": req["questions"]})
-    assert r.status_code == 413
+    r = client.post("/v1/systemone/batch", json=_large_batch(256))
+    assert r.status_code == 413 and "256 > 255" in r.json()["detail"]
+
+
+def test_batch_under_strict_keeps_only_the_contracted_keys(monkeypatch):
+    client, _ = _tournament_client(monkeypatch, "16", strict=True)
+    data = client.post("/v1/systemone/batch", json=_large_batch(128)).json()
+    for item in data["results"]:
+        answer = item["answers"]["queue"]
+        assert set(answer) == {"type", "choice", "confidence", "probabilities"}
+        assert len(answer["probabilities"]) == 128
+
+
+def test_batch_without_a_large_choice_keeps_the_batched_pass(monkeypatch):
+    """A batch with nothing to narrow is the one `predict_batch` call it has always been."""
+
+    class BatchingRouter(EliminationRouter):
+        def __init__(self):
+            super().__init__()
+            self.batches = []
+
+        def predict_batch(self, requests, **kwargs):
+            self.batches.append(len(requests))
+            return [self.predict(item["state"], item["questions"]) for item in requests]
+
+    monkeypatch.setenv("LAYA_TOURNAMENT_GROUP", "16")
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.delenv("LAYA_JEV_STRICT", raising=False)
+    fake = BatchingRouter()
+    client = TestClient(create_app(router=fake))
+    data = client.post("/v1/systemone/batch", json=_large_batch(12)).json()
+    assert fake.batches == [2]
+    assert all("x_tournament" not in item["answers"]["queue"] for item in data["results"])
+
+
+def test_an_order_on_a_choice_over_the_one_pass_cap_is_dropped_and_reported(monkeypatch):
+    """Over 100 options one pass was never an option, so the choice is narrowed and says so."""
+    client, fake = _tournament_client(monkeypatch, "16")
+    with pytest.warns(RuntimeWarning, match="option_order"):
+        r = client.post("/v1/systemone", json=_large_req(150, option_order=list(range(150))[::-1]))
+    assert r.status_code == 200
+    report = r.json()["answers"]["queue"]["x_tournament"]
+    assert report["option_order_dropped"] is True and report["rounds"] == 1
+    assert len(fake.calls[0]) == 10
+
+
+def test_a_large_choice_narrows_an_ordered_choice_beside_it(monkeypatch):
+    client, fake = _tournament_client(monkeypatch, "16")
+    req = _large_req(150)
+    req["questions"]["team"] = {"type": "choice", "instructions": "Which team?",
+                                "criteria": {"Team %02d" % i: None for i in range(32)},
+                                "option_order": list(range(32))[::-1]}
+    with pytest.warns(RuntimeWarning, match="'team': 'option_order'"):
+        answers = client.post("/v1/systemone", json=req).json()["answers"]
+    assert answers["team"]["x_tournament"]["option_order_dropped"] is True
+    assert "option_order_dropped" not in answers["queue"]["x_tournament"]
+
+
+def test_non_string_labels_over_the_one_pass_cap_are_refused(monkeypatch):
+    client, fake = _tournament_client(monkeypatch, "16")
+    req = {"state": "refund", "questions": {"code": {"type": "choice", "instructions": "Which code?",
+                                                     "criteria": list(range(150))}}}
+    r = client.post("/v1/systemone", json=req)
+    assert r.status_code == 422 and "string" in r.json()["detail"]
+    assert fake.calls == []
 
 
 @pytest.mark.parametrize("raw, want", [(None, 0), ("", 0), ("abc", 0), ("0", 0), ("1", 0), ("-4", 0),
@@ -727,6 +1054,84 @@ def test_helpers():
     import os
     os.environ.pop("X_FLAG", None)
     assert _env_bool("X_FLAG", True) is True
+
+
+def test_env_bool_reads_a_blank_value_as_unset(monkeypatch):
+    """`LAYA_X=` is "not set", the way most other readers of this family already read it.
+
+    A blank value is what a `.env` line, a Compose `KEY=` with nothing after it, or a CI matrix
+    writes when a variable is declared and left for the operator to fill in. Reading it as false
+    silently moved `LAYA_PRELOAD` off its documented default of `1` onto lazy loading -- the one
+    switch in the set whose default is True, and `docs/cli-mcp.md` names `0` as the spelling that
+    asks for it -- and `laya_status` then reported the blank back as the operator's own choice.
+    The truthy spelling set is unchanged: anything that is a value and is not one of the four is
+    still false.
+    """
+    for blank in ("", " ", "  \t ", "\n"):
+        monkeypatch.setenv("X_FLAG", blank)
+        assert _env_bool("X_FLAG", True) is True, repr(blank)
+        assert _env_bool("X_FLAG", False) is False, repr(blank)
+
+    monkeypatch.delenv("X_FLAG", raising=False)
+    assert _env_bool("X_FLAG", True) is True
+    assert _env_bool("X_FLAG", False) is False
+
+    for on in ("1", "true", "TRUE", " yes ", "on"):
+        monkeypatch.setenv("X_FLAG", on)
+        assert _env_bool("X_FLAG", False) is True, repr(on)
+    for off in ("0", "no", "off", "false", "ture", "2"):
+        monkeypatch.setenv("X_FLAG", off)
+        assert _env_bool("X_FLAG", True) is False, repr(off)
+
+    # The live case: the preload switch keeps its documented default when the value is blank.
+    monkeypatch.setenv("LAYA_PRELOAD", "")
+    assert _env_bool("LAYA_PRELOAD", True) is True
+    monkeypatch.setenv("LAYA_PRELOAD", "0")
+    assert _env_bool("LAYA_PRELOAD", True) is False
+
+
+def test_resolve_port_reads_a_blank_value_as_unset(monkeypatch):
+    """`LAYA_PORT=` is the same "not set" as an absent variable, and only that.
+
+    `_resolve_port` was the last reader in this module that treated a blank as a value. Every other
+    one answers "unset": `_env_bool` above, `_default_model_option`, `_resolve_max_concurrent`,
+    `_resolve_max_loaded`, `_resolve_max_batch_tokens`, `_resolve_max_token_budget`,
+    `_resolve_tournament_group` and `_resolve_idle_unload_seconds` -- and outside the server,
+    `laya.mcp.server._remote_base_url`, whose own documentation says "Blank or unset means the
+    default." On the base commit the startup path answered the same `SystemExit` it gives a bad
+    port, so a declared-but-unfilled `.env` line stopped the server from starting and the message
+    blamed the operator for a value they never wrote. Blank carries no number for a fallback to
+    contradict, so the documented default is the only honest answer -- and `int()` ignores the
+    whitespace around `" 8000 "`, so a value of nothing *but* that whitespace was fatal while its
+    content was not.
+
+    A value that does name a port is still refused loudly, because binding somewhere other than
+    the requested place leaves the server unreachable rather than merely wrong.
+    """
+    assert DEFAULT_PORT == 8000, "the default the README and docs/http-api.md tables print"
+
+    for blank in ("", " ", "  \t ", "\n"):
+        monkeypatch.setenv("LAYA_PORT", blank)
+        assert _resolve_port() == DEFAULT_PORT, repr(blank)
+
+    monkeypatch.delenv("LAYA_PORT", raising=False)
+    assert _resolve_port() == DEFAULT_PORT
+
+    # The leniency the blank case was dying on, unchanged: whitespace around a number is noise.
+    for text, expected in (("8000", 8000), (" 9000 ", 9000), ("+8080", 8080),
+                           ("1", 1), ("65535", 65535)):
+        monkeypatch.setenv("LAYA_PORT", text)
+        assert _resolve_port() == expected, repr(text)
+
+    # Every non-blank misvalue still exits, naming the value as written rather than as stripped.
+    for bad in ("0", "-1", "70000", "http", "8000.0", "8000px"):
+        monkeypatch.setenv("LAYA_PORT", bad)
+        try:
+            port = _resolve_port()
+        except SystemExit as exc:
+            assert str(exc) == "invalid LAYA_PORT %r: must be an integer 1-65535" % bad, str(exc)
+        else:
+            raise AssertionError("%r was accepted as port %r" % (bad, port))
 
 
 def test_resolve_model_follows_the_router_registry(monkeypatch):
@@ -1558,6 +1963,84 @@ def test_resolve_max_token_budget_fallback(monkeypatch, caplog):
     assert "invalid LAYA_MAX_TOKEN_BUDGET" in caplog.text
     assert "LAYA_MAX_TOKEN_BUDGET must be positive" in caplog.text
 
+
+def test_resolve_log_level_refuses_a_bad_value_by_name(monkeypatch):
+    """`LAYA_LOG_LEVEL` answers with a message about the variable, never a traceback.
+
+    uvicorn looks the value up in its own `LOG_LEVELS` with `.lower()` and no `.strip()`, so a typo,
+    a padded value copied out of a `.env`, and a blank `LAYA_LOG_LEVEL=` all raise a bare `KeyError`
+    from inside `configure_logging` -- and the key it prints is the lowercased one, which names
+    neither the variable nor the caller. The accepted names are read from `LOG_LEVELS` itself rather
+    than restated here, so the refusal cannot list a set uvicorn disagrees with.
+    """
+    from uvicorn.config import LOG_LEVELS
+
+    monkeypatch.delenv("LAYA_LOG_LEVEL", raising=False)
+    assert _resolve_log_level() == DEFAULT_LOG_LEVEL
+    for blank in ("", "  ", "\t"):
+        monkeypatch.setenv("LAYA_LOG_LEVEL", blank)
+        assert _resolve_log_level() == DEFAULT_LOG_LEVEL, repr(blank)
+
+    # Every spelling that worked before still works, case and padding included.
+    for name in sorted(LOG_LEVELS):
+        monkeypatch.setenv("LAYA_LOG_LEVEL", " %s " % name.upper())
+        assert _resolve_log_level() == name
+
+    for bad in ("verbose", "INFOO", "notset", "none", "0", "warn"):
+        monkeypatch.setenv("LAYA_LOG_LEVEL", bad)
+        with pytest.raises(SystemExit) as caught:
+            _resolve_log_level()
+        message = str(caught.value)
+        assert message == ("invalid LAYA_LOG_LEVEL %r: must be one of %s"
+                           % (bad, ", ".join(sorted(LOG_LEVELS)))), message
+
+
+def test_a_bad_log_level_is_refused_before_uvicorn_sees_it(monkeypatch):
+    """`main()` is where the level is handed over, so that is where the promise is checked."""
+    import uvicorn
+
+    import laya.serve
+
+    captured = {}
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kwargs: captured.update(kwargs))
+    monkeypatch.setattr(laya.serve, "create_app", lambda: None)
+
+    monkeypatch.setenv("LAYA_LOG_LEVEL", "  WARNING  ")
+    laya.serve.main()
+    assert captured["log_level"] == "warning"
+
+    monkeypatch.setenv("LAYA_LOG_LEVEL", "")
+    captured.clear()
+    laya.serve.main()
+    assert captured["log_level"] == DEFAULT_LOG_LEVEL
+
+    captured.clear()
+    monkeypatch.setenv("LAYA_LOG_LEVEL", "verbose")
+    with pytest.raises(SystemExit, match=r"invalid LAYA_LOG_LEVEL 'verbose'"):
+        laya.serve.main()
+    assert captured == {}, "the refusal must happen before uvicorn.run is reached"
+
+
+def test_uvicorn_dies_on_the_values_the_resolver_refuses():
+    """The witness that the guard guards a real crash: this is uvicorn's own behaviour, unmediated.
+
+    No `laya` code is on this path, which is the point -- `laya-serve` passed the environment
+    straight through, so every `KeyError` here is one the CLI printed.
+    """
+    import uvicorn
+
+    async def app():
+        return None
+
+    # uvicorn 0.45 started lowercasing the name; 0.27 to 0.44 (which laya allows) refuse "INFO".
+    lowercases = tuple(int(x) for x in uvicorn.__version__.split(".")[:2]) >= (0, 45)
+    refused = ("", " ", "verbose", "notset", "INFO ") + (() if lowercases else ("INFO",))
+    for value in refused:
+        with pytest.raises(KeyError):
+            uvicorn.Config(app, host="127.0.0.1", port=0, log_level=value)
+    for accepted in ("info", "warning") + (("INFO",) if lowercases else ()):
+        uvicorn.Config(app, host="127.0.0.1", port=0, log_level=accepted)
+
 BATCH_REQ = {
     "states": ["first state", "second state"],
     "questions": REQ["questions"],
@@ -1766,15 +2249,39 @@ def test_batch_a_raised_max_len_chunks_harder(monkeypatch):
     assert _sent_batch_size(wide_fake) == max(1, rows_per_pass // (rows // 8))
 
 
-def test_batch_an_explicit_batch_size_is_never_overridden(monkeypatch):
-    """The caller asked for a shape. Planning one on top would silently change what they requested."""
+def test_batch_an_explicit_batch_size_shapes_a_pass_but_cannot_widen_one(monkeypatch):
+    """The caller asked for a shape, not for an unbounded pass.
+
+    `batch_size` is the only knob that decides what ONE forward pass collates, and the plan above is
+    the only thing that keeps that pass inside `LAYA_MAX_BATCH_TOKENS`. Forwarding the caller's value
+    verbatim made the budget opt-out: `batch_size=10**18` on a 4 KB body meant one pass over 524 288
+    tokens (64 states x 8192) with every documented limit satisfied. A smaller value still wins,
+    because asking for a *narrower* pass is asking for less work than the plan allows.
+    """
     import laya.serve as serve_mod
 
+    rows_that_do_not_fit = {"states": ["hi"] * serve_mod.MAX_BATCH_STATES,
+                            "questions": _noul_questions(serve_mod.MAX_QUESTIONS)}
+    planned = serve_mod._batch_chunk_size(serve_mod.MAX_BATCH_STATES, serve_mod.MAX_QUESTIONS, None)
+    assert planned is not None and planned < serve_mod.MAX_BATCH_STATES
+
+    # Narrower than the plan: the caller's own shape.
+    client, fake = _batch_env_client(monkeypatch)
+    r = client.post("/v1/systemone/batch", json={**rows_that_do_not_fit, "batch_size": 1})
+    assert r.status_code == 200, r.text
+    assert _sent_batch_size(fake) == 1
+
+    # Wider than the plan, including absurdly wider: capped at the plan.
+    for asked in (planned + 1, 7 if 7 > planned else planned + 1, 10 ** 18):
+        client, fake = _batch_env_client(monkeypatch)
+        r = client.post("/v1/systemone/batch", json={**rows_that_do_not_fit, "batch_size": asked})
+        assert r.status_code == 200, r.text
+        assert _sent_batch_size(fake) == planned, (asked, planned)
+
+    # A batch that already fits is passed no plan at all, so the caller's value is forwarded as-is.
     client, fake = _batch_env_client(monkeypatch)
     r = client.post("/v1/systemone/batch",
-                    json={"states": ["hi"] * serve_mod.MAX_BATCH_STATES,
-                          "questions": _noul_questions(serve_mod.MAX_QUESTIONS),
-                          "batch_size": 7})
+                    json={"states": ["hi"] * 8, "questions": _noul_questions(2), "batch_size": 7})
     assert r.status_code == 200, r.text
     assert _sent_batch_size(fake) == 7
 
@@ -2417,8 +2924,8 @@ def test_every_predict_control_is_forwarded_or_refused():
     from laya.router import Router
 
     taken = set(inspect.signature(Router.predict).parameters) - {"self", "state", "questions"}
-    declared = set(BODY_CONTROLS) | set(BODY_REFUSALS)
-    assert not set(BODY_CONTROLS) & set(BODY_REFUSALS)
+    declared = set(BODY_CONTROLS) | set(BODY_REFUSALS) | set(MEDIA_REFUSALS)
+    assert not set(BODY_CONTROLS) & set(BODY_REFUSALS) and not set(BODY_CONTROLS) & set(MEDIA_REFUSALS)
     assert taken == declared, "predict() takes %s; serve declares %s" % (
         sorted(taken), sorted(declared))
 
@@ -2549,7 +3056,8 @@ def test_a_hook_control_is_refused_not_dropped(monkeypatch, key):
     says that itself instead of answering as though the control had been honoured.
     """
     value = {"hooks": [], "on_predict_start": "cache", "on_predict_end": "audit",
-             "hooks_raise": False, "hooks_timeout": 5.0}[key]
+             "hooks_raise": False, "hooks_timeout": 5.0,
+             "image": "invoice.png", "audio": "call.wav", "video": "clip.mp4"}[key]
     client, fake = _budget_client(monkeypatch)
     r = client.post("/v1/systemone", json={**REQ, key: value})
     assert r.status_code == 422, r.text
@@ -2828,6 +3336,23 @@ def test_bad_control_on_batch_is_refused_before_inference(monkeypatch, key, valu
     assert not fake.batch_calls, "a refused body must not reach predict_batch"
 
 
+@pytest.mark.parametrize("key", MEDIA_REFUSALS)
+def test_media_is_refused_on_both_endpoints_with_a_pointer(monkeypatch, key):
+    """`image`, `audio` and `video` are `Router.predict` arguments since 0.4.25, so the single
+    endpoint has to say it cannot take them rather than forward a file name as a state; the batch
+    endpoint refuses them for the same reason. The answer names where media goes."""
+    client, fake = _budget_client(monkeypatch)
+    r = client.post("/v1/systemone", json={**REQ, key: "%s.bin" % key})
+    assert r.status_code == 422, r.text
+    assert key in r.json()["detail"] and "vegaml=True" in r.json()["detail"]
+    assert not fake.calls
+    client, fake = _batch_client(monkeypatch)
+    r = client.post("/v1/systemone/batch", json={**BATCH_REQ, key: "%s.bin" % key})
+    assert r.status_code == 422, r.text
+    assert key in r.json()["detail"] and "cannot be sent to this endpoint" in r.json()["detail"]
+    assert not fake.batch_calls
+
+
 @pytest.mark.parametrize("key", BODY_REFUSALS)
 def test_batch_hook_control_is_refused_not_dropped(monkeypatch, key):
     """The batch endpoint must honour the same refusal policy the single endpoint already states.
@@ -2838,7 +3363,8 @@ def test_batch_hook_control_is_refused_not_dropped(monkeypatch, key):
     reason they are on ``/v1/systemone``: they run inside the server process.
     """
     value = {"hooks": [], "on_predict_start": "cache", "on_predict_end": "audit",
-             "hooks_raise": False, "hooks_timeout": 5.0}[key]
+             "hooks_raise": False, "hooks_timeout": 5.0,
+             "image": "invoice.png", "audio": "call.wav", "video": "clip.mp4"}[key]
     client, fake = _batch_client(monkeypatch)
     r = client.post("/v1/systemone/batch", json={**BATCH_REQ, key: value})
     assert r.status_code == 422, r.text
@@ -3904,6 +4430,18 @@ def test_extra_models_option_refuses_a_malformed_value(monkeypatch):
     assert "invalid LAYA_EXTRA_MODELS" in message
     assert "'my-ckpt'" in message, message
 
+    # A list was believed on its type alone, so `[]` reached the Router and became
+    # `ValueError: not enough values to unpack` on the first request routed to it,
+    # and `["a", "b", "c"]` or `["a", 5]` became the wrong repo id in silence. Same
+    # refusal, same naming, at startup.
+    for bad in ([], ["a", "b", "c"], ["a", 5], [None, None]):
+        monkeypatch.setenv("LAYA_EXTRA_MODELS", json.dumps({"my-ckpt": bad}))
+        with pytest.raises(SystemExit) as raised:
+            _extra_models_option()
+        message = str(raised.value)
+        assert "invalid LAYA_EXTRA_MODELS" in message, (bad, message)
+        assert "'my-ckpt'" in message, (bad, message)
+
 
 def test_extra_models_reach_the_router_the_server_builds(monkeypatch):
     # Registration happens before preload, so the names resolve on the Router
@@ -3976,3 +4514,609 @@ def test_extra_models_pin_over_http_and_do_not_leak_into_routing(monkeypatch):
     assert plain.status_code == 200, plain.text
     assert plain.json()["routing"]["model"] in ("english", "multilingual", "typed-decisions")
     assert "my-ckpt" not in built[1:] or built[1:] == [], built
+
+
+# --------------------------------------------------------------------------- body-read deadline
+#
+# `_admit()` takes a `LAYA_MAX_CONCURRENT` slot BEFORE the body is read, which is what bounds how
+# many bodies are buffered at once. A peer that sends a request head and one partial chunk and then
+# stops writing used to hold that slot for as long as it kept the socket open, so a few idle sockets
+# took both decision routes out of service while `/health` kept reporting the process healthy.
+# `_read_body_capped` now bounds the read, answers 408, and lets the `async with _admit()` unwind.
+
+_ASGI_BODY = json.dumps({
+    "state": "hi",
+    "questions": {"q": {"type": "noul", "instructions": "is it true?"}},
+}).encode()
+
+
+def _asgi_scope(path):
+    return {"type": "http", "asgi": {"version": "3.0", "spec_version": "2.1"},
+            "http_version": "1.1", "method": "POST", "scheme": "http",
+            "path": path, "raw_path": path.encode(), "query_string": b"",
+            "root_path": "", "headers": [(b"content-type", b"application/json")],
+            "client": ("127.0.0.1", 5000), "server": ("127.0.0.1", 8000)}
+
+
+async def _asgi_post(app, path, body, *, stall_after=None, timeout=10.0):
+    """One ASGI POST, returning (status, body). `stall_after` sends that many bytes then hangs."""
+    messages = []
+    state = {"sent": False}
+
+    async def receive():
+        if not state["sent"]:
+            state["sent"] = True
+            if stall_after is None:
+                return {"type": "http.request", "body": body, "more_body": False}
+            return {"type": "http.request", "body": body[:stall_after], "more_body": True}
+        if stall_after is not None:
+            await asyncio.Event().wait()          # the peer never writes another byte
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        messages.append(message)
+
+    await asyncio.wait_for(app(_asgi_scope(path), receive, send), timeout=timeout)
+    status = next(m["status"] for m in messages if m["type"] == "http.response.start")
+    payload = b"".join(m.get("body", b"") for m in messages if m["type"] == "http.response.body")
+    return status, payload
+
+
+def test_a_stalled_body_answers_408_and_frees_its_admission_slot(monkeypatch):
+    # One slot, so the second request proves the first one gave its slot back rather than merely
+    # that a second request is allowed to take one.
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    monkeypatch.setenv("LAYA_BODY_READ_TIMEOUT", "0.05")
+    app = create_app(router=FakeRouter())
+
+    async def run():
+        stalled = await _asgi_post(app, "/v1/systemone", _ASGI_BODY, stall_after=10)
+        served = await _asgi_post(app, "/v1/systemone", _ASGI_BODY)
+        return stalled, served
+
+    (stall_status, stall_body), (served_status, _) = asyncio.run(run())
+    assert stall_status == 408, stall_body
+    assert b"not received in time" in stall_body
+    assert served_status == 200, served_status
+
+
+@pytest.mark.parametrize("raw, want", [
+    (None, DEFAULT_BODY_READ_TIMEOUT),
+    ("2.5", 2.5),
+    ("", DEFAULT_BODY_READ_TIMEOUT),
+    ("  ", DEFAULT_BODY_READ_TIMEOUT),
+    ("0", DEFAULT_BODY_READ_TIMEOUT),
+    ("-1", DEFAULT_BODY_READ_TIMEOUT),
+    ("nope", DEFAULT_BODY_READ_TIMEOUT),
+    ("inf", DEFAULT_BODY_READ_TIMEOUT),
+    ("nan", DEFAULT_BODY_READ_TIMEOUT),
+])
+def test_body_read_timeout_resolution(monkeypatch, raw, want):
+    monkeypatch.delenv("LAYA_BODY_READ_TIMEOUT", raising=False)
+    if raw is not None:
+        monkeypatch.setenv("LAYA_BODY_READ_TIMEOUT", raw)
+    assert _resolve_body_read_timeout() == want
+
+
+def test_a_body_delivered_in_time_still_answers(monkeypatch):
+    # The deadline adds no behaviour to the ordinary path: same status, same payload.
+    monkeypatch.setenv("LAYA_BODY_READ_TIMEOUT", "5")
+    app = create_app(router=FakeRouter())
+    status, payload = asyncio.run(_asgi_post(app, "/v1/systemone", _ASGI_BODY))
+    assert status == 200
+    assert json.loads(payload)["usage"]["input_tokens"] == 42
+
+
+# --------------------------------------------------------------------------- HTTP routing diagnostics
+
+_ROUTE_REQ = {"state": {"message": "Turn lights off"}, "questions": REQ["questions"]}
+_ROUTE_DECISION = {"model": "english", "repo": "example/english", "reason": "test routing"}
+_ROUTE_DIAGNOSTIC = {"stage": "whole_state", "reason": "insufficient_words", "source": None}
+
+
+class DiagnosticRouter(FakeRouter):
+    """Records routing separately from inference; its omitted kwargs stay observable."""
+
+    def __init__(self):
+        super().__init__()
+        self.route_calls = []
+
+    def route(self, state, questions, model=None, **kwargs):
+        self.route_calls.append({"state": state, "questions": questions, "model": model, **kwargs})
+        return dict(_ROUTE_DECISION, detection={"diagnostic": dict(_ROUTE_DIAGNOSTIC),
+                                               "mixed_segment": "private caller text"})
+
+    def load(self, *args, **kwargs):
+        raise AssertionError("routing must not load a checkpoint")
+
+
+@pytest.mark.parametrize("flag", [{}, {"explain": False}, {"explain": True}])
+def test_http_route_opt_in_projection_and_no_inference(monkeypatch, flag):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, **flag})
+    assert response.status_code == 200, response.text
+    expected = dict(_ROUTE_DECISION)
+    if flag.get("explain"):
+        expected["diagnostic"] = _ROUTE_DIAGNOSTIC
+    assert response.json() == expected
+    assert fake.route_calls == [{**_ROUTE_REQ, "model": None,
+                                 **({"explain": True} if flag.get("explain") else {})}]
+    assert fake.calls == []
+    assert "private caller text" not in response.text
+    assert "X-Inference-Time-Ms" not in response.headers
+
+
+@pytest.mark.parametrize("bad", [None, 0, 1, 0.0, 1.0, "false", "true", "", [], {}])
+def test_http_route_refuses_non_boolean_explain_before_dispatch(monkeypatch, bad):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, "explain": bad})
+    assert response.status_code == 422, response.text
+    assert "explain" in response.json()["detail"]
+    assert fake.route_calls == fake.calls == []
+
+
+@pytest.mark.parametrize("diagnostic", [None, {"stage": "operator", "reason": "hook replacement", "source": None}])
+def test_http_route_observes_the_final_hook_decision_once(monkeypatch, diagnostic):
+    from laya import BaseHook, Router
+
+    class ReplaceRoute(BaseHook):
+        def on_route(self, ctx):
+            ctx.decision = dict(_ROUTE_DECISION)
+            if diagnostic is not None:
+                ctx.decision["detection"] = {"diagnostic": diagnostic, "mixed_segment": "private value"}
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = Router(hooks=[ReplaceRoute()])
+    calls = []
+    original_route = router._route
+
+    def counted_route(*args, **kwargs):
+        calls.append(kwargs)
+        return original_route(*args, **kwargs)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("routing must not load or predict")
+
+    monkeypatch.setattr(router, "_route", counted_route)
+    monkeypatch.setattr(router, "predict", forbidden)
+    monkeypatch.setattr(router, "load", forbidden)
+    with TestClient(create_app(router)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, "explain": True})
+    assert response.status_code == 200, response.text
+    assert response.json() == dict(_ROUTE_DECISION, diagnostic=diagnostic)
+    assert len(calls) == 1
+    assert router.loaded == []
+
+
+@pytest.mark.parametrize("control", [{"model": "english"}, {"task": "typed_decisions"},
+                                     {"lang": "de"}, {"lang_guess": "de"}])
+def test_http_route_explicit_controls_match_core_and_have_null_diagnostic(monkeypatch, control):
+    from laya import Router
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = Router()
+    expected = router.route(**_ROUTE_REQ, **control, explain=True)
+    with TestClient(create_app(router)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, **control, "explain": True})
+    assert response.status_code == 200, response.text
+    assert response.json() == {**{key: expected[key] for key in _ROUTE_DECISION}, "diagnostic": None}
+    assert router.loaded == []
+
+
+def test_http_route_uses_server_defaults_and_registered_models(monkeypatch):
+    from laya import Router
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = Router(default="multilingual", models={"private": "/tmp/operator-checkpoint"})
+    with TestClient(create_app(router)) as client:
+        inherited = client.post("/v1/route", json={**_ROUTE_REQ, "explain": True})
+        pinned = client.post("/v1/route", json={**_ROUTE_REQ, "model": "private", "explain": True})
+        jev = client.post("/v1/route", json={**_ROUTE_REQ, "model": "jev-1", "explain": True})
+    assert inherited.status_code == pinned.status_code == jev.status_code == 200
+    assert inherited.json()["model"] == "multilingual"
+    assert inherited.json()["diagnostic"] == _ROUTE_DIAGNOSTIC
+    assert jev.json() == inherited.json()
+    assert pinned.json()["model"] == "private" and pinned.json()["diagnostic"] is None
+    assert router.loaded == []
+
+
+@pytest.mark.parametrize("control", [{}, {"task": None, "lang": None, "lang_guess": None}])
+def test_http_route_omitted_or_null_controls_inherit_router_hints(monkeypatch, control):
+    from laya import Router
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    router = Router(default="english", lang_guess="de")
+    with TestClient(create_app(router)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, **control, "explain": True})
+    assert response.status_code == 200, response.text
+    assert response.json()["model"] == "multilingual"
+    assert response.json()["diagnostic"] is None
+
+
+@pytest.mark.parametrize("name", ["max_len", "head_max_len", "min_confidence", "batch_size",
+                                  "sort_by_length", "diagnostics", "states", "hooks", "on_route",
+                                  "on_predict_start", "on_predict_end", "hooks_raise", "hooks_timeout"])
+@pytest.mark.parametrize("value", [None, 1])
+def test_http_route_refuses_prediction_and_hook_controls(monkeypatch, name, value):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, name: value})
+    assert response.status_code == 422, response.text
+    assert name in response.json()["detail"]
+    assert fake.route_calls == []
+
+
+def test_http_route_auth_precedes_body_validation(monkeypatch):
+    monkeypatch.setenv("LAYA_API_KEY", "key")
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        assert client.post("/v1/route", content=b"not JSON").status_code == 401
+        assert client.post("/v1/route", json=_ROUTE_REQ,
+                           headers={"Authorization": "Bearer wrong"}).status_code == 401
+        response = client.post("/v1/route", json=_ROUTE_REQ, headers={"Authorization": "Bearer key"})
+    assert response.status_code == 200, response.text
+    assert len(fake.route_calls) == 1
+
+
+@pytest.mark.parametrize("body, status", [
+    ([], 400), ({"state": "hello"}, 400), ({"questions": {}}, 400),
+    ({"state": None, "questions": {}}, 400), ({"state": "hello", "questions": []}, 400),
+    ({"state": "x" * (MAX_STATE_CHARS + 1), "questions": {}}, 413),
+    ({"state": "\ud800", "questions": {}}, 400),
+])
+def test_http_route_body_contract_and_limits(monkeypatch, body, status):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", content=json.dumps(body),
+                               headers={"Content-Type": "application/json"})
+    assert response.status_code == status, response.text
+    assert fake.route_calls == []
+
+
+@pytest.mark.parametrize("body", [b"not JSON", b'{"state":'])
+def test_http_route_malformed_json_does_not_dispatch(monkeypatch, body):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", content=body, headers={"Content-Type": "application/json"})
+    assert response.status_code == 400, response.text
+    assert fake.route_calls == []
+
+
+def test_http_route_legacy_router_only_refuses_requested_explanation(monkeypatch):
+    class LegacyRouter(FakeRouter):
+        def route(self, state, questions, model=None):
+            self.calls.append((state, questions, model))
+            return dict(_ROUTE_DECISION)
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = LegacyRouter()
+    with TestClient(create_app(fake)) as client:
+        for flag in ({}, {"explain": False}):
+            response = client.post("/v1/route", json={**_ROUTE_REQ, **flag})
+            assert response.status_code == 200, response.text
+            assert response.json() == _ROUTE_DECISION
+        fake.calls.clear()
+        response = client.post("/v1/route", json={**_ROUTE_REQ, "explain": True})
+    assert response.status_code == 422, response.text
+    assert "explain" in response.json()["detail"]
+    assert fake.calls == [], "the failed explained route must not retry without explain"
+
+
+@pytest.mark.parametrize("error", [RuntimeError("secret /opt/checkpoint location"),
+                                    TypeError("wrapped.route() got an unexpected keyword argument 'explain'")])
+def test_http_route_internal_failure_is_sanitized_not_retried(monkeypatch, caplog, error):
+    class BrokenRouter(DiagnosticRouter):
+        def route(self, *args, **kwargs):
+            self.route_calls.append(kwargs)
+            raise error
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = BrokenRouter()
+    with TestClient(create_app(fake), raise_server_exceptions=False) as client:
+        with caplog.at_level(logging.ERROR, logger="laya.serve"):
+            response = client.post("/v1/route", json={**_ROUTE_REQ, "explain": True})
+    assert response.status_code == 500, response.text
+    assert response.json() == {"detail": "routing failed"}
+    assert str(error) not in response.text
+    assert len(fake.route_calls) == 1
+    assert any(record.exc_info for record in caplog.records)
+
+
+def test_http_route_oversized_stream_frees_admission_without_dispatch(monkeypatch):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    fake = DiagnosticRouter()
+    app = create_app(fake)
+
+    async def exercise():
+        async with app.router.lifespan_context(app):
+            oversized = await _asgi_post(app, "/v1/route", b"x" * (MAX_BODY_BYTES + 1))
+            valid = await _asgi_post(app, "/v1/route", json.dumps(_ROUTE_REQ).encode())
+            return oversized, valid
+
+    (status, _), (valid_status, _) = asyncio.run(exercise())
+    assert status == 413
+    assert valid_status == 200
+    assert len(fake.route_calls) == 1
+
+
+def test_http_route_stalled_body_frees_admission_without_dispatch(monkeypatch):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    monkeypatch.setenv("LAYA_BODY_READ_TIMEOUT", "0.05")
+    fake = DiagnosticRouter()
+    app = create_app(fake)
+    body = json.dumps(_ROUTE_REQ).encode()
+
+    async def exercise():
+        async with app.router.lifespan_context(app):
+            stalled = await _asgi_post(app, "/v1/route", body, stall_after=10)
+            valid = await _asgi_post(app, "/v1/route", body)
+            return stalled, valid
+
+    (status, payload), (valid_status, _) = asyncio.run(exercise())
+    assert status == 408
+    assert b"not received in time" in payload
+    assert valid_status == 200
+    assert len(fake.route_calls) == 1
+
+
+def test_http_route_admission_covers_routing_and_is_reusable(monkeypatch):
+    import threading
+    import httpx
+
+    class BlockingRoute(DiagnosticRouter):
+        def __init__(self):
+            super().__init__()
+            self.entered = threading.Event()
+            self.release = threading.Event()
+
+        def route(self, *args, **kwargs):
+            self.entered.set()
+            assert self.release.wait(5), "test did not release routing"
+            return super().route(*args, **kwargs)
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    fake = BlockingRoute()
+    app = create_app(fake)
+
+    async def exercise():
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:
+                pending = asyncio.create_task(client.post("/v1/route", json=_ROUTE_REQ))
+                try:
+                    assert await asyncio.to_thread(fake.entered.wait, 2)
+                    for path, body in (("/v1/route", _ROUTE_REQ), ("/v1/systemone", REQ)):
+                        refused = await client.post(path, json=body)
+                        assert refused.status_code == 503
+                        assert refused.headers["retry-after"] == "1"
+                    fake.release.set()
+                    assert (await pending).status_code == 200
+                    assert (await client.post("/v1/route", json=_ROUTE_REQ)).status_code == 200
+                finally:
+                    fake.release.set()
+                    await pending
+
+    asyncio.run(exercise())
+    assert len(fake.route_calls) == 2
+    assert fake.calls == []
+
+
+def test_http_route_and_prediction_share_worker_without_blocking_health(monkeypatch):
+    import threading
+    import httpx
+    import laya.serve as serve
+
+    class BlockingRoute(DiagnosticRouter):
+        def __init__(self):
+            super().__init__()
+            self.entered = threading.Event()
+            self.release = threading.Event()
+            self.work = []
+
+        def route(self, *args, **kwargs):
+            self.work.append(("route", threading.get_ident(), threading.current_thread().name))
+            self.entered.set()
+            assert self.release.wait(5), "test did not release routing"
+            result = super().route(*args, **kwargs)
+            self.work.append(("route finished", threading.get_ident(), threading.current_thread().name))
+            return result
+
+        def predict(self, *args, **kwargs):
+            self.work.append(("predict", threading.get_ident(), threading.current_thread().name))
+            return super().predict(*args, **kwargs)
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "2")
+    fake = BlockingRoute()
+    # This test measures scheduling, not first-import device discovery. An actual-device
+    # report avoids importing torch while a deliberately blocked route awaits release.
+    fake._agents = {"english": SimpleNamespace(device="cpu")}
+    app = create_app(fake)
+    read_body = serve._read_json_body
+
+    async def exercise():
+        body_read = asyncio.Event()
+
+        async def observed_body(request, timeout):
+            result = await read_body(request, timeout)
+            if request.url.path == "/v1/systemone":
+                body_read.set()
+            return result
+
+        monkeypatch.setattr(serve, "_read_json_body", observed_body)
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:
+                routing = asyncio.create_task(client.post("/v1/route", json=_ROUTE_REQ))
+                prediction = None
+                try:
+                    assert await asyncio.to_thread(fake.entered.wait, 2)
+                    health = await asyncio.wait_for(client.get("/health"), 2)
+                    assert health.status_code == 200 and health.json()["status"] == "ok"
+                    prediction = asyncio.create_task(client.post("/v1/systemone", json=REQ))
+                    await asyncio.wait_for(body_read.wait(), 2)
+                    assert [item[0] for item in fake.work] == ["route"]
+                    fake.release.set()
+                    assert (await routing).status_code == (await prediction).status_code == 200
+                finally:
+                    fake.release.set()
+                    await routing
+                    if prediction is not None:
+                        await prediction
+
+    asyncio.run(exercise())
+    assert [item[0] for item in fake.work] == ["route", "route finished", "predict"]
+    assert len({item[1] for item in fake.work}) == 1
+    assert all(item[2].startswith("laya-infer") for item in fake.work)
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_http_route_does_not_reset_the_inference_idle_clock(monkeypatch, fail):
+    import time
+    import laya.serve as serve
+
+    clock = [100.0]
+    monkeypatch.setattr(serve, "time", SimpleNamespace(monotonic=lambda: clock[0], perf_counter=time.perf_counter))
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_IDLE_UNLOAD_SECONDS", "300")
+
+    class TimedRoute(DiagnosticRouter):
+        def route(self, *args, **kwargs):
+            clock[0] += 5.0
+            if fail:
+                raise ValueError("route rejected")
+            return super().route(*args, **kwargs)
+
+    with TestClient(create_app(TimedRoute())) as client:
+        clock[0] = 120.0
+        assert client.get("/health").json()["idle_seconds"] == 20.0
+        response = client.post("/v1/route", json=_ROUTE_REQ)
+        assert response.status_code == (422 if fail else 200)
+        # Both entry-time and completion-time resets would produce a smaller number.
+        assert client.get("/health").json()["idle_seconds"] == 25.0
+        assert client.post("/v1/systemone", json=REQ).status_code == 200
+        assert client.get("/health").json()["idle_seconds"] == 0.0
+        clock[0] = 150.0
+        client.post("/v1/route", json=_ROUTE_REQ)
+        assert client.get("/health").json()["idle_seconds"] == 30.0
+
+
+@pytest.mark.parametrize("cancel", [False, True])
+def test_http_route_finishing_or_cancelled_does_not_postpone_idle_unload(monkeypatch, cancel):
+    import threading
+    import time
+    import httpx
+    import laya.serve as serve
+
+    clock = [100.0]
+    monkeypatch.setattr(serve, "time", SimpleNamespace(monotonic=lambda: clock[0], perf_counter=time.perf_counter))
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_IDLE_UNLOAD_SECONDS", "0.2")
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+
+    class BlockingRoute(IdleRouter):
+        def __init__(self):
+            super().__init__()
+            self.entered = threading.Event()
+            self.release = threading.Event()
+            self.finished = threading.Event()
+            self.active = False
+            self.route_thread = None
+            self.unload_overlaps = []
+
+        def route(self, state, questions, model=None):
+            self.active = True
+            self.route_thread = threading.get_ident()
+            self.entered.set()
+            try:
+                assert self.release.wait(5), "test did not release routing"
+                return dict(_ROUTE_DECISION)
+            finally:
+                self.active = False
+                self.finished.set()
+
+        def unload(self):
+            if self.active:
+                self.unload_overlaps.append(threading.get_ident())
+            assert not self.active, "unload overlapped routing"
+            assert threading.get_ident() == self.route_thread
+            super().unload()
+
+    fake = BlockingRoute()
+    app = create_app(fake)
+
+    async def exercise():
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://test") as client:
+                task = asyncio.create_task(client.post("/v1/route", json=_ROUTE_REQ))
+                try:
+                    assert await asyncio.to_thread(fake.entered.wait, 2)
+                    clock[0] = 101.0  # The original deadline has expired while routing is blocked.
+                    if cancel:
+                        task.cancel()
+                        with pytest.raises(asyncio.CancelledError):
+                            await task
+                        # A cancelled HTTP request cannot stop its already-running sync hook.
+                        assert fake.active and not fake.finished.is_set()
+                        bad = await client.post("/v1/route", json={**_ROUTE_REQ, "explain": "false"})
+                        assert bad.status_code == 422, "cancellation did not release the admission slot"
+                    assert not fake.unloaded.is_set()
+                    fake.release.set()
+                    if not cancel:
+                        assert (await task).status_code == 200
+                    assert await asyncio.to_thread(fake.finished.wait, 2)
+                    # Keep the clock fixed. A route that resets the deadline will never unload.
+                    assert await asyncio.to_thread(fake.unloaded.wait, 2)
+                    assert (await client.get("/health")).json()["loaded"] == []
+                finally:
+                    fake.release.set()
+                    if not task.done():
+                        await task
+
+    asyncio.run(exercise())
+
+    # The reaper logs and retries unload exceptions; a later successful retry must not
+    # conceal an earlier overlap that raised inside unload().
+    assert fake.unload_overlaps == []
+
+
+@pytest.mark.parametrize("name", ["lang", "lang_guess"])
+@pytest.mark.parametrize("value", [True, 1, {}, []])
+def test_http_route_language_controls_are_strings_before_dispatch(monkeypatch, name, value):
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    fake = DiagnosticRouter()
+    with TestClient(create_app(fake)) as client:
+        response = client.post("/v1/route", json={**_ROUTE_REQ, name: value})
+    assert response.status_code == 422, response.text
+    assert name in response.json()["detail"]
+    assert fake.route_calls == []
+
+
+def test_http_route_validation_and_failure_release_admission(monkeypatch, caplog):
+    class RejectingRoute(DiagnosticRouter):
+        def route(self, state, questions, model=None, **kwargs):
+            if state == "invalid task":
+                raise ValueError("unknown task 'bad-task'")
+            if state == "broken hook":
+                raise RuntimeError("private hook error")
+            return super().route(state, questions, model=model, **kwargs)
+
+    monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    monkeypatch.setenv("LAYA_MAX_CONCURRENT", "1")
+    fake = RejectingRoute()
+    with TestClient(create_app(fake)) as client:
+        rejected = client.post("/v1/route", json={**_ROUTE_REQ, "state": "invalid task"})
+        assert rejected.status_code == 422 and "bad-task" in rejected.json()["detail"]
+        with caplog.at_level(logging.ERROR, logger="laya.serve"):
+            failed = client.post("/v1/route", json={**_ROUTE_REQ, "state": "broken hook"})
+        assert failed.status_code == 500 and "private hook error" not in failed.text
+        assert client.post("/v1/route", json=_ROUTE_REQ).status_code == 200
+    assert len(fake.route_calls) == 1

@@ -38,7 +38,14 @@ export function triageQuestions(): Record<string, unknown> {
 }
 
 export function emailQuestions(categories?: Record<string, string>): Record<string, unknown> {
-  const cats: Record<string, string> = categories ?? {
+  // Python substitutes on truthiness -- `categories or {…defaults}` -- so a caller whose
+  // categories come out empty gets the six default teams, not a choice question with no
+  // options to choose from. An empty object is *truthy* in JavaScript, so neither `??` nor `||`
+  // ports that test: emptiness has to be asked about directly. `laya-java/fixtures/presets.json`
+  // records `email_questions_empty_categories` as literally `email_questions({})`, and the Java
+  // port already holds the reference to it.
+  const cats: Record<string, string> =
+    categories && Object.keys(categories).length > 0 ? categories : {
     billing: "invoices, payments, refunds",
     technical: "bugs, outages, integrations",
     sales: "pricing, demos, new purchases",

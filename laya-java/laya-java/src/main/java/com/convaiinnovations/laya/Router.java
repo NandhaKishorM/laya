@@ -1569,9 +1569,12 @@ public final class Router implements AutoCloseable, Predictor, BatchPredictor {
         //
         // ctx.maxLen/headMaxLen are NOT forwarded: Agent.predict takes no budget arguments, so a
         // Router-level start hook that sets one is ignored here.
-        String resolved = languageFor(decision, lang);
         List<Prediction> answered;
         try (Lease held = lease) {
+            // Resolved inside the try, not above it: a statement between the acquisition and this
+            // block is a statement whose throw leaks the lease, and this file has already shipped
+            // an unreleased lock to CodeQL once.
+            String resolved = languageFor(decision, lang);
             PredictContext ctx = new PredictContext(Collections.singletonList(state), questions,
                     decision.model().wireName(), this);
             answered = Hooks.around(composed, ctx, policy,
@@ -1691,6 +1694,11 @@ public final class Router implements AutoCloseable, Predictor, BatchPredictor {
         Prediction[] out = new Prediction[requests.size()];
         for (Map.Entry<Checkpoint, List<Integer>> group : groups.entrySet()) {
             Checkpoint checkpoint = group.getKey();
+            // Declared before the acquisition, so that nothing allocates between the lease being
+            // taken and the block that releases it: an OutOfMemoryError from one of these two
+            // would otherwise leave the lease held with no owner able to release it.
+            List<PredictContext> contexts = new ArrayList<>(group.getValue().size());
+            Map<PredictContext, Integer> indexOf = new IdentityHashMap<>();
             // Loaded before the starts, as the reference loads, so elapsedMs excludes a cold load.
             long startedAt = System.nanoTime();
             Lease lease;
@@ -1703,8 +1711,6 @@ public final class Router implements AutoCloseable, Predictor, BatchPredictor {
                 }
                 throw failure;
             }
-            List<PredictContext> contexts = new ArrayList<>(group.getValue().size());
-            Map<PredictContext, Integer> indexOf = new IdentityHashMap<>();
             try (Lease held = lease) {
                 for (int i : group.getValue()) {
                     Request request = requests.get(i);

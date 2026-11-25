@@ -21,6 +21,7 @@ import argparse
 import json
 import os
 import shutil
+import tempfile
 
 try:
     from laya.common import build_model
@@ -162,47 +163,64 @@ def main(argv=None):
     attention_mask = torch.ones(2, seq, dtype=torch.long)
     ref_hidden, ref_logits, ref_act, marker_pos, marker_mask, qtype, ref_att = _run_ref(model, _HeadOnly(model).eval(), seq, batch=2)
 
-    os.makedirs(args.out_dir, exist_ok=True)
-    enc_path = os.path.join(args.out_dir, "encoder.onnx")
-    head_path = os.path.join(args.out_dir, "head.onnx")
+    # The module docstring promises the outputs match "within 1e-4 at both lengths before anything is
+    # written", and verification reads the graphs back off disk, so "written" has to mean "written to
+    # --out-dir". Tracing straight into it left two unverified graphs there on a failed run -- which is
+    # exactly what the Node/Web providers then load -- and created --out-dir even when the run refused.
+    staged = tempfile.mkdtemp(prefix="laya-onnx-")
+    try:
+        enc_path = os.path.join(staged, "encoder.onnx")
+        head_path = os.path.join(staged, "head.onnx")
 
-    torch.onnx.export(
-        _EncoderOnly(model).eval(),
-        (input_ids, attention_mask),
-        enc_path,
-        input_names=["input_ids", "attention_mask"],
-        output_names=["last_hidden_state"],
-        dynamic_axes={"input_ids": {0: "batch", 1: "seq"}, "attention_mask": {0: "batch", 1: "seq"}, "last_hidden_state": {0: "batch", 1: "seq"}},
-        dynamic_shapes=enc_shapes,
-        opset_version=args.opset,
-    )
-    torch.onnx.export(
-        _HeadOnly(model).eval(),
-        (ref_hidden, marker_pos, marker_mask, qtype, ref_att),
-        head_path,
-        input_names=["hidden_states", "marker_pos", "marker_mask", "qtype", "attention_mask"],
-        output_names=["logits", "act_logits"],
-        dynamic_axes={"hidden_states": {0: "batch", 1: "seq"}, "marker_pos": {0: "batch", 1: "markers"}, "marker_mask": {0: "batch", 1: "markers"}, "qtype": {0: "batch"}},
-        dynamic_shapes=head_shapes,
-        opset_version=args.opset,
-    )
+        torch.onnx.export(
+            _EncoderOnly(model).eval(),
+            (input_ids, attention_mask),
+            enc_path,
+            input_names=["input_ids", "attention_mask"],
+            output_names=["last_hidden_state"],
+            dynamic_axes={"input_ids": {0: "batch", 1: "seq"}, "attention_mask": {0: "batch", 1: "seq"}, "last_hidden_state": {0: "batch", 1: "seq"}},
+            dynamic_shapes=enc_shapes,
+            opset_version=args.opset,
+        )
+        torch.onnx.export(
+            _HeadOnly(model).eval(),
+            (ref_hidden, marker_pos, marker_mask, qtype, ref_att),
+            head_path,
+            input_names=["hidden_states", "marker_pos", "marker_mask", "qtype", "attention_mask"],
+            output_names=["logits", "act_logits"],
+            dynamic_axes={"hidden_states": {0: "batch", 1: "seq"}, "marker_pos": {0: "batch", 1: "markers"}, "marker_mask": {0: "batch", 1: "markers"}, "qtype": {0: "batch"}},
+            dynamic_shapes=head_shapes,
+            opset_version=args.opset,
+        )
 
-    if not args.no_verify:
-        _verify(enc_path, head_path, input_ids, attention_mask, marker_pos, marker_mask, qtype, ref_att, ref_logits, ref_act)
-        b1 = _run_ref(model, _HeadOnly(model).eval(), seq, batch=1)
-        _verify(enc_path, head_path, torch.ones(1, seq, dtype=torch.long),
-                torch.ones(1, seq, dtype=torch.long), *b1[3:6], b1[6], b1[1], b1[2])
-        if int(args.verify_len) != seq:
-            v_hidden, v_logits, v_act, v_pos, v_mask, v_qtype, v_att2 = _run_ref(model, _HeadOnly(model).eval(), int(args.verify_len), batch=2)
-            v_ids = torch.ones(2, int(args.verify_len), dtype=torch.long)
-            v_att = torch.ones(2, int(args.verify_len), dtype=torch.long)
-            _verify(enc_path, head_path, v_ids, v_att, v_pos, v_mask, v_qtype, v_att2, v_logits, v_act)
+        if not args.no_verify:
+            _verify(enc_path, head_path, input_ids, attention_mask, marker_pos, marker_mask, qtype, ref_att, ref_logits, ref_act)
+            b1 = _run_ref(model, _HeadOnly(model).eval(), seq, batch=1)
+            _verify(enc_path, head_path, torch.ones(1, seq, dtype=torch.long),
+                    torch.ones(1, seq, dtype=torch.long), *b1[3:6], b1[6], b1[1], b1[2])
+            if int(args.verify_len) != seq:
+                v_hidden, v_logits, v_act, v_pos, v_mask, v_qtype, v_att2 = _run_ref(model, _HeadOnly(model).eval(), int(args.verify_len), batch=2)
+                v_ids = torch.ones(2, int(args.verify_len), dtype=torch.long)
+                v_att = torch.ones(2, int(args.verify_len), dtype=torch.long)
+                _verify(enc_path, head_path, v_ids, v_att, v_pos, v_mask, v_qtype, v_att2, v_logits, v_act)
 
-    for name in ("tokenizer.json", "rl_agent_config.json"):
-        src = os.path.join(model_dir, name)
-        if os.path.exists(src):
-            shutil.copy(src, os.path.join(args.out_dir, name))
-    print("wrote %s and %s" % (enc_path, head_path))
+        os.makedirs(args.out_dir, exist_ok=True)
+        # Everything the staging directory holds, not the two names: a graph whose initializers
+        # exceed the protobuf limit is written as `encoder.onnx` plus an `encoder.onnx.data`
+        # sidecar, and the `.onnx` records that sidecar by a path relative to its own directory.
+        # Moving only the two graphs published an `encoder.onnx` whose external data had just been
+        # deleted with the staging directory, which onnxruntime refuses to load:
+        # "External data path does not exist: .../onnx-split/english/encoder.onnx.data".
+        for name in sorted(os.listdir(staged)):
+            shutil.move(os.path.join(staged, name), os.path.join(args.out_dir, name))
+        for name in ("tokenizer.json", "rl_agent_config.json"):
+            src = os.path.join(model_dir, name)
+            if os.path.exists(src):
+                shutil.copy(src, os.path.join(args.out_dir, name))
+        print("wrote %s and %s" % (os.path.join(args.out_dir, "encoder.onnx"),
+                                   os.path.join(args.out_dir, "head.onnx")))
+    finally:
+        shutil.rmtree(staged, ignore_errors=True)
 
 
 def _run_ref(model, head, seq, batch=1):

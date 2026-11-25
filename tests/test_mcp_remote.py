@@ -12,10 +12,11 @@ import pytest
 
 pytest.importorskip("mcp")
 
+from laya import __version__  # noqa: E402
 from laya.mcp import server as mcp_server  # noqa: E402
 from laya.mcp.tools import (  # noqa: E402
     ToolError, laya_decide, laya_predict, laya_predict_batch, laya_preset, laya_route, laya_route_batch,
-    laya_shortlist, laya_status,
+    laya_shortlist, laya_status, laya_tournament,
 )
 from laya.mcp.remote import DEFAULT_TIMEOUT_S, RemoteError, RemoteRouter  # noqa: E402
 
@@ -34,6 +35,7 @@ class FakeServe(BaseHTTPRequestHandler):
     """Records every request; answers /health and /v1/systemone like laya-serve."""
 
     requests: list = []
+    user_agents: list = []
     status_override: int | None = None
     detail_override: str = "bad request"
     require_bearer: str | None = None
@@ -51,6 +53,7 @@ class FakeServe(BaseHTTPRequestHandler):
 
     def do_GET(self):
         FakeServe.requests.append(("GET", self.path, None, dict(self.headers)))
+        FakeServe.user_agents.append(self.headers.get_all("User-Agent"))
         if self.path == "/health":
             if FakeServe.require_bearer and self.headers.get("Authorization") != "Bearer " + FakeServe.require_bearer:
                 return self._send(200, {"status": "ok"})
@@ -61,6 +64,7 @@ class FakeServe(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         body = json.loads(self.rfile.read(length)) if length else None
         FakeServe.requests.append(("POST", self.path, body, dict(self.headers)))
+        FakeServe.user_agents.append(self.headers.get_all("User-Agent"))
         if FakeServe.require_bearer and self.headers.get("Authorization") != "Bearer " + FakeServe.require_bearer:
             return self._send(401, {"detail": "invalid or missing bearer token"})
         if FakeServe.status_override:
@@ -70,9 +74,15 @@ class FakeServe(BaseHTTPRequestHandler):
         self._send(404, {"detail": "Not Found"})
 
 
+@pytest.fixture(autouse=True)
+def isolated_user_agent(monkeypatch):
+    monkeypatch.delenv("LAYA_USER_AGENT", raising=False)
+
+
 @pytest.fixture
 def serve():
     FakeServe.requests = []
+    FakeServe.user_agents = []
     FakeServe.status_override = None
     FakeServe.require_bearer = None
     httpd = HTTPServer(("127.0.0.1", 0), FakeServe)
@@ -118,8 +128,83 @@ def test_bearer_token_is_sent_when_configured(serve):
     assert info.value.code == "unauthorized"
 
 
+@pytest.mark.parametrize("source", ["default", "environment", "argument"])
+def test_user_agent_identifies_every_remote_request(monkeypatch, serve, source):
+    expected = "laya/" + __version__
+    kwargs = {}
+    if source != "default":
+        monkeypatch.setenv("LAYA_USER_AGENT", "deployment/1.0")
+        expected = "deployment/1.0"
+    if source == "argument":
+        kwargs["user_agent"] = "embedded/2.0"
+        expected = "embedded/2.0"
+    FakeServe.require_bearer = "test-key"
+    router = RemoteRouter(serve, "test-key", 2, **kwargs)
+    assert router.health() == HEALTH
+    assert router.predict("single", _questions()) == ANSWER
+    items = [{"state": state, "questions": _questions()} for state in ("first", "second")]
+    assert router.predict_batch(items) == [ANSWER, ANSWER]
+    assert FakeServe.user_agents == [[expected]] * 4
+    assert [r[:2] for r in FakeServe.requests] == [("GET", "/health")] + [("POST", "/v1/systemone")] * 3
+    assert [r[2] for r in FakeServe.requests[1:]] == [
+        {"state": state, "questions": _questions()} for state in ("single", "first", "second")
+    ]
+    assert all(r[3]["Authorization"] == "Bearer test-key" for r in FakeServe.requests)
+    assert all(r[3]["Accept"] == "application/json" for r in FakeServe.requests)
+    assert "Content-Type" not in FakeServe.requests[0][3]
+    assert all(r[3]["Content-Type"] == "application/json" for r in FakeServe.requests[1:])
+
+
+@pytest.mark.parametrize("raw, expected", [
+    ("", None), (" \t ", None), (" \tcustom/1.0 (caf\xe9)\t details \t", "custom/1.0 (caf\xe9)\t details"),
+])
+@pytest.mark.parametrize("source", ["environment", "argument"])
+def test_user_agent_trims_only_outer_spaces_and_tabs(monkeypatch, serve, raw, expected, source):
+    monkeypatch.setenv("LAYA_USER_AGENT", raw if source == "environment" else "environment/1.0")
+    kwargs = {"user_agent": raw} if source == "argument" else {}
+    RemoteRouter(serve, **kwargs).health()
+    assert FakeServe.user_agents == [[expected or "laya/" + __version__]]
+
+
+@pytest.mark.parametrize("raw", ["x\r", "x\n", "x\r\n folded", "\nx", "x\x01", "x\x7f", "x\u0100"])
+@pytest.mark.parametrize("source", ["environment", "argument"])
+def test_user_agent_rejects_invalid_header_values_before_http(monkeypatch, serve, raw, source):
+    if source == "environment":
+        monkeypatch.setenv("LAYA_USER_AGENT", raw)
+    kwargs = {"user_agent": raw} if source == "argument" else {}
+    with pytest.raises(ValueError, match="LAYA_USER_AGENT"):
+        RemoteRouter(serve, **kwargs)
+    assert not FakeServe.requests
+
+
+def test_user_agent_rejects_nul_and_non_string_arguments(serve):
+    # NUL cannot be put in an OS environment variable, but can reach the constructor.
+    with pytest.raises(ValueError, match="LAYA_USER_AGENT"):
+        RemoteRouter(serve, user_agent="x\x00")
+    for value in (False, 42, b"client/1.0"):
+        with pytest.raises(TypeError, match="user_agent"):
+            RemoteRouter(serve, user_agent=value)
+    assert not FakeServe.requests
+
+
+def test_user_agent_argument_does_not_read_an_invalid_environment(monkeypatch, serve):
+    monkeypatch.setenv("LAYA_USER_AGENT", "bad\nvalue")
+    RemoteRouter(serve, user_agent="embedded/1.0").health()
+    assert FakeServe.user_agents == [["embedded/1.0"]]
+
+
+def test_user_agent_is_resolved_once_per_router(monkeypatch, serve):
+    monkeypatch.setenv("LAYA_USER_AGENT", "first/1.0")
+    first = RemoteRouter(serve)
+    monkeypatch.setenv("LAYA_USER_AGENT", "second/1.0")
+    second = RemoteRouter(serve)
+    first.health()
+    second.health()
+    assert FakeServe.user_agents == [["first/1.0"], ["second/1.0"]]
+
+
 @pytest.mark.parametrize("status, code", [(400, "invalid_request"), (422, "invalid_request"),
-                                          (503, "busy"), (500, "upstream_error")])
+                                          (403, "upstream_error"), (503, "busy"), (500, "upstream_error")])
 def test_http_errors_map_to_tool_error_codes(serve, status, code):
     FakeServe.status_override = status
     FakeServe.detail_override = "question 'dept': criteria must be an object"
@@ -219,14 +304,58 @@ def test_shortlist_is_refused_in_remote_mode(serve):
     assert info.value.code == "unsupported_remote"
 
 
+@pytest.mark.parametrize("n", [2, 40])
+def test_tournament_is_refused_before_remote_requests(serve, n):
+    questions = {"pick": {"type": "choice", "instructions": "pick",
+                          "criteria": {"opt%d" % i: None for i in range(n)}}}
+    with pytest.raises(ToolError) as info:
+        laya_tournament({"text": "x"}, questions, router=RemoteRouter(serve))
+    assert info.value.code == "unsupported_remote"
+    assert "laya_predict" in info.value.message and "LAYA_TOURNAMENT_GROUP" in info.value.message
+    assert FakeServe.requests == []
+
+
+@pytest.mark.parametrize("model", ["auto", "english"])
+def test_predict_long_is_refused_before_remote_requests(monkeypatch, serve, model):
+    # laya-serve has no long-state endpoint, so the scan has nowhere to run. Without this refusal
+    # the call reached Router.predict_long and came back as internal_error ("hooks are callables").
+    monkeypatch.setattr(mcp_server, "_ROUTER", RemoteRouter(serve))
+    with pytest.raises(Exception) as info:
+        mcp_server.laya_predict_long_tool({"text": "x"}, _questions(), model=model)
+    payload = json.loads(str(info.value))
+    assert payload["error"] == "unsupported_remote", payload
+    assert "laya_predict" in payload["message"] and "LAYA_BASE_URL" in payload["message"]
+    assert FakeServe.requests == []
+
+
 def test_server_builds_a_remote_router_from_the_environment(monkeypatch, serve):
     monkeypatch.setenv("LAYA_BASE_URL", serve + "/")
     monkeypatch.setenv("LAYA_API_KEY", "k")
+    monkeypatch.setenv("LAYA_USER_AGENT", "mcp-deployment/1.0")
     monkeypatch.setattr(mcp_server, "_ROUTER", None)
     router = mcp_server._ensure_router()
     assert isinstance(router, RemoteRouter)
     assert router.base_url == serve and router.api_key == "k"
+    assert router.health() == HEALTH
+    assert FakeServe.user_agents == [["mcp-deployment/1.0"]]
     monkeypatch.setattr(mcp_server, "_ROUTER", None)
+
+
+def test_user_agent_configuration_error_is_remote_only(monkeypatch, serve):
+    monkeypatch.setenv("LAYA_BASE_URL", serve)
+    monkeypatch.setenv("LAYA_USER_AGENT", "bad\nvalue")
+    monkeypatch.setattr(mcp_server, "_ROUTER", None)
+    with pytest.raises(ToolError, match="LAYA_USER_AGENT") as info:
+        mcp_server._ensure_router()
+    assert info.value.code == "internal_error"
+    assert mcp_server._ROUTER is None
+    assert not FakeServe.requests
+    monkeypatch.delenv("LAYA_BASE_URL")
+    monkeypatch.delenv("LAYA_THREADS", raising=False)
+    monkeypatch.setenv("LAYA_PRELOAD", "0")
+    router = mcp_server._ensure_router()
+    assert not isinstance(router, RemoteRouter)
+    assert not router._agents
 
 
 @pytest.mark.parametrize("raw, expected", [("", None), ("  ", None), ("127.0.0.1:8123", "http://127.0.0.1:8123"),
@@ -286,11 +415,17 @@ def test_remote_decide_and_preset_use_the_server(serve):
         assert info.value.code == "busy"
 
 
-def test_remote_route_tools_do_not_contact_the_server(serve):
+@pytest.mark.parametrize("explain", [False, True])
+def test_remote_route_tools_do_not_contact_the_server(serve, explain):
     router = RemoteRouter(serve)
     state = {"text": "Mein Konto wurde zweimal belastet"}
-    assert laya_route(state, _questions(), router=router)["model"] == "multilingual"
-    assert laya_route_batch([{"state": state, "questions": _questions()}], router=router)["decisions"][0]["model"] == "multilingual"
+    single = laya_route(state, _questions(), router=router, explain=explain)
+    batch = laya_route_batch([{"state": state, "questions": _questions()}], router=router, explain=explain)
+    assert single["model"] == "multilingual"
+    assert batch == {"decisions": [single], "model_counts": {"multilingual": 1}}
+    assert ("diagnostic" in single) is explain
+    if explain:
+        assert set(single["diagnostic"]) == {"stage", "reason", "source"}
     assert not FakeServe.requests
 
 
@@ -332,13 +467,28 @@ def test_remote_mcp_startup_and_every_tool_avoid_torch(serve):
         for call in calls:
             out = json.loads(call())
             assert "error" not in out, out
-        try:
-            server.laya_shortlist_tool(state, questions)
-        except Exception as exc:
-            assert "unsupported_remote" in str(exc), exc
-        else:
-            raise AssertionError("remote shortlist did not refuse the call")
+        # Exercise actual MCP parsing, with both model imports and HTTP forbidden.
+        import asyncio
+        def no_http(*args, **kwargs):
+            raise AssertionError("routing diagnostics attempted an HTTP request")
+        server._ROUTER._request = no_http
+        for name, arguments in (("laya_route", {"state": state, "questions": questions}),
+                                ("laya_route_batch", {"requests": items})):
+            result = asyncio.run(server.server.call_tool(name, dict(arguments, explain=True)))
+            assert not result.is_error, result
+            out = json.loads(result.content[0].text)
+            decisions = out["decisions"] if name == "laya_route_batch" else [out]
+            assert all(set(d["diagnostic"]) == {"stage", "reason", "source"} for d in decisions)
+        for tool in (server.laya_shortlist_tool, server.laya_tournament_tool, server.laya_predict_long_tool):
+            try:
+                tool(state, questions)
+            except Exception as exc:
+                payload = json.loads(str(exc))
+                assert payload["error"] == "unsupported_remote", payload
+            else:
+                raise AssertionError("remote in-process tool did not refuse the call")
         assert "torch" not in sys.modules
+        assert "laya.shortlist" not in sys.modules
         assert not server._ROUTER._agents
     ''')
     env = dict(os.environ, LAYA_BASE_URL=serve, LAYA_THREADS="2", LAYA_PRELOAD="1")

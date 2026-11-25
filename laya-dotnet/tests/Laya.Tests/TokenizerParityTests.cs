@@ -112,6 +112,12 @@ public sealed class TokenizerParityTests
         var questions = GoldenData.BuildQuestions(root.GetProperty("questions"));
         var maxLen     = golden.Meta.GetProperty("max_len").GetInt32();
         var headMaxLen = golden.Meta.GetProperty("head_max_len").GetInt32();
+        // A case that passes its own token budget was recorded with it (Python: system_one(max_len=...)).
+        if (root.TryGetProperty("options", out var options))
+        {
+            maxLen     = CallOptions.Budget(options, "max_len") ?? maxLen;
+            headMaxLen = CallOptions.Budget(options, "head_max_len") ?? headMaxLen;
+        }
 
         foreach (var recorded in root.GetProperty("per_question").EnumerateArray())
         {

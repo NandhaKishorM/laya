@@ -20,6 +20,8 @@ import numpy as np  # noqa: E402
 
 import laya.agent as agent_mod
 from laya.agent import Agent, _check_scan_budget, _start_evidence
+from laya.hooks import OptionStabilityHook
+from _long_attribution import check_long_attribution
 
 from laya.onnx_agent import ONNXAgent  # noqa: E402
 
@@ -134,6 +136,8 @@ def make_real_agent():
 
 Q = {"dept": {"type": "choice", "instructions": "?", "criteria": {"a": "x", "b": "y"}},
      "flag": {"type": "noul", "instructions": "?"}}
+
+check_long_attribution(make_real_agent, check)
 
 # 1. fits in one window -> delegates to system_one, no windowing
 a = make_agent(lambda s, q: [])
@@ -584,6 +588,97 @@ actual, exc = _attempt(lambda: _question_agent().predict_long(LONG, Q, on_predic
 check("questions/a first-window end annotation preserves the scan's answers", actual, expected)
 check("questions/a first-window end annotation does not require other windows to match", _kind(exc), None)
 
+# The public stability hook adds probe questions at start and removes their answers at end.
+# Ordinary inference is the reference for the returned labels, probabilities and reliability;
+# a long scan must retain the same user-question mapping and its deciding window's metadata.
+def _stability_hook():
+    return OptionStabilityHook(accept=None, escalate=None, probes="reorder",
+                               variants=["reversed"], seed="long-regression")
+
+
+for name, method, states in (("ordinary", "system_one", "short"),
+                             ("short", "predict_long", "short"),
+                             ("batch", "predict_batch", ["first", "second"])):
+    hook = _stability_hook()
+    result = getattr(_question_agent(), method)(states, Q, hooks=[hook])
+    rows = result if isinstance(result, list) else [result]
+    check("stability/%s returns only user questions" % name,
+          [list(row["answers"]) for row in rows], [list(Q)] * len(rows))
+    check("stability/%s ran the real reorder probe" % name,
+          [row["answers"]["dept"]["reliability"]["probes"] for row in rows],
+          [["reorder"]] * len(rows))
+    check("stability/%s releases its run plan" % name, hook._plans, {})
+
+reference_agent = _question_agent()
+reference_agent.predict_long(LONG, Q)
+reference_rows = _question_agent().predict_batch(list(reference_agent._encoded), Q,
+                                                hooks=[_stability_hook()])
+check_true("stability/the first window has the most confident original choice",
+           reference_rows[0]["answers"]["dept"]["answer_confidence"] >
+           reference_rows[1]["answers"]["dept"]["answer_confidence"])
+check("stability/the original choice keeps its own label", reference_rows[0]["answers"]["dept"]["choice"], "a")
+hook = _stability_hook()
+actual, exc = _attempt(lambda: _question_agent().predict_long(LONG, Q, hooks=[hook]))
+check("stability/long returns after probe answers are removed", _kind(exc), None)
+check("stability/long retains the final user schema", list((actual or {}).get("answers", {})), list(Q))
+if actual is not None:
+    for qid in Q:
+        answer = dict(actual["answers"][qid])
+        window = answer.pop("window")
+        check("stability/%s keeps the winning batch answer and all metadata" % qid,
+              answer, reference_rows[0]["answers"][qid])
+        check("stability/%s keeps the original winning window" % qid, window,
+              {"index": 0, "token_start": 0, "token_end": 72, "count": len(reference_rows)})
+    check("stability/usage counts every scored window", actual["usage"]["windows"], len(reference_rows))
+check("stability/long releases its run plan", hook._plans, {})
+
+routed_agent = _question_agent()
+routed_agent.hooks = [_stability_hook()]
+routed, exc = _attempt(lambda: _router(routed_agent).predict_long(LONG, Q, model="english"))
+check("stability/router reaches the hooked long scan", _kind(exc), None)
+if routed is not None and actual is not None:
+    check("stability/router preserves the scan's answers", routed["answers"], actual["answers"])
+    check("stability/router retains routing metadata", routed["routing"]["model"], "english")
+
+
+def _remove_dept(ctx):
+    for row in ctx.results:
+        del row["answers"]["dept"]
+
+
+check_raises("end removal/a caller question cannot silently disappear from every window", ValueError,
+             lambda: _question_agent().predict_long(LONG, Q, on_predict_end=_remove_dept))
+
+for policy in (True, False):
+    check_raises("end removal/a partial removal is refused with hooks_raise=%s" % policy, ValueError,
+                 lambda: _question_agent().predict_long(
+                     LONG, Q, hooks_raise=policy,
+                     on_predict_end=lambda ctx: ctx.results[0]["answers"].pop("dept")))
+
+check_raises("end removal/a replacement batch cannot silently omit every answer", ValueError,
+             lambda: make_agent(lambda states, q: [{"answers": {}, "usage": {}} for _ in states])
+             .predict_long(LONG, Q))
+
+
+def _add_temporary(ctx):
+    ctx.questions["temporary"] = dict(Q["flag"])
+
+
+def _remove_temporary(ctx):
+    for row in ctx.results:
+        del row["answers"]["temporary"]
+
+
+actual, exc = _attempt(lambda: _question_agent().predict_long(
+    LONG, dict(Q), on_predict_start=_add_temporary, on_predict_end=_remove_temporary))
+check("end removal/an in-place start addition returns after removal", _kind(exc), None)
+check("end removal/an in-place start addition can be uniformly removed",
+      (actual or {}).get("answers"), _question_agent().predict_long(LONG, Q)["answers"])
+check_raises("end removal/a start-added question missing in only one window is refused", ValueError,
+             lambda: _question_agent().predict_long(
+                 LONG, dict(Q), on_predict_start=_add_temporary,
+                 on_predict_end=lambda ctx: ctx.results[0]["answers"].pop("temporary")))
+
 # The recorder must leave invalid input to predict_batch's existing question validation.
 for malformed in (None, [], {"bad": None}, {"bad": {}}, {"bad": {"type": "unknown"}}):
     _, direct_exc = _attempt(lambda: _question_agent().system_one(LONG, malformed))
@@ -793,6 +888,26 @@ with warnings.catch_warnings(record=True) as caught:
 check("explicit/clamping the default window is not warned about",
       [w.category.__name__ for w in caught], [])
 
+# 12e-bis. and the default stride halves the *effective* window, not the one that was asked for.
+# Nothing here pinned the step of a clamped scan, so `laya/onnx_agent.py` was free to teach
+# `window // 2`: on this config that is a step of 100 tokens across the 76-token window the
+# questions leave, which is not a default at all but the stride 12f refuses with a ValueError.
+# Measured from the spans the scan hands the model, so it checks the step taken rather than the
+# number `window_budget` returns.
+_eff_wide = min(room_for(q) for q in Q.values())
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", RuntimeWarning)
+    _wide, _handed_wide = scan(Q, window=200)
+check("explicit/the clamped window is the smallest room of the questions",
+      max(end - start for start, end in _handed_wide), _eff_wide)
+check("explicit/so the default stride is half that window",
+      _handed_wide[1][0] - _handed_wide[0][0], _eff_wide // 2)
+check_true("explicit/which is NOT half the 200 that was asked for",
+           _handed_wide[1][0] - _handed_wide[0][0] != 200 // 2,
+           (_handed_wide[1][0] - _handed_wide[0][0], 200 // 2))
+check("explicit/the clamped scan still reads every token",
+      uncovered(read_spans(_handed_wide, _eff_wide), STATE_TOKENS), [])
+
 # 12f. a stride past the effective window is refused: the tokens between two windows would be read
 # by nothing, which is the failure this method exists to prevent.
 check_raises("stride/past the effective window is an error", ValueError,
@@ -854,6 +969,20 @@ check("batch/no cap at all keeps it too", window_batch_cap(16, 312, 312), None)
 check_true("batch/a blow-up is bounded to the un-capped pass width",
            0 < (window_batch_cap(413, 23, 312) or 0) < 413, window_batch_cap(413, 23, 312))
 check("batch/an explicit batch_size is always honoured", window_batch_cap(413, 23, 312, 8), 8)
+
+# "Always honoured" needs the other half of the sentence: a value the chunker downstream cannot
+# spend is not a cap, it is a crash waiting for `range()`. Before `check_batch_size`, `2.5` was
+# returned untouched -- `predict_long` then handed it to `predict_batch(batch_size=2.5)` and the
+# pass died on `'float' object cannot be interpreted as an integer`, while `"8"` died earlier on
+# the `'>' not supported` comparison. `0`, `-1` and `None` stay legal because they mean "no cap",
+# which is what the fixture grid pins for every port -- the bound this grid point reaches is 30,
+# spelled as the literal rather than as a call to the function under test.
+for unset in (None, 0, -1):
+    check("batch/batch_size=%r leaves the un-capped pass width" % (unset,),
+          window_batch_cap(413, 23, 312, unset), 30)
+for bad in (2.5, "8", True, [8]):
+    check_raises("batch/window_batch_cap refuses batch_size=%r" % (bad,), ValueError,
+                 lambda b=bad: window_batch_cap(413, 23, 312, b))
 
 # 12g. the page that teaches the default teaches the cap as well
 window_para = README[README.index("A smaller `window` isolates"):][:900]
@@ -2011,6 +2140,22 @@ for _doc_name, _doc, _stop in _WINDOW_DOCSTRINGS:
     _at = _para.find(_DEFAULT_EXPR or "")
     check_true("floor/%s teaches it as the default, not beside it" % _doc_name,
                _at > -1 and "default" in _para[max(0, _at - 220):_at].lower(), _para[:160])
+
+# The three `predict_long` pages also have to agree on the stride default, since the step actually
+# taken is half the *effective* window while `window` is the number the caller typed.
+_STRIDE_HALF = re.compile(r"hal\w*\s+the\s+\*?effective\*?\s+window", re.I)
+for _doc_name, _doc, _stop in _WINDOW_DOCSTRINGS[1:]:
+    _d = _doc or ""
+    _at = _d.find(_stop)
+    _bullet = _d[_at:_d.find("aggregate:", _at)] if _at > -1 else ""
+    check_true("stride-doc/%s says the step halves the effective window" % _doc_name,
+               _STRIDE_HALF.search(_bullet) is not None, _bullet[:140])
+    check_true("stride-doc/%s never names the requested window as the step" % _doc_name,
+               "window // 2" not in _bullet and "window //2" not in _bullet, _bullet[:140])
+    # Half of the effective window is only true of the default, so the bullet has to keep saying
+    # that it is the default it describes, and not leave a reader to work out which window it means.
+    check_true("stride-doc/%s teaches it as the default" % _doc_name,
+               "default" in _bullet[:120].lower(), _bullet[:140])
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

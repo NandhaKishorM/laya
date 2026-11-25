@@ -1,0 +1,1087 @@
+{
+  "predict": [
+    {
+      "label": "the detected language of English text is forwarded",
+      "args": {
+        "state": "I was charged twice, please refund."
+      },
+      "model": "english",
+      "agent": "english",
+      "received": {
+        "lang": "en"
+      }
+    },
+    {
+      "label": "the detected language of German text is forwarded",
+      "args": {
+        "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist"
+      },
+      "model": "multilingual",
+      "agent": "multilingual",
+      "received": {
+        "lang": "de"
+      }
+    },
+    {
+      "label": "an explicit language wins over detection and goes unnormalised",
+      "args": {
+        "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+        "lang": "en-GB"
+      },
+      "model": "english",
+      "agent": "english",
+      "received": {
+        "lang": "en-GB"
+      }
+    },
+    {
+      "label": "an explicit language routes and is forwarded",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "lang": "DE-at"
+      },
+      "model": "multilingual",
+      "agent": "multilingual",
+      "received": {
+        "lang": "DE-at"
+      }
+    },
+    {
+      "label": "an empty language is forwarded as it is",
+      "args": {
+        "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+        "lang": ""
+      },
+      "model": "multilingual",
+      "agent": "multilingual",
+      "received": {
+        "lang": ""
+      }
+    },
+    {
+      "label": "a language hint leaves no detection",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "lang_guess": "de"
+      },
+      "model": "multilingual",
+      "agent": "multilingual",
+      "received": {
+        "lang": null
+      }
+    },
+    {
+      "label": "an explicit model leaves no detection",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "model": "ml"
+      },
+      "model": "multilingual",
+      "agent": "multilingual",
+      "received": {
+        "lang": null
+      }
+    },
+    {
+      "label": "text with no letters has no language",
+      "args": {
+        "state": "12345"
+      },
+      "model": "multilingual",
+      "agent": "multilingual",
+      "received": {
+        "lang": null
+      }
+    },
+    {
+      "label": "max_len is forwarded alone",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "max_len": 100
+      },
+      "model": "english",
+      "agent": "english",
+      "received": {
+        "lang": "en",
+        "max_len": 100
+      }
+    },
+    {
+      "label": "head_max_len is forwarded alone",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "head_max_len": 64
+      },
+      "model": "english",
+      "agent": "english",
+      "received": {
+        "lang": "en",
+        "head_max_len": 64
+      }
+    },
+    {
+      "label": "both budgets are forwarded",
+      "args": {
+        "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+        "max_len": 300,
+        "head_max_len": 64
+      },
+      "model": "multilingual",
+      "agent": "multilingual",
+      "received": {
+        "lang": "de",
+        "max_len": 300,
+        "head_max_len": 64
+      }
+    },
+    {
+      "label": "zero budgets are forwarded",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "max_len": 0,
+        "head_max_len": 0
+      },
+      "model": "english",
+      "agent": "english",
+      "received": {
+        "lang": "en",
+        "max_len": 0,
+        "head_max_len": 0
+      }
+    },
+    {
+      "label": "negative budgets are forwarded",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "max_len": -1,
+        "head_max_len": -2
+      },
+      "model": "english",
+      "agent": "english",
+      "received": {
+        "lang": "en",
+        "max_len": -1,
+        "head_max_len": -2
+      }
+    },
+    {
+      "label": "a language and budgets together",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "lang": "fr",
+        "max_len": 200,
+        "head_max_len": 96
+      },
+      "model": "multilingual",
+      "agent": "multilingual",
+      "received": {
+        "lang": "fr",
+        "max_len": 200,
+        "head_max_len": 96
+      }
+    }
+  ],
+  "long": [
+    {
+      "label": "the detected language reaches the scan",
+      "args": {
+        "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist"
+      },
+      "model": "multilingual",
+      "received": {
+        "lang": "de"
+      },
+      "warnings": []
+    },
+    {
+      "label": "an explicit language reaches the scan",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "lang": "de-AT"
+      },
+      "model": "multilingual",
+      "received": {
+        "lang": "de-AT"
+      },
+      "warnings": []
+    },
+    {
+      "label": "a language hint leaves no detection",
+      "args": {
+        "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+        "lang_guess": "en"
+      },
+      "model": "english",
+      "received": {
+        "lang": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "an empty language is forwarded",
+      "args": {
+        "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+        "lang": ""
+      },
+      "model": "multilingual",
+      "received": {
+        "lang": ""
+      },
+      "warnings": []
+    },
+    {
+      "label": "no letters, no language",
+      "args": {
+        "state": "12345"
+      },
+      "model": "multilingual",
+      "received": {
+        "lang": null
+      },
+      "warnings": []
+    },
+    {
+      "label": "a scan with no lang parameter runs without it and warns about the detected language",
+      "args": {
+        "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+        "stub_takes_lang": false
+      },
+      "model": "multilingual",
+      "received": {},
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: Router.predict_long: _StubAgent.predict_long has no `lang` parameter, so the detected language 'de' is not reaching it and the scan runs without it"
+        }
+      ]
+    },
+    {
+      "label": "a scan with no lang parameter warns about the requested language",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "lang": "fr",
+        "stub_takes_lang": false
+      },
+      "model": "multilingual",
+      "received": {},
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: Router.predict_long: _StubAgent.predict_long has no `lang` parameter, so the requested language 'fr' is not reaching it and the scan runs without it"
+        }
+      ]
+    },
+    {
+      "label": "a requested language longer than 32 characters is cut in the warning",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "lang": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "stub_takes_lang": false
+      },
+      "model": "multilingual",
+      "received": {},
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: Router.predict_long: _StubAgent.predict_long has no `lang` parameter, so the requested language 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'... is not reaching it and the scan runs without it"
+        }
+      ]
+    },
+    {
+      "label": "a requested language of exactly 32 characters is not cut",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "lang": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+        "stub_takes_lang": false
+      },
+      "model": "multilingual",
+      "received": {},
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: Router.predict_long: _StubAgent.predict_long has no `lang` parameter, so the requested language 'yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy' is not reaching it and the scan runs without it"
+        }
+      ]
+    },
+    {
+      "label": "a requested empty language still warns",
+      "args": {
+        "state": "I was charged twice, please refund.",
+        "lang": "",
+        "stub_takes_lang": false
+      },
+      "model": "english",
+      "received": {},
+      "warnings": [
+        {
+          "category": "RuntimeWarning",
+          "message": "laya: Router.predict_long: _StubAgent.predict_long has no `lang` parameter, so the requested language '' is not reaching it and the scan runs without it"
+        }
+      ]
+    },
+    {
+      "label": "no language, no warning",
+      "args": {
+        "state": "12345",
+        "stub_takes_lang": false
+      },
+      "model": "multilingual",
+      "received": {},
+      "warnings": []
+    },
+    {
+      "label": "a scan with no lang parameter and a hint warns about nothing",
+      "args": {
+        "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+        "lang_guess": "en",
+        "stub_takes_lang": false
+      },
+      "model": "english",
+      "received": {},
+      "warnings": []
+    }
+  ],
+  "batch": [
+    {
+      "label": "no agent has per-language temperatures, so a language never reaches or splits",
+      "has_lang_temperatures": {
+        "english": false,
+        "multilingual": false
+      },
+      "requests": [
+        {
+          "state": "I was charged twice, please refund.",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang": "en"
+        },
+        {
+          "state": "I was charged twice, please refund. Again.",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          }
+        },
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang": "de"
+        },
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist Noch einmal.",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          }
+        }
+      ],
+      "models": [
+        "english",
+        "english",
+        "multilingual",
+        "multilingual"
+      ],
+      "calls": [
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund.",
+            "I was charged twice, please refund. Again."
+          ],
+          "kwargs": {}
+        },
+        {
+          "model": "multilingual",
+          "states": [
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist Noch einmal."
+          ],
+          "kwargs": {}
+        }
+      ]
+    },
+    {
+      "label": "a language splits the groups of an agent that has temperatures",
+      "has_lang_temperatures": {
+        "english": false,
+        "multilingual": true
+      },
+      "requests": [
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          }
+        },
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 2",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang": "de"
+        },
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 3",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang": "DE"
+        },
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 4",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang": "de-AT"
+        },
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 5",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          }
+        }
+      ],
+      "models": [
+        "multilingual",
+        "multilingual",
+        "multilingual",
+        "multilingual",
+        "multilingual"
+      ],
+      "calls": [
+        {
+          "model": "multilingual",
+          "states": [
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 2",
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 5"
+          ],
+          "kwargs": {
+            "lang": "de"
+          }
+        },
+        {
+          "model": "multilingual",
+          "states": [
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 3"
+          ],
+          "kwargs": {
+            "lang": "DE"
+          }
+        },
+        {
+          "model": "multilingual",
+          "states": [
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 4"
+          ],
+          "kwargs": {
+            "lang": "de-AT"
+          }
+        }
+      ]
+    },
+    {
+      "label": "the key is the language as written, not normalised, and an empty one is a key",
+      "has_lang_temperatures": {
+        "english": true,
+        "multilingual": true
+      },
+      "requests": [
+        {
+          "state": "I was charged twice, please refund.",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang": "en-US"
+        },
+        {
+          "state": "I was charged twice, please refund. 2",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang": "EN-us"
+        },
+        {
+          "state": "I was charged twice, please refund. 3",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang": ""
+        },
+        {
+          "state": "I was charged twice, please refund. 4",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang": ""
+        },
+        {
+          "state": "I was charged twice, please refund. 5",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang": "en-US"
+        }
+      ],
+      "models": [
+        "english",
+        "english",
+        "english",
+        "english",
+        "english"
+      ],
+      "calls": [
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund.",
+            "I was charged twice, please refund. 5"
+          ],
+          "kwargs": {
+            "lang": "en-US"
+          }
+        },
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund. 2"
+          ],
+          "kwargs": {
+            "lang": "EN-us"
+          }
+        },
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund. 3",
+            "I was charged twice, please refund. 4"
+          ],
+          "kwargs": {
+            "lang": ""
+          }
+        }
+      ]
+    },
+    {
+      "label": "a hint leaves no detection, so its request has no language of its own",
+      "has_lang_temperatures": {
+        "english": true,
+        "multilingual": false
+      },
+      "requests": [
+        {
+          "state": "I was charged twice, please refund.",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          }
+        },
+        {
+          "state": "I was charged twice, please refund. 2",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang_guess": "en"
+        },
+        {
+          "state": "I was charged twice, please refund. 3",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang_guess": "en"
+        },
+        {
+          "state": "I was charged twice, please refund. 4",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          }
+        }
+      ],
+      "models": [
+        "english",
+        "english",
+        "english",
+        "english"
+      ],
+      "calls": [
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund.",
+            "I was charged twice, please refund. 4"
+          ],
+          "kwargs": {
+            "lang": "en"
+          }
+        },
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund. 2",
+            "I was charged twice, please refund. 3"
+          ],
+          "kwargs": {}
+        }
+      ]
+    },
+    {
+      "label": "an explicit model leaves no detection either",
+      "has_lang_temperatures": {
+        "english": false,
+        "multilingual": true
+      },
+      "requests": [
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "model": "ml"
+        },
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 2",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          }
+        },
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 3",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "model": "ml",
+          "lang": "de"
+        }
+      ],
+      "models": [
+        "multilingual",
+        "multilingual",
+        "multilingual"
+      ],
+      "calls": [
+        {
+          "model": "multilingual",
+          "states": [
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist"
+          ],
+          "kwargs": {}
+        },
+        {
+          "model": "multilingual",
+          "states": [
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 2",
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 3"
+          ],
+          "kwargs": {
+            "lang": "de"
+          }
+        }
+      ]
+    },
+    {
+      "label": "token budgets split the groups whatever the agent",
+      "has_lang_temperatures": {
+        "english": false,
+        "multilingual": false
+      },
+      "requests": [
+        {
+          "state": "I was charged twice, please refund.",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          }
+        },
+        {
+          "state": "I was charged twice, please refund. 2",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "max_len": 100
+        },
+        {
+          "state": "I was charged twice, please refund. 3",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "head_max_len": 100
+        },
+        {
+          "state": "I was charged twice, please refund. 4",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "max_len": 100,
+          "head_max_len": 100
+        },
+        {
+          "state": "I was charged twice, please refund. 5",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "max_len": 100
+        },
+        {
+          "state": "I was charged twice, please refund. 6",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          }
+        },
+        {
+          "state": "I was charged twice, please refund. 7",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "max_len": 0
+        },
+        {
+          "state": "I was charged twice, please refund. 8",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "max_len": 0,
+          "head_max_len": 0
+        },
+        {
+          "state": "I was charged twice, please refund. 9",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "max_len": -1
+        }
+      ],
+      "models": [
+        "english",
+        "english",
+        "english",
+        "english",
+        "english",
+        "english",
+        "english",
+        "english",
+        "english"
+      ],
+      "calls": [
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund.",
+            "I was charged twice, please refund. 6"
+          ],
+          "kwargs": {}
+        },
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund. 2",
+            "I was charged twice, please refund. 5"
+          ],
+          "kwargs": {
+            "max_len": 100
+          }
+        },
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund. 3"
+          ],
+          "kwargs": {
+            "head_max_len": 100
+          }
+        },
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund. 4"
+          ],
+          "kwargs": {
+            "max_len": 100,
+            "head_max_len": 100
+          }
+        },
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund. 7"
+          ],
+          "kwargs": {
+            "max_len": 0
+          }
+        },
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund. 8"
+          ],
+          "kwargs": {
+            "max_len": 0,
+            "head_max_len": 0
+          }
+        },
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund. 9"
+          ],
+          "kwargs": {
+            "max_len": -1
+          }
+        }
+      ]
+    },
+    {
+      "label": "schema, budgets, language and checkpoint together, in first-seen order",
+      "has_lang_temperatures": {
+        "english": true,
+        "multilingual": true
+      },
+      "requests": [
+        {
+          "state": "I was charged twice, please refund.",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          }
+        },
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "max_len": 150
+        },
+        {
+          "state": "I was charged twice, please refund. 2",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer angry?"
+            }
+          }
+        },
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 2",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "max_len": 150
+        },
+        {
+          "state": "I was charged twice, please refund. 3",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang": "en"
+        },
+        {
+          "state": "Le client a ete facture deux fois et demande un remboursement pour cette facture qui est incorrecte",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "lang": "fr",
+          "max_len": 150
+        },
+        {
+          "state": "I was charged twice, please refund. 4",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          }
+        },
+        {
+          "state": "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 3",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer asking for a refund?"
+            }
+          },
+          "max_len": 150,
+          "lang": "de"
+        },
+        {
+          "state": "I was charged twice, please refund. 5",
+          "questions": {
+            "q": {
+              "type": "noul",
+              "instructions": "Is the customer angry?"
+            }
+          },
+          "max_len": 90,
+          "head_max_len": 40
+        }
+      ],
+      "models": [
+        "english",
+        "multilingual",
+        "english",
+        "multilingual",
+        "english",
+        "multilingual",
+        "english",
+        "multilingual",
+        "english"
+      ],
+      "calls": [
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund.",
+            "I was charged twice, please refund. 3",
+            "I was charged twice, please refund. 4"
+          ],
+          "kwargs": {
+            "lang": "en"
+          }
+        },
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund. 2"
+          ],
+          "kwargs": {
+            "lang": "en"
+          }
+        },
+        {
+          "model": "english",
+          "states": [
+            "I was charged twice, please refund. 5"
+          ],
+          "kwargs": {
+            "max_len": 90,
+            "head_max_len": 40,
+            "lang": "en"
+          }
+        },
+        {
+          "model": "multilingual",
+          "states": [
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist",
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 2",
+            "Der Kunde wurde zweimal belastet und moechte eine Rueckerstattung fuer die Rechnung die nicht korrekt ist 3"
+          ],
+          "kwargs": {
+            "max_len": 150,
+            "lang": "de"
+          }
+        },
+        {
+          "model": "multilingual",
+          "states": [
+            "Le client a ete facture deux fois et demande un remboursement pour cette facture qui est incorrecte"
+          ],
+          "kwargs": {
+            "max_len": 150,
+            "lang": "fr"
+          }
+        }
+      ]
+    }
+  ]
+}

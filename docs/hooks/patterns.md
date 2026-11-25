@@ -376,8 +376,9 @@ class Count:
 
 ### Silent failure
 
-`hooks_raise=False` warns once per failure, but a hook that catches everything itself hides
-real problems.
+`hooks_raise=False` warns when a hook fails -- one line per distinct message and call site under
+Python's default filter, so a hook that fails the same way repeatedly prints once, not once per
+failure ([Errors](errors.md)). A hook that catches everything itself hides real problems.
 
 ```python
 # bad: no one will ever know the audit trail stopped

@@ -84,17 +84,20 @@ if len(od) > 1:
     for m in re.finditer(r"^([A-Za-z0-9_-]+) = \[(.*?)\]", table, re.S | re.M):
         extras[m.group(1)] = array(m.group(2))
 
-check_true("pyproject/core parses", len(core) == 5, core)
+# Seven since 0.4.28: cryptography verifies the Ed25519 signature on policies exported from
+# Embedding Studio, and as a core dependency it is in the shipped (blocking) audit scope below.
+check_true("pyproject/core parses", len(core) == 7, core)
 check("pyproject/extra tables found", sorted(extras),
-      ["crewai", "fast", "langchain", "langgraph", "llamaindex", "mcp", "onnx", "serve",
-       "structured"])
+      ["agno", "audio", "crewai", "fast", "langchain", "langgraph", "llamaindex", "mcp", "onnx", "serve",
+       "structured", "vision"])
 declared = list(core) + [s for names in extras.values() for s in names]
 expected = sorted(set(declared))
 check("pyproject/extras add names the core does not have",
       sorted({re.split(r"[<>=!;\[ ]", s)[0] for s in declared}
              - {re.split(r"[<>=!;\[ ]", s)[0] for s in core}),
-      ["crewai", "fastapi", "langchain-core", "langgraph", "llama-index-core", "mcp", "onnx",
-       "onnxruntime", "onnxscript", "pydantic", "python-multipart", "tilelang", "uvicorn"])
+      ["agno", "crewai", "fastapi", "langchain-core", "langgraph", "llama-index-core", "mcp", "onnx",
+       "onnxruntime", "onnxscript", "pillow", "pydantic", "python-multipart", "soundfile", "tilelang",
+       "torchvision", "uvicorn"])
 
 # The two scopes: shipped (blocking) is the core plus [serve]; everything else is advisory.
 shipped = sorted(set(core) | set(extras.get("serve", [])))

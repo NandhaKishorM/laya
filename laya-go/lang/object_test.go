@@ -37,6 +37,31 @@ func TestObjectUnmarshalJSONKeepsOrder(t *testing.T) {
 	}
 }
 
+// A number decodes to a json.Number, so a serializer can keep an int an int and a float a float, and
+// the language verdict ignores it: a number is not text, though json.Number's Go kind is string.
+func TestObjectUnmarshalJSONKeepsNumbersAndTheyAreNotText(t *testing.T) {
+	var o Object
+	doc := `{"a":1,"b":2.0,"c":1e16,"d":[3,{"e":-0}],"text":"Ich kann mich nicht einloggen"}`
+	if err := json.Unmarshal([]byte(doc), &o); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]json.Number{"a": "1", "b": "2.0", "c": "1e16"}
+	for _, m := range o[:3] {
+		if n, ok := m.Value.(json.Number); !ok || n != want[m.Key] {
+			t.Errorf("%s = %#v, want json.Number(%q)", m.Key, m.Value, want[m.Key])
+		}
+	}
+	if got := StateText(o); got != "Ich kann mich nicht einloggen" {
+		t.Errorf("StateText = %q; a number must not be read as text", got)
+	}
+	if got := StateText([]json.Number{"12", "34"}); got != "" {
+		t.Errorf("StateText of a json.Number slice = %q", got)
+	}
+	if got := StateText(map[string]any{"n": json.Number("7"), "s": "text"}); got != "text" {
+		t.Errorf("StateText of a map with a json.Number = %q", got)
+	}
+}
+
 func TestObjectUnmarshalJSONRefusesWhatIsNotAnObject(t *testing.T) {
 	var o Object
 	for _, doc := range []string{`[1]`, `"x"`, `{"a":`, `{"a":1`, `{`} {

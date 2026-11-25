@@ -81,7 +81,7 @@ for name, criteria in (("120 options", VERY_LARGE), ("160 options", LARGE)):
               % (name, answer["choice"], answer["confidence"]))
     except ValueError as e:
         print("   %s -> raised ValueError: %s" % (name, e))
-print("   -> the guard is `len(markers) != len(render_options(q))`: markers past max_len are")
+print("   -> the guard is `len(markers) != stats['options']`: markers past max_len are")
 print("      dropped, so it fires only when whole option blocks fall out of the window. 120")
 print("      options slip through with a tiny per-label budget -- low accuracy, no warning.")
 

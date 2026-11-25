@@ -35,6 +35,46 @@ provider silently falls back per node.
 python scripts/export_onnx.py --model convaiinnovations/laya --output laya.onnx --quantize
 ```
 
+## `LAYA_CPU_AMP=bf16` needs native BF16 instructions
+
+The CPU forward runs in fp32 unless `LAYA_CPU_AMP` is set to `bf16` or `bfloat16`
+(`laya.agent._cpu_amp_dtype`). It is opt-in because bf16 is only worth asking for on hardware
+with native BF16 instructions, and because on hardware without them the failure is not an
+exception. oneDNN selects a kernel for an instruction set the CPU does not have, and the process
+takes an illegal instruction: SIGILL on POSIX, `0xC000001D` (`STATUS_ILLEGAL_INSTRUCTION`) on
+Windows. `Agent._infer` retries a failed autocast in fp32, but it catches `RuntimeError`, and a
+fault is not raised to Python, so that fallback cannot help here.
+
+Measured on this project's own Windows CI, where the bf16 autocast forward in
+`tests/test_runtime_fixes.py` faulted on roughly three runs in thirty-five, on one runner label,
+because a hosted fleet is not one CPU model. The same class of failure is
+[#1065](https://github.com/NandhaKishorM/laya/issues/1065) below.
+
+So check the host before setting it, and check it where the server will run rather than where you
+develop:
+
+```python
+import torch
+print(torch.backends.cpu.get_cpu_capability())   # "AVX512" is the one that implies BF16 support
+```
+
+A capability of `"DEFAULT"` or `"NO AVX"` is a host to leave in fp32. The safe way to qualify an
+unfamiliar one is a child process, because a fault in the parent cannot be caught:
+
+```bash
+python -c "import torch, torch.nn as nn; x = torch.ones(1, 16); m = nn.Linear(16, 16)
+with torch.no_grad(), torch.autocast(device_type='cpu', dtype=torch.bfloat16):
+    m(x)
+print('bf16 CPU autocast runs here')"
+```
+
+A non-zero exit with no traceback is the fault, not a failed assertion. That probe only settles
+whether the instruction set can execute *a* bf16 kernel: oneDNN chooses per op and per shape, so it
+can pass on a host where Laya's own forward faults. To rule that out, put the agent you will serve
+with in a child process the same way. `tests/test_runtime_fixes.py` qualifies the CPU like that — it
+runs the model's own bf16 forward in a child and asserts on the numbers it prints back, so a
+faulting host costs three skipped checks rather than the suite.
+
 ## In-process dynamic quantization
 
 The quantized export above is the int8 path `ONNXAgent` loads. `torch.ao.quantization.quantize_dynamic`

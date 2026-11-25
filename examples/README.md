@@ -28,6 +28,11 @@ python examples/01_first_call_minimal.py         # any Python with torch + trans
 
 ---
 
+`data/routing_labels.csv` is a 60-row labelled set (five teams, three urgency levels) for
+`laya.Agent(vegaml=True).fit(...)`; the main README's quickstart uses it.
+
+---
+
 ## Stage 1 — first contact (01-03)
 
 | | what you'll learn |

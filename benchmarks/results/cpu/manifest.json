@@ -1,0 +1,119 @@
+{
+  "implementation_commit": "6290eed206fc2ab3beefedf6abb191319d547d41",
+  "base_commit": "5a6dc4b809659dab3b9b3062f5e3902db983818a",
+  "common_sha256": "efb8558be8246810bc0d5ef0a1d152b1cd23a8fcc886befa013fdcbe8e7346d2",
+  "harness_sha256": "4327f3b3710031cccf7b534e5108c744fb1e213c0ae8caa8ff8c5d0effb4d9de",
+  "files": {
+    "mac-english-diagnostic.json": {
+      "raw_sha256": "c9f41cf14f2fdfe566903bd6ff738d23924eddd299be9fd4280826c80d447ff1",
+      "archived_sha256": "740cabea59d9fa7913e6229b2a90758a11b1265e084687e1aa37aa436cd4b143"
+    },
+    "mac-english-long-options.json": {
+      "raw_sha256": "f33d4092d8271d6d82bbbc575abcdea4d0ee519f44533a0d6139761f1e2ac628",
+      "archived_sha256": "4fb7ee4580172d5250b1525251d3f94a94c3c38836f771f6c37a072bf44bf324"
+    },
+    "mac-english-memory-baseline.json": {
+      "raw_sha256": "feebe0a90403456bb431af4ee4525965c5b3dff0165eb496008609d54bf8a0e6",
+      "archived_sha256": "feebe0a90403456bb431af4ee4525965c5b3dff0165eb496008609d54bf8a0e6"
+    },
+    "mac-english-memory-selected.json": {
+      "raw_sha256": "05c76fbb0ccf59a60a414cf53d67befd9249a1a5206c64f886190f0a30e4afe3",
+      "archived_sha256": "05c76fbb0ccf59a60a414cf53d67befd9249a1a5206c64f886190f0a30e4afe3"
+    },
+    "mac-english-standard.json": {
+      "raw_sha256": "baa53c41cf64ae6d3a36ae7954f2103739ca7cae60b0fa136fdb3700a9f04c01",
+      "archived_sha256": "a472a9153472bf1453b5f48f6ac84b1a430fb24dfeb8472491fb94563b13a906"
+    },
+    "mac-multilingual-ablation-head.json": {
+      "raw_sha256": "48a75ae5db79842a417d4b02c2399b3fdaa82fb9c025ecea4a14582087dddc04",
+      "archived_sha256": "edfd9daa79c19948ffa656d1ba85f7f86169fd95214e0b40969795b73c2aa3f6"
+    },
+    "mac-multilingual-ablation-windows.json": {
+      "raw_sha256": "d79b373bf693e8366b1fbbf74c93c89772972c9a90f65428cbf90b4bce181db9",
+      "archived_sha256": "9adc3bc074f0cd4e5793897dd45cbf703ec5fd8c1222ba53ba29f65194dc54cc"
+    },
+    "mac-multilingual-long-options.json": {
+      "raw_sha256": "387544f6eed950d8d83faa68f43d84f7f77b265fd7a47e9679d9eb65718a3bda",
+      "archived_sha256": "9ebe3f102f660affe17a1eeada89787e7f2385d02315c56b856e6ec41bf3f3e7"
+    },
+    "mac-multilingual-memory-baseline.json": {
+      "raw_sha256": "c98baa7e29a97a0a60b6215b660df85990f56ade15c2b82bde7ee7ee11f4ce51",
+      "archived_sha256": "c98baa7e29a97a0a60b6215b660df85990f56ade15c2b82bde7ee7ee11f4ce51"
+    },
+    "mac-multilingual-memory-selected.json": {
+      "raw_sha256": "ffcef5e133f536c912ec5ba6e2193464f7477c3545035037c2bfffa734852a2e",
+      "archived_sha256": "ffcef5e133f536c912ec5ba6e2193464f7477c3545035037c2bfffa734852a2e"
+    },
+    "mac-multilingual-standard.json": {
+      "raw_sha256": "2c9cb39920e1a23a134b6aa5d752944a09834902caea96f93d2b5be4f980b6b4",
+      "archived_sha256": "880983d0c8d5c415674ebbb4ce7294bcba0c7f3bc875ab815c83bc8df4a3af76"
+    },
+    "mac-typed-decisions-long-options.json": {
+      "raw_sha256": "841676605a956d95d55e11c2f3b18733d94b2bd418ee43de5f9c25617b838958",
+      "archived_sha256": "07572f94ce8e69a162cac2c4f87b68583ef1d787c380f79e1e85eb19f456b1cb"
+    },
+    "mac-typed-decisions-memory-baseline.json": {
+      "raw_sha256": "bb1b83eaa501b17ca5facc90551c02bef8e38bd3dc9104842cab0400f1401e25",
+      "archived_sha256": "bb1b83eaa501b17ca5facc90551c02bef8e38bd3dc9104842cab0400f1401e25"
+    },
+    "mac-typed-decisions-memory-selected.json": {
+      "raw_sha256": "3546ca1f25c24d2427d74f65e8737daa9178ec75f867382fde9b0bdcbdc668f2",
+      "archived_sha256": "3546ca1f25c24d2427d74f65e8737daa9178ec75f867382fde9b0bdcbdc668f2"
+    },
+    "mac-typed-decisions-standard.json": {
+      "raw_sha256": "d794fbcda9d05e6fb91c084330c9dc7abd3575273bc1c886d4fc806be1ac2b4f",
+      "archived_sha256": "7c9d3884cb3f3b13bc3d33c84c559e89e924eb2a666bc1b9480895748534380e"
+    },
+    "linux-english-latency.json": {
+      "raw_sha256": "7dba59866c4a7f95e70f4c08d4500bde7ab1edefc50690ffe06c609608a459cc",
+      "archived_sha256": "fcd9681b1c7f9463902092362e23cecd87e438dab4aa99280aff99d77bcc6261"
+    },
+    "linux-english-long-options.json": {
+      "raw_sha256": "88b4558dd4ce30cbf0cc39cb0631a1c6084257cfb8ad714351de92781e75b5c7",
+      "archived_sha256": "f8919ba941294bf3e8ccffb4697db1a58048a862f3bc279b265c9eb94c16312b"
+    },
+    "linux-english-memory-baseline.json": {
+      "raw_sha256": "316f2f4d7f63b22ab71a744fc4825ca54127b30e5ec25b1ec9ade57f6fd7bf66",
+      "archived_sha256": "316f2f4d7f63b22ab71a744fc4825ca54127b30e5ec25b1ec9ade57f6fd7bf66"
+    },
+    "linux-english-memory-selected.json": {
+      "raw_sha256": "0830bd1b6cdf00f25cf147475407dae13bbc5a3b6f0e1774d54febe51cd11600",
+      "archived_sha256": "0830bd1b6cdf00f25cf147475407dae13bbc5a3b6f0e1774d54febe51cd11600"
+    },
+    "linux-multilingual-latency.json": {
+      "raw_sha256": "8809bbefb2c99446c4cec093246e74450dd5755084ff863446df7642deae5288",
+      "archived_sha256": "3e55a2bb331c206da68a000c261c3c6917c06463737afc5b0dc6a03f605aa42a"
+    },
+    "linux-multilingual-long-options.json": {
+      "raw_sha256": "f744ecdf063d902bf03b69ba315341f38b72267edc2a214a9e102f280a3c3d8c",
+      "archived_sha256": "40a80a681aded383a1982308b31e4f368a56c152f17cb6d2b0951798444cc6d7"
+    },
+    "linux-multilingual-memory-baseline.json": {
+      "raw_sha256": "6898beb01159b685683be4b263dc376d39755693ada14277bfaa60f3c237791c",
+      "archived_sha256": "6898beb01159b685683be4b263dc376d39755693ada14277bfaa60f3c237791c"
+    },
+    "linux-multilingual-memory-selected.json": {
+      "raw_sha256": "6051dbdef15c22f2ef4357ec1bbf10819e7497e40ab2575055cf8af895c590a0",
+      "archived_sha256": "6051dbdef15c22f2ef4357ec1bbf10819e7497e40ab2575055cf8af895c590a0"
+    },
+    "linux-typed-decisions-latency.json": {
+      "raw_sha256": "74d31de18aca43e5dee01b7783b25a5dc525485044250565b123a6db3f6c38dc",
+      "archived_sha256": "d0d7ef796b77ad48b82d5692a0f089e86c1389bd3627593508a9ddd82513c6e4"
+    },
+    "linux-typed-decisions-long-options.json": {
+      "raw_sha256": "52f3f468ce25d268cf919eba9c2b08f2480b3cf76413386144f7e0684799816a",
+      "archived_sha256": "6d47d2a1b36608e6fc89e3bc9a63029bfc1f367b3b9063dadbb76af4d756bd09"
+    },
+    "linux-typed-decisions-memory-baseline.json": {
+      "raw_sha256": "acd574ca8fe06488c9ddad1f491fba3dba45b6b5848649ddd951e065d23cb0d2",
+      "archived_sha256": "acd574ca8fe06488c9ddad1f491fba3dba45b6b5848649ddd951e065d23cb0d2"
+    },
+    "linux-typed-decisions-memory-selected.json": {
+      "raw_sha256": "4d16119b69a703076988b58ca68d2b596cf07793c20e0dc3e103b60aa7b17073",
+      "archived_sha256": "4d16119b69a703076988b58ca68d2b596cf07793c20e0dc3e103b60aa7b17073"
+    }
+  },
+  "rebased_upstream_commit": "3293116c89425c3d04b22aa4d9464fef82e2c858",
+  "rebased_source_commit": "ad44df6292fa7199d41f1496f6f12dab06bcc784",
+  "inference_and_harness_unchanged": true
+}

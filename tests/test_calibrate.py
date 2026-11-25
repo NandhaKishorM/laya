@@ -20,6 +20,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from laya.agent import Agent, load  # noqa: E402
+from laya.onnx_agent import ONNXAgent  # noqa: E402
 from laya.calibrate import (  # noqa: E402
     CALIBRATION_VERSION,
     ECE_HOLDOUT_FRAC,
@@ -27,8 +28,10 @@ from laya.calibrate import (  # noqa: E402
     MIN_BUCKET_N,
     MIN_TYPE_N,
     MIN_BINNING_BUCKET_N,
+    _clamp_entry,
     _ece_report,
     _ece_split,
+    _fit_unclamped_temperature,
     _iter_records,
     _pairs_by_width,
     _softmax,
@@ -41,7 +44,7 @@ from laya.calibrate import (  # noqa: E402
     fit_temperatures,
     records_from_labeled,
 )
-from laya.common import QTYPES, TEMP_MAX, TEMP_MIN, ece_score, temp_bucket  # noqa: E402
+from laya.common import QTYPES, TEMP_MAX, TEMP_MIN, clamp_temperature, ece_score, temp_bucket  # noqa: E402
 import laya.calibrate as _calibrate  # noqa: E402
 import laya.agent as _agent_module  # noqa: E402
 
@@ -295,6 +298,60 @@ check_true("weight/both fits are interior, not a bound",
 check_true("weight/doubling a width pulls the fit to that width",
            abs(t_heavy - t_wide) < abs(t_even - t_wide) and abs(t_heavy - t_even) > 0.2,
            "even=%r heavy=%r wide=%r" % (t_even, t_heavy, t_wide))
+
+
+# ------------------------------------------------- the clamp is reported, not only applied
+# A clamped fit and a fit whose optimum really is the bound are the same number, so the
+# number cannot say which happened. `temperature_clamped` carries the unclamped scale
+# beside it. The value to install is still the clamped one, so these checks also pin that
+# the report changes nothing about `temperature` or `temperature_by_options`.
+lo_recs = [(QTYPES["choice"], z, t, 2) for z, t in lo_pairs]
+hi_recs = [(QTYPES["choice"], z, t, 2) for z, t in hi_pairs]
+mid_recs = [(QTYPES["choice"], z, t, len(z)) for z, t in mid]
+lo_map, hi_map, mid_map = (fit_temperature_map(r) for r in (lo_recs, hi_recs, mid_recs))
+
+check_true("clamp-report/the key is always present",
+           all("temperature_clamped" in m for m in (lo_map, hi_map, mid_map, med, fitted)))
+check("clamp-report/an interior fit is not reported", mid_map["temperature_clamped"], {})
+check_true("clamp-report/interior fit really was interior",
+           TEMP_MIN < mid_map["temperature"][QTYPES["choice"]] < TEMP_MAX,
+           "T=%r" % mid_map["temperature"][QTYPES["choice"]])
+
+for _name, _m, _bound, _applied in (("low", lo_map, "min", TEMP_MIN), ("high", hi_map, "max", TEMP_MAX)):
+    _rep = _m["temperature_clamped"]
+    # Both the bucket and the type scalar are fit from the same rows here, so both are named,
+    # the bucket by its `temperature_by_options` key and the type by its question-type name.
+    check("clamp-report/%s names the bucket and the type" % _name,
+          sorted(_rep), ["choice", "choice:2"])
+    check("clamp-report/%s bound" % _name, sorted({e["bound"] for e in _rep.values()}), [_bound])
+    check("clamp-report/%s applied is the clamped value" % _name,
+          sorted({e["applied"] for e in _rep.values()}), [_applied])
+    check("clamp-report/%s applied is what the result installs" % _name,
+          _rep.get("choice:2", {}).get("applied"), _m["temperature_by_options"]["choice:2"])
+    check_true("clamp-report/%s fitted is outside the band" % _name,
+               all(not TEMP_MIN <= e["fitted"] <= TEMP_MAX for e in _rep.values()),
+               "%r" % _rep)
+    check_true("clamp-report/%s fitted is on the right side" % _name,
+               all((e["fitted"] < TEMP_MIN) is (_bound == "min") for e in _rep.values()),
+               "%r" % _rep)
+
+# The clamped value stays the public answer: the report is additive, not a new return path.
+check("clamp-report/fit_one_temperature is unchanged at the floor",
+      fit_one_temperature(lo_pairs), lo_map["temperature_by_options"]["choice:2"])
+check("clamp-report/fit_one_temperature is unchanged at the ceiling",
+      fit_one_temperature(hi_pairs), hi_map["temperature_by_options"]["choice:2"])
+check_true("clamp-report/the unclamped fit is the clamped one's source",
+           abs(clamp_temperature(_fit_unclamped_temperature(lo_pairs), TEMP_MIN, TEMP_MAX)
+               - fit_one_temperature(lo_pairs)) < 1e-12)
+# The underflow case is a NaN, which `clamp_temperature` reports as the neutral 1.0. That is a
+# different fact from a clamp and must not be dressed up as one.
+check("clamp-report/a NaN fit is not a clamp", _clamp_entry(float("nan"), 1.0), None)
+check("clamp-report/an infinite fit is not a clamp", _clamp_entry(float("inf"), TEMP_MAX), None)
+check("clamp-report/a fit on the bound itself is not a clamp", _clamp_entry(TEMP_MIN, TEMP_MIN), None)
+# The search bound lives with the search now; the prose in `fit_one_temperature` must not be
+# what satisfies this.
+check_true("clamp-report/the search bound is in the fitting function",
+           "LOG_T_MARGIN" in inspect.getsource(_fit_unclamped_temperature))
 
 
 # --------------------------------------------------------------- ECE on a held-out split, not the fit rows
@@ -718,6 +775,55 @@ check(
     {"choice:2": TEMP_MIN, "noul:2": 1.0},
 )
 
+# A JSON `true` is not a temperature either -- `clamp_temperature` refuses a bool -- but this
+# payload loaded in silence, because `float(True)` is exactly the neutral 1.0 the clamp installs
+# for it and the diagnostic only compared the two numbers. `false` was reported for the wrong
+# reason: it floats to 0.0, so it mismatched. Both now name the entry.
+bool_payload = {**bad_payload, "temperature": [True, 1.2, 1.1],
+                "temperature_by_options": {"choice:2": False}}
+bool_agent = Agent.__new__(Agent)
+bool_agent.model_id_or_path = "convaiinnovations/laya"
+bool_agent.subfolder = None
+bool_agent.cfg = {"encoder": "answerdotai/ModernBERT-large"}
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    apply_calibration_payload(bool_agent, bool_payload)
+check("bool-load/temperature", bool_agent.temperature, [1.0, 1.2, 1.1])
+check("bool-load/by_options", bool_agent.temperature_by_options, {"choice:2": 1.0})
+check_true(
+    "bool-load/warns for both entries",
+    any(issubclass(w.category, RuntimeWarning)
+        and "temperature[0]=True -> 1" in str(w.message)
+        and "choice:2=False -> 1" in str(w.message) for w in caught),
+    [str(w.message) for w in caught],
+)
+
+# The same guard has a third arm, and this is the one the file format makes reachable: JSON keeps
+# arbitrary precision, so a calibration file whose temperature is written out as hundreds of digits
+# loads as an `int` and `float()` answers it with `OverflowError`. `clamp_temperature` caught
+# TypeError and ValueError only, so the very payload this function's docstring promises "cannot
+# crash a later forward" crashed the load instead -- while `1e400`, the same number one character
+# away in the same file, parses as a float, arrives as `inf`, and has always clamped quietly.
+WIDE = 10 ** 400                      # 401 digits: inside the print limit, outside float range
+wide_payload = {**bad_payload, "temperature": [WIDE, 1.2, 1.1],
+                "temperature_by_options": {"choice:2": 2 ** 1024}}
+wide_agent = Agent.__new__(Agent)
+wide_agent.model_id_or_path = "convaiinnovations/laya"
+wide_agent.subfolder = None
+wide_agent.cfg = {"encoder": "answerdotai/ModernBERT-large"}
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    apply_calibration_payload(wide_agent, wide_payload)
+check("wide-int-load/temperature", wide_agent.temperature, [1.0, 1.2, 1.1])
+check("wide-int-load/by_options", wide_agent.temperature_by_options, {"choice:2": 1.0})
+check_true(
+    "wide-int-load/warns and names each value digit for digit",
+    any(issubclass(w.category, RuntimeWarning)
+        and "temperature[0]=%d -> 1" % WIDE in str(w.message)
+        and "choice:2=%d -> 1" % (2 ** 1024) in str(w.message) for w in caught),
+    [str(w.message) for w in caught],
+)
+
 
 # --------------------------------------------------------------- payload shape
 # The values above are tolerated and clamped; the *shape* is not negotiable, and the
@@ -752,6 +858,9 @@ _refuses("shape/binning Infinity", {"temperature": [1.0, 1.0, 1.0], "binning_map
 _refuses("shape/binning bool value", {"temperature": [1.0, 1.0, 1.0], "binning_map": {"a": {"bins": 1, "values": [True]}}}, "number")
 _refuses("shape/binning string value", {"temperature": [1.0, 1.0, 1.0], "binning_map": {"a": {"bins": 1, "values": ["0.5"]}}}, "number")
 _refuses("shape/binning null value", {"temperature": [1.0, 1.0, 1.0], "binning_map": {"a": {"bins": 1, "values": [None]}}}, "number")
+_refuses("shape/binning wide integer value", {"temperature": [1.0, 1.0, 1.0], "binning_map": {"a": {"bins": 1, "values": [10 ** 400]}}}, "number")
+_refuses("shape/binning negative wide integer value", {"temperature": [1.0, 1.0, 1.0], "binning_map": {"a": {"bins": 1, "values": [-(10 ** 400)]}}}, "number")
+_refuses("shape/binning smallest unconvertible int value", {"temperature": [1.0, 1.0, 1.0], "binning_map": {"a": {"bins": 1, "values": [2 ** 1024]}}}, "number")
 _refuses("shape/scalar temperature", {"temperature": 5}, "[3 floats]")
 _refuses("shape/string temperature", {"temperature": "abc"}, "[3 floats]")
 _refuses("shape/dict temperature", {"temperature": {"a": 1, "b": 2, "c": 3}}, "[3 floats]")
@@ -761,6 +870,29 @@ _refuses("shape/string version", {"temperature": [1.0] * 3, "version": "x"},
 _refuses("shape/bool version", {"temperature": [1.0] * 3, "version": True},
          "version must be an integer")
 _refuses("shape/object version", {"temperature": [1.0] * 3, "version": {"v": 2}},
+         "version must be an integer")
+# The identity a version-2 file records about the checkpoint its map was fitted for; the load
+# compares it against the object being loaded and warns on a mismatch.
+_FOREIGN_IDENTITY = {"model_id_or_path": "another/checkpoint", "subfolder": "another",
+                     "config": {"encoder": "another/encoder"}}
+# `version` is read with `int()`, which truncates, and the truncation is not cosmetic: `1.9`
+# became 1, which is below `CALIBRATION_VERSION`, and the arm of the load that a
+# below-`CALIBRATION_VERSION` file takes is the silent one ("version/below CALIBRATION_VERSION
+# loads into silence", below). So a version-2 file recording a *different* checkpoint used to
+# install its map without a word, instead of getting the "load/mismatch warns" treatment the same
+# contents get when the version is spelled as an integer. The string form of the same mistake
+# already refused, because `int("1.5")` raises -- `1.5` and `"1.5"` behaved oppositely.
+_refuses("shape/non-integral float version", {"temperature": [1.0] * 3, "version": 1.9},
+         "version must be an integer")
+_refuses("shape/non-integral float version above current", {"temperature": [1.0] * 3, "version": 2.5},
+         "version must be an integer")
+_refuses("shape/non-integral string version", {"temperature": [1.0] * 3, "version": "1.5"},
+         "version must be an integer")
+# The same file in the shape that did the damage: a non-integral version *and* a foreign
+# checkpoint. At base the truncation moved it into the silent arm further down, so the map
+# installed and nothing was said -- which is the whole reason the truncation matters.
+_refuses("version/non-integral float naming another checkpoint",
+         {"temperature": [1.0] * 3, "version": 1.9, **_FOREIGN_IDENTITY},
          "version must be an integer")
 _refuses("shape/scalar by_options",
          {"temperature": [1.0] * 3, "temperature_by_options": 5}, "temperature_by_options")
@@ -791,6 +923,31 @@ check("shape/null by_options installs an empty map", _null_key.temperature_by_op
 version_ok = type("Stub", (), {})()
 apply_calibration_payload(version_ok, {"temperature": [1.1, 1.2, 1.3], "version": "1"})
 check("shape/numeric string version still loads", version_ok.temperature, [1.1, 1.2, 1.3])
+
+# The arm a truncated version falls into. A file below `CALIBRATION_VERSION` predates the recorded
+# checkpoint, so it loads without the "load/mismatch warns" warning even when it names a different
+# model -- the back-compat contract, and exactly what `1.9` -> `1` abused. A stub with no identity
+# attributes still counts as a mismatch here (`getattr(obj, ..., None)` against the recorded
+# "another/checkpoint"), so the silence below is the skipped check, not matching identities.
+_below = type("Stub", (), {})()
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    apply_calibration_payload(_below, {
+        "temperature": [1.0] * 3, "version": CALIBRATION_VERSION - 1, **_FOREIGN_IDENTITY})
+check_true("version/below CALIBRATION_VERSION loads into silence",
+           not caught, [str(w.message) for w in caught])
+# The other half of the guard: a whole number written as a float *is* an integer, so it has to keep
+# loading and still earn the warning its foreign identity calls for. Without this arm, a fix that
+# refused every float would pass the suite.
+_integral = type("Stub", (), {})()
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    apply_calibration_payload(_integral, {
+        "temperature": [1.1, 1.2, 1.3], "version": float(CALIBRATION_VERSION), **_FOREIGN_IDENTITY})
+check("version/integral float still loads", _integral.temperature, [1.1, 1.2, 1.3])
+check_true("version/integral float keeps the identity warning",
+           any("fitted for model_id_or_path" in str(w.message) for w in caught),
+           [str(w.message) for w in caught])
 
 
 # --------------------------------------------------------------- the load contract, from the code
@@ -918,6 +1075,51 @@ check_true("init/stores subfolder", "self.subfolder = subfolder" in init_src)
 load_src = inspect.getsource(load)
 check_true("load/calibration kwarg", "calibration" in load_src)
 check_true("load/forwards calibration", "calibration=calibration" in load_src)
+
+onnx_init_src = inspect.getsource(ONNXAgent.__init__)
+check_true("onnx/init documents the calibration kwarg",
+           "calibration" in onnx_init_src.split("Args:")[1] if "Args:" in onnx_init_src else False)
+check_true("onnx/init reads calibration after checkpoint temperatures",
+           "self.load_calibration(calibration)" in onnx_init_src)
+check_true("onnx/load_calibration documents version/mismatch/clamp behaviour",
+           "version 1 and still loads" in inspect.getsource(ONNXAgent.load_calibration))
+check_true("onnx/load_calibration is the shared applier",
+           "apply_calibration_payload" in inspect.getsource(ONNXAgent.load_calibration))
+
+# The identity the mismatch check reads must actually be set here, exactly as the PyTorch `Agent`
+# sets it (`agent.py:385-386`). Without both lines every v2 payload compares against `None`, the
+# mismatch branch fires unconditionally on ONNX, and the docstring sentence above is false.
+check_true("onnx/init stores the identity the mismatch check reads",
+           "self.model_id_or_path = model_id_or_path" in onnx_init_src
+           and "self.subfolder = subfolder" in onnx_init_src)
+
+# The behavioural half of that claim, with no weights needed: a stub carrying the same identity
+# `ONNXAgent.__init__` installs. A v2 payload recorded for this very checkpoint loads in silence;
+# one recorded for a different checkpoint warns and still applies. This is the reachability the
+# docstring asserts and the check the four string matches above could not prove.
+onnx_like = type("OnnxLike", (), {})()
+onnx_like.model_id_or_path = "convaiinnovations/laya"
+onnx_like.subfolder = None
+onnx_like.cfg = {"encoder": "answerdotai/ModernBERT-large"}
+matched = calibration_payload(
+    [1.3, 1.2, 1.1], {"choice:2": 1.4},
+    model_id_or_path="convaiinnovations/laya", subfolder=None,
+    config={"encoder": "answerdotai/ModernBERT-large"})
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    apply_calibration_payload(onnx_like, matched)
+check_true("onnx/matching checkpoint loads without warning", not caught,
+           [str(w.message) for w in caught])
+check("onnx/matching load applies temperature", onnx_like.temperature, [1.3, 1.2, 1.1])
+
+crossed = dict(matched)
+crossed["model_id_or_path"] = "convaiinnovations/laya-multilingual"
+with warnings.catch_warnings(record=True) as caught2:
+    warnings.simplefilter("always")
+    apply_calibration_payload(onnx_like, crossed)
+check_true("onnx/different checkpoint warns", bool(caught2),
+           [str(w.message) for w in caught2])
+check("onnx/different checkpoint still applies", onnx_like.temperature, [1.3, 1.2, 1.1])
 
 rec_src = inspect.getsource(records_from_labeled)
 check_true("records/_encode_state", "_encode_state" in rec_src)
@@ -1101,6 +1303,133 @@ try:
     check_true("binning/bins must be >= 1", False, "no ValueError")
 except ValueError:
     check_true("binning/bins must be >= 1", True)
+
+# `bins` and `min_bucket_n` are counts, and this module already has a count rule -- `min_n` in
+# `fit_one_temperature`, `k` in `_validated_pair`, and the `"bins"` of every `binning_map` entry a
+# calibration payload carries. Only `bins < 1` was applied to these two, so everything below either
+# escaped the guard as a `TypeError` from `range()` / a numpy cast, or -- the arms that were
+# *accepted* -- came back as a map. Checked message and all, because "raised something" was exactly
+# what was wrong.
+for _name, _bad in [("bins", 0), ("bins", -3), ("bins", 2.5), ("bins", 10.0), ("bins", float("nan")),
+                    ("bins", float("inf")), ("bins", True), ("bins", False), ("bins", None),
+                    ("bins", "10"), ("min_bucket_n", 0), ("min_bucket_n", -3),
+                    ("min_bucket_n", 2.5), ("min_bucket_n", float("nan")), ("min_bucket_n", True),
+                    ("min_bucket_n", None)]:
+    try:
+        fit_binning_map(mixed, fitted["temperature"], fitted["temperature_by_options"],
+                        **{_name: _bad})
+        _res = "no ValueError"
+    except ValueError as _exc:
+        _res = str(_exc)
+    except Exception as _exc:
+        _res = "raised %s" % type(_exc).__name__
+    check("binning/%s refuses %r" % (_name, _bad), _res,
+          "%s must be a positive integer, got %r" % (_name, _bad))
+
+# The two arms the old guard let through, and what they cost. `numpy.int64` is an `Integral`, so it
+# passed `bins < 1`, fitted happily, and put a numpy scalar in `"bins"` that `save_calibration`'s
+# `json.dump` refuses to serialise. `True` is an `Integral` too: one bin, and a map
+# `apply_calibration_payload` rejects on its boolean arm -- a producer whose own file format cannot
+# read what it emits.
+_np_map = fit_binning_map(mixed, fitted["temperature"], fitted["temperature_by_options"],
+                          bins=np.int64(12))
+check("binning/numpy bins arrives as a Python int",
+      type(next(iter(_np_map.values()))["bins"]).__name__, "int")
+check("binning/numpy bins keeps every requested bin",
+      len(next(iter(_np_map.values()))["values"]), 12)
+_np_payload = calibration_payload(fitted["temperature"], fitted["temperature_by_options"],
+                                  binning_map=_np_map)
+try:
+    _np_round = json.loads(json.dumps(_np_payload))
+except TypeError as _exc:
+    _np_round = "json %s" % _exc
+check_true("binning/numpy bins payload writes as JSON", isinstance(_np_round, dict), _np_round)
+if isinstance(_np_round, dict):
+    # Only a payload that made it to JSON can be read back, so a regression here fails the check
+    # above by name instead of aborting the suite on the loader's own type error.
+    _np_stub = type("Stub", (), {})()
+    apply_calibration_payload(_np_stub, _np_round)
+    check("binning/numpy bins reloads as the map that was fitted", _np_stub.binning_map, _np_map)
+
+# A floor given as a numpy integer is still a floor: the guard is this module's `Integral` rule, not
+# a narrower one, so a `min_bucket_n` that came out of an array expression keeps working.
+check("binning/numpy floor reads as the int floor",
+      fit_binning_map(mixed, fitted["temperature"], fitted["temperature_by_options"],
+                      bins=12, min_bucket_n=np.int64(MIN_BINNING_BUCKET_N)),
+      fit_binning_map(mixed, fitted["temperature"], fitted["temperature_by_options"],
+                      bins=12, min_bucket_n=MIN_BINNING_BUCKET_N))
+
+
+# --------------------------------------------------------------- the seed is this module's count
+
+# `seed` was the one numeric parameter of `fit_temperature_map` handed straight to
+# `numpy.random.RandomState`, so on the `compute_ece=True` path a `10.0` came back as numpy's
+# `TypeError: Cannot cast scalar from dtype('float64') to dtype('int64') according to the rule
+# 'safe'` -- which names only dtypes -- and a `-1` as numpy's `ValueError: Seed must be between 0
+# and 2**32 - 1`, neither of them this module's own contract. On the `compute_ece=False` path every
+# one of them was ignored in silence, because that path never builds a RandomState. `True`/`False`
+# were accepted on both paths and numpy used them as 1/0 (measured: base's `seed=True` report is
+# byte-identical to its `seed=1` report), so a flag-shaped value picked a data split. Message and
+# both paths are checked, because "raised the wrong thing" and "raised nothing" were each half of
+# what was wrong.
+# `1e999` is a source literal that overflows to `inf`, so it and `float("inf")` are the same value
+# and their arm labels print alike -- both spellings stay, because the reachable mistake is the
+# literal one.
+_SEED_REFUSED = (10.0, 2.5, float("nan"), float("inf"), 1e999, "7", "0", True, False, -1, 2 ** 32,
+                 -2 ** 32, [7], (7,), 7 + 0j)
+for _ece in (True, False):
+    for _bad in _SEED_REFUSED:
+        try:
+            fit_temperature_map(mixed, compute_ece=_ece, seed=_bad)
+            _res = "no ValueError"
+        except ValueError as _exc:
+            _res = str(_exc)
+        except Exception as _exc:
+            _res = "raised %s" % type(_exc).__name__
+        check("seed/%s refused on the compute_ece=%s path" % (repr(_bad), _ece), _res,
+              "seed must be None or an integer in [0, 2**32-1], got %r" % (_bad,))
+
+# What a real seed still buys, unchanged: a numpy integer is an `Integral`, so a seed that came out
+# of an array expression keeps working and splits identically to the Python int it equals; the whole
+# range numpy itself accepts is reachable; and `None` stays numpy's entropy seed rather than being
+# refused for a capability nobody asked to remove. (`ece/off ignores seed` above already pins that a
+# valid seed changes nothing on the `compute_ece=False` path, so nothing here restates it.)
+# Each of these goes through `_seed_fit`, which turns a refusal into a value: an acceptance arm that
+# raised would then be a `FAIL` line naming itself, not a traceback that aborts the remaining suite.
+def _seed_fit(seed):
+    try:
+        return fit_temperature_map(mixed, compute_ece=True, seed=seed)["report"]
+    except Exception as _exc:
+        return "raised %s: %s" % (type(_exc).__name__, _exc)
+
+
+check("seed/numpy int splits like the Python int", _seed_fit(np.int64(7)), _seed_fit(7))
+check_true("seed/top of numpy's range is accepted", isinstance(_seed_fit(2 ** 32 - 1), dict),
+           "%r" % (_seed_fit(2 ** 32 - 1),))
+check_true("seed/None is still the entropy seed", isinstance(_seed_fit(None), dict),
+           "%r" % (_seed_fit(None),))
+# A seed that is a seed still changes the split *through the public fitter* -- `split/seed changes
+# holdout` above pins the private `_ece_split`, and `ece/fit deterministic` pins the same-seed half.
+# The `np.isfinite` terms are part of the assertion on purpose: `nan != nan` is True, so a bare
+# inequality would pass on a report whose ECE was never scored.
+_r7, _r11 = _seed_fit(7), _seed_fit(11)
+check_true("seed/public fitter still splits by the seed",
+           isinstance(_r7, dict) and isinstance(_r11, dict)
+           and _r7["ece_after"] != _r11["ece_after"]
+           and bool(np.isfinite(_r7["ece_after"])) and bool(np.isfinite(_r11["ece_after"])),
+           "seed=7 %r, seed=11 %r" % (_r7, _r11))
+# The forwarding path is `Agent.fit_temperatures`, which passes `seed` through untouched; a refusal
+# there must be this refusal, not a new one.
+_stub = type("Stub", (), {})()
+try:
+    Agent.fit_temperatures(_stub, mixed, compute_ece=True, seed=10.0)
+    _res = "no ValueError"
+except ValueError as _exc:
+    _res = str(_exc)
+except Exception as _exc:
+    _res = "raised %s" % type(_exc).__name__
+check("seed/agent forwards the refusal", _res,
+      "seed must be None or an integer in [0, 2**32-1], got 10.0")
 
 
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))

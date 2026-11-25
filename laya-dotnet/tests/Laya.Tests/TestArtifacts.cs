@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Laya.Tests;
 
 /// <summary>
@@ -169,6 +171,41 @@ public static class TestArtifacts
         }
     }
 
+    /// <summary>
+    /// The trait that places a layout-specific test in a CI cell: <c>Layout=split-only</c> runs
+    /// against the split export only, <c>Layout=any</c> is parameterised by layout (its rows are
+    /// narrowed by <see cref="ParitySplitFlags"/>), and an untagged test is fused or layout
+    /// independent. A split cell runs <c>split-only</c> and <c>any</c>; a fused cell runs everything
+    /// except <c>split-only</c>. Filtering by trait (rather than skipping at run time) means a
+    /// deselected layout produces no skipped test.
+    /// </summary>
+    public const string LayoutTrait = "Layout";
+
+    /// <summary>Value of <see cref="LayoutTrait"/> for a test that only exercises the split layout.</summary>
+    public const string SplitOnly = "split-only";
+
+    /// <summary>Value of <see cref="LayoutTrait"/> for a theory with a fused and a split row per case.</summary>
+    public const string AnyLayout = "any";
+
+    /// <summary>
+    /// The <c>split</c> flag values a layout-parameterised theory yields (<c>false</c> is the fused
+    /// layout, <c>true</c> the split one). <c>LAYA_TEST_LAYOUTS</c> is a space-separated list of
+    /// <c>fused</c> and <c>split</c>; unset selects both, so ordinary local runs are unchanged.
+    /// </summary>
+    public static IEnumerable<bool> ParitySplitFlags
+    {
+        get
+        {
+            var selected = Environment.GetEnvironmentVariable("LAYA_TEST_LAYOUTS");
+            if (string.IsNullOrWhiteSpace(selected))
+                return [false, true];
+            var names = selected.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (names.Any(name => name != "fused" && name != "split"))
+                throw new ArgumentException($"unknown LAYA_TEST_LAYOUTS: {selected}");
+            return new[] { false, true }.Where(split => names.Contains(split ? "split" : "fused"));
+        }
+    }
+
     // One CheckpointTestArtifacts per enum value; indexed by the enum's integer value.
     private static readonly CheckpointTestArtifacts[] ByCheckpoint =
         Enum.GetValues<LayaCheckpoint>().Select(c => new CheckpointTestArtifacts(c)).ToArray();
@@ -214,19 +251,46 @@ public sealed class AllEnginesFixture : IDisposable
     // class that wants both layouts does not need two [Collection] attributes.
     private readonly Lazy<LayaEngine>[] _splitEngines;
 
+    // The same two layouts loaded with the calibration file the `calibration_*` golden cases were recorded with.
+    // A file replaces the checkpoint's temperatures for every question, so those cases cannot share the engines above.
+    private readonly Lazy<LayaEngine>[] _calibratedEngines;
+    private readonly Lazy<LayaEngine>[] _calibratedSplitEngines;
+
     /// <summary>Create the fixture. Engines are not loaded until first use.</summary>
     public AllEnginesFixture()
     {
         var values = Enum.GetValues<LayaCheckpoint>();
         _engines = new Lazy<LayaEngine>[values.Length];
         _splitEngines = new Lazy<LayaEngine>[values.Length];
+        _calibratedEngines = new Lazy<LayaEngine>[values.Length];
+        _calibratedSplitEngines = new Lazy<LayaEngine>[values.Length];
         for (var i = 0; i < values.Length; i++)
         {
             var checkpoint = values[i]; // captured correctly: new variable each iteration
-            _engines[(int)checkpoint] = new Lazy<LayaEngine>(
-                () => LayaEngine.FromDirectory(TestArtifacts.For(checkpoint).Directory));
-            _splitEngines[(int)checkpoint] = new Lazy<LayaEngine>(
-                () => LayaEngine.FromDirectory(TestArtifacts.For(checkpoint).SplitDirectoryOrNull!));
+            // The recorded language cases name a table of per-language temperatures; an engine that has it answers
+            // every other case as one without (a language is only looked up when a call names one).
+            _engines[(int)checkpoint] = new Lazy<LayaEngine>(() => LayaEngine.Create(new LayaOptions
+            {
+                ModelDirectory = TestArtifacts.For(checkpoint).Directory,
+                LangTemperatures = GoldenData.For(checkpoint).LangTemperatures,
+            }));
+            _splitEngines[(int)checkpoint] = new Lazy<LayaEngine>(() => LayaEngine.Create(new LayaOptions
+            {
+                ModelDirectory = TestArtifacts.For(checkpoint).SplitDirectoryOrNull!,
+                LangTemperatures = GoldenData.For(checkpoint).LangTemperatures,
+            }));
+            _calibratedEngines[(int)checkpoint] = new Lazy<LayaEngine>(() => LayaEngine.Create(new LayaOptions
+            {
+                ModelDirectory = TestArtifacts.For(checkpoint).Directory,
+                LangTemperatures = GoldenData.For(checkpoint).LangTemperatures,
+                Calibration = CalibrationFixture.Path,
+            }));
+            _calibratedSplitEngines[(int)checkpoint] = new Lazy<LayaEngine>(() => LayaEngine.Create(new LayaOptions
+            {
+                ModelDirectory = TestArtifacts.For(checkpoint).SplitDirectoryOrNull!,
+                LangTemperatures = GoldenData.For(checkpoint).LangTemperatures,
+                Calibration = CalibrationFixture.Path,
+            }));
         }
     }
 
@@ -261,9 +325,30 @@ public sealed class AllEnginesFixture : IDisposable
         return _splitEngines[(int)checkpoint].Value;
     }
 
+    /// <summary>
+    /// The engine a recorded case was answered by: the one loaded with the calibration file when the case was recorded with it (after
+    /// checking that the file is still the one recorded), else the shared engine of the layout.
+    /// </summary>
+    internal LayaEngine RequireFor(LayaCheckpoint checkpoint, JsonElement root, bool split = false)
+    {
+        if (!CalibrationFixture.Recorded(root)) return split ? RequireSplit(checkpoint) : Require(checkpoint);
+        CalibrationFixture.AssertIsTheRecordedFile(root);
+        if (split)
+        {
+            RequireSplit(checkpoint);
+            return _calibratedSplitEngines[(int)checkpoint].Value;
+        }
+        Require(checkpoint);
+        return _calibratedEngines[(int)checkpoint].Value;
+    }
+
     /// <inheritdoc/>
     public void Dispose()
     {
+        foreach (var lazy in _calibratedEngines)
+            if (lazy.IsValueCreated) lazy.Value.Dispose();
+        foreach (var lazy in _calibratedSplitEngines)
+            if (lazy.IsValueCreated) lazy.Value.Dispose();
         foreach (var lazy in _engines)
             if (lazy.IsValueCreated) lazy.Value.Dispose();
         foreach (var lazy in _splitEngines)

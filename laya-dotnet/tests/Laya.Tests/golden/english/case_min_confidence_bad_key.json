@@ -1,0 +1,45 @@
+{
+  "name": "min_confidence_bad_key",
+  "state": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+  "questions": {
+    "department": {
+      "type": "choice",
+      "instructions": "Which department should handle this?",
+      "criteria": {
+        "billing": "invoices, payments, double charges, refunds",
+        "technical": "bugs, outages, integration errors",
+        "account": "logins, seats, plan changes"
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today",
+        "drop everything"
+      ]
+    },
+    "churn_risk": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    },
+    "needs_human": {
+      "type": "noul",
+      "instructions": "This requires a human agent rather than an automated reply.",
+      "criteria": {
+        "false": "a template reply resolves it",
+        "true": "a person must intervene"
+      }
+    }
+  },
+  "error_type": "ValueError",
+  "error_message": "min_confidence map keys must be a bucket like 'choice:3-5' or 'default', got 'choice:3'",
+  "options": {
+    "min_confidence": {
+      "default": 0.5,
+      "choice:3": 0.5
+    }
+  }
+}

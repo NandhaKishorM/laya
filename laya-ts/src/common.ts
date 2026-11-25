@@ -1,14 +1,26 @@
 import type { TokenizerLike } from "./tokenizer.js";
 export type QType = "choice" | "score" | "noul";
-export interface InternalQ { t: QType; ins: string; crit: unknown; labels?: { false: string; true: string } }
+export interface InternalQ {
+  t: QType;
+  ins: string;
+  crit: unknown;
+  labels?: { false: string; true: string };
+  /** The caller's option indices in the order the head should see them: slot `s` shows option
+  `optionOrder[s]`. Set by `toInternal` from a question's `option_order`. */
+  optionOrder?: number[];
+}
 /** Python `json.dumps` for a finite number. JavaScript prints the same shortest round-trip
-digits, but Python switches to exponent notation below 1e-4 (JavaScript: below 1e-6) and pads the
-exponent to two digits (`5e-05`, not `5e-5`). An integer-valued number prints as before, which
-matches a Python int below 1e21: JavaScript cannot tell Python's `49.0` from `49`. */
+digits, but CPython's `repr` switches to exponent notation when the decimal exponent is below -4
+OR at or above 16 -- JavaScript's `String(v)` switches below 1e-6 and at 1e21 -- and pads a single
+digit exponent to two (`5e-05`, not `5e-5`, and `1e+16`, never `1e16`). An integer-valued number
+prints as before, which matches a Python int below 1e21: JavaScript cannot tell Python's `49.0`
+from `49`. The upper bound is not cosmetic: `1e16` is `10000000000000000` in JavaScript and
+`1e+16` in Python, and that text is what the tokenizer sees. */
 function pyNumber(v: number): string {
   const [mant, exp] = v.toExponential().split("e");
   const e = Number(exp);
-  return e >= -4 ? String(v) : `${mant}e-${String(-e).padStart(2, "0")}`;
+  if (e >= -4 && e < 16) return String(v);
+  return `${mant}e${e < 0 ? "-" : "+"}${String(Math.abs(e)).padStart(2, "0")}`;
 }
 /** Python `json.dumps(v, ensure_ascii=False)` replica: separators (", ", ": "),
 unicode raw, unknown types fall back to undefined (caller applies str()). */
@@ -197,6 +209,20 @@ export function buildSequence(tok: TokenizerLike, state: unknown, q: InternalQ,
   const stAll = tok.encode(serializeState(state).split(tok.maskToken).join(" "));
   return sequenceWithState(buildQuestionPrefix(tok, q, maxLen, headMaxLen, optionOrder), stAll, tok.sepId, maxLen, truncateLeft);
 }
+/** Put a slot-ordered probability row back into the caller's option order.
+ *
+ * `buildQuestionPrefix` puts option `order[s]` in slot `s`, so a head row comes back indexed by
+ * slot, while everything downstream indexes by option -- `keys[best]` for a choice, `i * p[i]` for a
+ * score level, `p[1]` for noul-true. Without the inverse the probabilities stay attached to the
+ * wrong options, which is silent. Mirrors `laya.common.unpermute_probs` (`laya/common.py:557`): a
+ * missing order, or one whose length is not the row's, returns the row untouched, so the canonical
+ * path is unaffected. */
+export function unpermuteProbs(p: number[], order?: number[] | null): number[] {
+  if (!order || order.length !== p.length) return p;
+  const canonical = new Array<number>(p.length);
+  for (let s = 0; s < order.length; s++) canonical[order[s]] = p[s];
+  return canonical;
+}
 export function softmax(z: number[]): number[] {
   const m = Math.max(...z);
   const e = z.map((v) => Math.exp(v - m));
@@ -218,7 +244,14 @@ export function answerConfidence(p: number[]): number {
   return Math.min(1, Math.max(0, Math.max(...p)));
 }
 
-function pyRepr(v: unknown): string {
+/**
+ * The value as CPython's `repr` renders it, for a refusal that has to name what was passed.
+ *
+ * Exported because `hooks.ts` needs it for the `hooks_timeout` refusals, whose messages are
+ * compared against `laya/hooks.py::validate_timeout` character for character, and so a refusal
+ * raised here can name a container the way the reference names one.
+ */
+export function pyRepr(v: unknown): string {
   if (typeof v === "boolean") return v ? "True" : "False";
   if (v === null || v === undefined) return "None";
   if (typeof v === "number") {
@@ -227,7 +260,7 @@ function pyRepr(v: unknown): string {
     if (v === -Infinity) return "-inf";
     return String(v);
   }
-  if (typeof v === "string") return JSON.stringify(v);
+  if (typeof v === "string") return pyStrRepr(v);
   if (Array.isArray(v)) return `[${v.map(pyRepr).join(", ")}]`;
   if (typeof v === "object") {
     const entries = Object.entries(v as Record<string, unknown>).map(
@@ -236,6 +269,27 @@ function pyRepr(v: unknown): string {
     return `{${entries.join(", ")}}`;
   }
   return String(v);
+}
+
+/**
+ * CPython's `repr` of a str: `'quoted'`, unless the text holds a `'` and no `"`, where it flips to
+ * double quotes to avoid escaping. `JSON.stringify` always double-quotes, so a container rendered
+ * through it -- `['a']`, `{'a': 1}` -- shows the wrong quotes for its strings, and a refusal
+ * naming the value stops being comparable to the oracle's. See `laya-java/fixtures/
+ * confidence_gate.json`, which records the reference's `got '0.5'` for a string value.
+ */
+function pyStrRepr(s: string): string {
+  const quote = s.includes("'") && !s.includes('"') ? '"' : "'";
+  let out = "";
+  for (const ch of s) {
+    if (ch === quote || ch === "\\") out += `\\${ch}`;
+    else if (ch === "\n") out += "\\n";
+    else if (ch === "\r") out += "\\r";
+    else if (ch === "\t") out += "\\t";
+    else if (ch < " " || ch === "\x7f") out += `\\x${ch.charCodeAt(0).toString(16).padStart(2, "0")}`;
+    else out += ch;
+  }
+  return `${quote}${out}${quote}`;
 }
 
 /** The option types and option-count sizes `optionBucket`/`tempBucket` can produce. The bucket
@@ -297,6 +351,93 @@ export function checkMinConfidence(v: unknown): MinConfidence {
     throw new Error(`min_confidence must be a float in [0.0, 1.0], got ${pyRepr(v)}`);
   }
   return v;
+}
+
+const DECIMAL_DIGIT = /\p{Nd}/u;
+
+/**
+ * The digit value of a Unicode decimal digit.
+ *
+ * `\p{Nd}` runs are contiguous sequences of ten, so a run's first code point is its zero: ASCII
+ * takes the direct path and any other script walks back at most nine places. That is the same
+ * fact CPython reads out of its `Py_UNICODE_TODECIMAL` table, which is why `int('٢')` is 2.
+ */
+function decimalValue(ch: string): number {
+  const code = ch.codePointAt(0)!;
+  if (code >= 0x30 && code <= 0x39) return code - 0x30;
+  let zero = code;
+  while (zero > 0 && code - zero < 9 && DECIMAL_DIGIT.test(String.fromCodePoint(zero - 1))) zero--;
+  return code - zero;
+}
+
+/**
+ * CPython's `int()` applied to a string, or null where `int()` raises.
+ *
+ * Only decimal digits and single underscores between them are read: `' 2 '` is 2, `'1_0'` is 10
+ * and `'٢'` is 2, because `int()` reads any Unicode decimal digit. `'2.5'`, `'1e3'` and `'0x10'`
+ * are null: `int()` parses base 10 integers only, so a text that `Number()` would happily read is
+ * a refusal here.
+ */
+function intFromText(text: string): number | null {
+  const body = text.trim();
+  const negative = body.startsWith("-");
+  const digits = negative || body.startsWith("+") ? body.slice(1) : body;
+  const chars = [...digits];
+  if (chars.length === 0) return null;
+  let value = 0;
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (ch === "_") {
+      if (i === 0 || i === chars.length - 1 || chars[i - 1] === "_") return null;
+      continue;
+    }
+    if (!DECIMAL_DIGIT.test(ch)) return null;
+    value = value * 10 + decimalValue(ch);
+  }
+  return negative ? -value : value;
+}
+
+/** Every refusal `checkMaxLoaded` makes names the value the way CPython's `repr` would. */
+function refuseMaxLoaded(v: unknown): never {
+  throw new Error(`max_loaded must be a count of checkpoints to keep resident, got ${pyRepr(v)}`);
+}
+
+/**
+ * Validate a Router residency cap the way `int()` does, so a cap the runtime cannot read is
+ * refused instead of silently turned off.
+ *
+ * `laya/router.py`'s `Router.__init__` is `max(1, int(max_loaded))`, and `int()` either yields an
+ * integer or raises -- the reference can never hold a cap it cannot compare against. `Number()`
+ * instead gives NaN for `'abc'`, `{}` or NaN, and `Math.max(1, NaN)` is NaN, so `Router._evict`'s
+ * `while (this._order.length > this.maxLoaded)` never fires and every checkpoint loaded stays
+ * resident for the life of the process: the one failure `maxLoaded` exists to prevent.
+ * `tests/router.test.ts` replays the oracle's table, measured by constructing
+ * `laya.router.Router` with each value:
+ *
+ *   refuses `'abc'` `'2.5'` `'1e3'` `'0x10'` `''` `'  '` NaN Infinity -Infinity `{}` `[]` `[3]`
+ *   reads   `'2'` and `' 2 '` as 2, `'1_0'` as 10, `'٢'` as 2, `2.7` as 2, and `-3`/`0`/`True` as 1
+ *
+ * A boolean is read rather than refused, unlike `hooks_timeout`: `int()` has no bool guard, so
+ * `max_loaded=True` is a cap of one in the reference. `null` and `undefined` never reach here --
+ * the constructor applies its `?? 2` default first, the port's convention for an unset option.
+ */
+export function checkMaxLoaded(v: unknown): number {
+  let count: number;
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) refuseMaxLoaded(v);
+    count = Math.trunc(v);
+  } else if (typeof v === "bigint") {
+    count = Math.trunc(Number(v));
+  } else if (typeof v === "boolean") {
+    count = v ? 1 : 0;
+  } else if (typeof v === "string") {
+    const read = intFromText(v);
+    if (read === null) refuseMaxLoaded(v);
+    count = read;
+  } else {
+    refuseMaxLoaded(v);
+  }
+  return Math.max(1, count);
 }
 
 export function optionBucket(answer: Record<string, unknown>): string | null {
@@ -396,9 +537,34 @@ export function flagLowConfidence(
   }
 }
 export const TEMP_MIN = 0.5, TEMP_MAX = 5.0;
+/**
+ * A usable temperature: `t` confined to [`TEMP_MIN`, `TEMP_MAX`], falling back to the neutral 1.0
+ * when it is not a number. Parity with py `common.clamp_temperature`, which asks that question with
+ * `float()`.
+ *
+ * `Number()` asks it more loosely, so a value that is not a number at all reaches the clamp as one.
+ * Measured as `clamp_temperature(t)` / `clampTemperature(t)` over the values a checkpoint config can
+ * hold:
+ *
+ *     t        py     ts (before)
+ *     " "      1.0    0.5     Number(" ") is 0, float(" ") raises
+ *     []       1.0    0.5     Number([]) is 0
+ *     [2]      1.0    2.0     Number([2]) is 2
+ *     ["2"]    1.0    2.0     Number(["2"]) is 2
+ *
+ * The nested lists are the worse half: 2.0 is inside the range, so the loader's own diagnostic
+ * compared it, found it equal, and said nothing about the value the reference refuses outright.
+ * Whichever number landed then scales the logits every published confidence comes from. Take an
+ * answer the neutral 1.0 puts at 0.60: the port's old 0.5 reads it as 0.69 among two options and
+ * 0.92 among six, and its old 2.0 reads the same answer as 0.55 and 0.35. So one malformed field
+ * made a coin flip look certain or a real preference look like noise, depending on which way
+ * `Number()` happened to coerce it. Only a number, or a string that holds one, reaches the clamp.
+ */
 export function clampTemperature(t: unknown): number {
-  if (t === null || t === undefined || t === "" || typeof t === "boolean") return 1.0;
-  const f = typeof t === "number" ? t : Number(t);
+  let f: number;
+  if (typeof t === "number" || typeof t === "bigint") f = Number(t);
+  else if (typeof t === "string" && t.trim() !== "") f = Number(t);
+  else return 1.0;
   if (!Number.isFinite(f)) return 1.0;
   return Math.min(TEMP_MAX, Math.max(TEMP_MIN, f));
 }

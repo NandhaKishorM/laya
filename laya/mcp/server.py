@@ -7,7 +7,19 @@ wired to any MCP client (OpenClaw, Claude Desktop, cursor, ...):
     python -m laya.mcp.server
 
 Environment (same meaning as laya.serve where it exists):
-  LAYA_DEVICE   torch device for the checkpoints (value goes straight to torch)
+  LAYA_DEVICE   the device the checkpoints are asked to build on. Not the value verbatim:
+                laya.mcp.device.env_device strips and lower-cases it (`CUDA:0` -> `cuda:0`)
+                and refuses with a ValueError naming this variable a string torch cannot parse
+                (`gpu`, `cuda:`, `cuda: 0`) or parses into some other device (`cuda:258` asks for
+                GPU 2), so the failure reads as a bad environment value
+                rather than a torch internal one -- here as a `router construction failed` tool
+                error, because a stdio server has no startup to refuse. A preference, not a
+                guarantee: as in laya.serve an unavailable GPU falls back to CPU silently, and
+                laya_status then answers the loaded agent's real device (before any load it
+                answers this preference, flagged with `device_is_preference`). It answers one
+                device, though: with two checkpoints resident on different devices the top-level
+                `device` is the first entry of `loaded` (the least recently used), so
+                `checkpoint_devices` is the field that says where each one actually runs.
   LAYA_PRELOAD  "0" to build the checkpoints lazily instead of at startup (default on)
   LAYA_MODELS   comma list to preload; MCP default is "english,multilingual" so
                 typed-decisions stays lazy (in laya.serve an empty value preloads all)
@@ -20,6 +32,7 @@ Environment (same meaning as laya.serve where it exists):
                   it to Router, an unresolvable one is a tool error.
   LAYA_BASE_URL  answer from a running laya-serve over HTTP; unset keeps models local
   LAYA_REMOTE_TIMEOUT  HTTP timeout in seconds for remote mode (default 300)
+  LAYA_USER_AGENT  remote HTTP client identity (default laya/<version>)
 """
 
 from __future__ import annotations
@@ -34,6 +47,7 @@ from typing import Any
 try:
     from mcp.server.mcpserver import MCPServer
     from mcp.server.mcpserver.exceptions import ToolError as McpToolError
+    from pydantic import StrictBool
 except ImportError as exc:  # mcp extra not installed
     raise ImportError(
         "the laya[mcp] extra (mcp>=2.2.0) is required to run the MCP server: "
@@ -52,11 +66,13 @@ from .tools import (
     get_available_presets,
     laya_predict,
     laya_predict_batch,
+    laya_predict_long,
     laya_preset,
     laya_route,
     laya_route_batch,
     laya_shortlist,
     laya_status,
+    laya_tournament,
 )
 
 try:
@@ -83,7 +99,7 @@ _GUARDRAILS = (
     "noul (calibrated P(true)). One forward pass ~33ms (GPU) / ~200ms (CPU). "
     "No text generation, so no hallucination. Do NOT use for open Q&A, summarization, "
     "rewriting, code, or multi-hop reasoning. Do NOT use for >20-option choice "
-    "questions without shortlisting (use the laya_shortlist tool)."
+    "questions without narrowing (use laya_shortlist or laya_tournament)."
 )
 
 # The `model` argument's contract, spelled out for clients because the tools take a free string.
@@ -249,7 +265,8 @@ def laya_status_tool() -> str:
         "Use this to explain routing (english vs multilingual vs typed-decisions) to the user. "
         "Passing a laya_predict call's model/task/lang/lang_guess here reproduces the routing block it "
         "reported, without paying for the forward pass; leaving model unset (or 'auto') routes as "
-        "normal. "
+        "normal. explain=true adds the final routing decision's language diagnostic, or null; "
+        "it describes this MCP process's routing even in remote mode. "
         + _GUARDRAILS
         + _CONTROLS_DOC
     ),
@@ -261,6 +278,7 @@ def laya_route_tool(
     task: str | None = None,
     lang: str | None = None,
     lang_guess: str | None = None,
+    explain: StrictBool = False,
 ) -> str:
     """Decide which Laya checkpoint would answer, without running a forward pass."""
     router = _router_or_error()
@@ -272,6 +290,7 @@ def laya_route_tool(
         task=task,
         lang=lang,
         lang_guess=lang_guess,
+        explain=explain,
         router=router,
     )
 
@@ -351,10 +370,15 @@ def laya_predict_batch_tool(requests: list, batch_size: int = 0, hooks_timeout: 
     # for had been dropped.
     if not isinstance(hooks_timeout, bool) and hooks_timeout == 0:
         hooks_timeout = None
+    # `batch_size` gets the same boolean-aware collapse for the same reason: `False == 0`, so a plain
+    # `or None` fold turned a caller's explicit `batch_size=false` into "no cap" and hid the
+    # `_validate_batch_size` refusal that a `batch_size=true` already reaches.
+    if not isinstance(batch_size, bool) and batch_size == 0:
+        batch_size = None
     return _wrap(
         laya_predict_batch,
         requests=requests,
-        batch_size=batch_size or None,
+        batch_size=batch_size,
         hooks_timeout=hooks_timeout,
         min_confidence=min_confidence,
         sort_by_length=sort_by_length,
@@ -370,22 +394,29 @@ def laya_predict_batch_tool(requests: list, batch_size: int = 0, hooks_timeout: 
         + batch_item_key_doc(omit=("max_len", "head_max_len")) + ". Use this to "
         "inspect or aggregate the routing of a workload before paying model-load cost. "
         "Returns one {model, repo, reason} decision per request in input order, plus "
-        "model_counts. hooks_timeout: positive number or unset -- override the "
+        "model_counts. explain=true adds each final decision's language diagnostic, or null; "
+        "defaults to false. In shared-server mode this is local routing evidence, not the HTTP "
+        "server's prediction. hooks_timeout: positive number or unset -- override the "
         "Router's own hook deadline for this sweep's on_route dispatch, so a slow "
         "or hung operator hook cannot stall a routing pass the caller only wants "
         "the checkpoint labels for. "
         + _GUARDRAILS
     ),
 )
-def laya_route_batch_tool(requests: list, hooks_timeout: float = 0) -> str:
+def laya_route_batch_tool(requests: list, hooks_timeout: float = 0, explain: StrictBool = False) -> str:
     """Route many requests to checkpoints without a forward pass."""
     router = _router_or_error()
     # hooks_timeout=0 means "unset": MCP clients send defaults eagerly, and
-    # None is what Router.route_batch takes as "use my own timeout".
+    # None is what Router.route_batch takes as "use my own timeout". Only a numeric 0 collapses:
+    # `False == 0`, and `laya_route_batch` refuses a boolean timeout the way `laya_predict_batch`
+    # does, so folding `false` into unset here would answer the caller's request with silence.
+    if not isinstance(hooks_timeout, bool) and hooks_timeout == 0:
+        hooks_timeout = None
     return _wrap(
         laya_route_batch,
         requests=requests,
-        hooks_timeout=hooks_timeout or None,
+        hooks_timeout=hooks_timeout,
+        explain=explain,
         router=router,
     )
 
@@ -396,7 +427,7 @@ def laya_route_batch_tool(requests: list, hooks_timeout: float = 0) -> str:
         "Shortlist a many-option choice question to its k most likely labels by embedding "
         "similarity (mean-pooled from the answering checkpoint's own encoder, so no extra "
         "model is downloaded), then answer in one forward pass. Use this instead of "
-        "laya_predict whenever a choice question has more options than the guardrails allow. "
+        "laya_predict when embedding similarity is appropriate for narrowing a large choice. "
         "Returns the answers plus per-question shortlist metadata (kept labels, cosine "
         "scores, k, option count, and whether the question passed through unshortlisted). "
         "Shortlisting narrows the label set; head_max_len decides how many tokens each kept label "
@@ -434,6 +465,56 @@ def laya_shortlist_tool(
         questions=questions,
         model=model,
         k=k,
+        task=task,
+        lang=lang,
+        lang_guess=lang_guess,
+        max_len=max_len,
+        head_max_len=head_max_len,
+        min_confidence=min_confidence,
+        router=router,
+    )
+
+
+@server.tool(
+    name="laya_tournament",
+    description=(
+        "Answer large choice questions by balanced elimination with the decision model, without "
+        "embeddings. group_size: integer at least 2, default 16. All groups share one forward "
+        "pass per round; their winners advance until they fit, then one final pass answers the "
+        "complete request. Small choices and non-choice questions pass through. "
+        "A missing or out-of-group winner stops the call as internal_error before another pass. "
+        "Returns answers, routing, total latency_ms, the answering device when readable, and tournament metadata "
+        "per choice: labels (finalists in criteria order), n (original option count), rounds "
+        "(elimination rounds, zero on passthrough). Probabilities and confidence are over the "
+        "finalists only; thresholds fitted on a full option set do not transfer. A narrowed "
+        "question's option_order is dropped and reported under option_order_dropped with n and "
+        "kept counts. In-process only: with LAYA_BASE_URL set, use laya_predict with the HTTP "
+        "server's LAYA_TOURNAMENT_GROUP enabled instead. "
+        + _GUARDRAILS
+        + _MODEL_DOC
+        + _CONTROLS_DOC
+    ),
+)
+def laya_tournament_tool(
+    state: dict,
+    questions: dict,
+    model: str | None = None,
+    group_size: int = 16,
+    task: str | None = None,
+    lang: str | None = None,
+    lang_guess: str | None = None,
+    max_len: int | None = None,
+    head_max_len: int | None = None,
+    min_confidence: float | None = None,
+) -> str:
+    """Answer many-option choices with balanced tournament rounds."""
+    router = _router_or_error()
+    return _wrap(
+        laya_tournament,
+        state=state,
+        questions=questions,
+        model=model,
+        group_size=group_size,
         task=task,
         lang=lang,
         lang_guess=lang_guess,
@@ -520,6 +601,33 @@ def laya_decide_tool(state: dict, schema: dict, model: str | None = None,
     router = _router_or_error()
     return _wrap(laya_decide, state=state, schema=schema, model=model,
                  min_confidence=min_confidence, router=router)
+
+
+@server.tool(
+    name="laya_predict_long",
+    description=(
+        "Answer typed questions over a state longer than the context window: the state is "
+        "scanned in overlapping windows in shared forward passes and aggregated per question "
+        "(strongest window for noul, most-confident window for choice/score). Use this instead "
+        "of laya_predict whenever the state does not fit one window -- laya_predict answers "
+        "from its first window and never reads the rest. Returns the answers, each with the "
+        "deciding window's attribution, plus the window count. "
+        "window / stride: positive integers sizing the scan (a smaller window isolates a "
+        "localized span); unset means the checkpoint budget and 50% overlap. "
+        "task: name a checkpoint by what the work is -- refused on a call that also pins model. "
+        "lang: a language code -- routes non-English text and selects that checkpoint's "
+        "per-language calibration. "
+        + _GUARDRAILS
+        + _MODEL_DOC
+    ),
+)
+def laya_predict_long_tool(state: dict, questions: dict, model: str = "auto",
+                           window: int | None = None, stride: int | None = None,
+                           task: str | None = None, lang: str | None = None) -> str:
+    """Scan a long state in windows, then answer."""
+    router = _router_or_error()
+    return _wrap(laya_predict_long, state=state, questions=questions, model=model,
+                 window=window, stride=stride, task=task, lang=lang, router=router)
 
 
 def main() -> None:

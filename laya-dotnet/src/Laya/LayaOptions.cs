@@ -143,6 +143,45 @@ public sealed class LayaOptions
     /// </summary>
     public IProgress<ArtifactDownloadProgress>? DownloadProgress { get; set; }
 
+    /// <summary>
+    /// Per-language temperature overrides, Python's <c>lang_temperatures</c> constructor option: a table from language
+    /// code to <see cref="LayaLangTemperature"/>, or <see langword="null"/> for a language that inherits the checkpoint's
+    /// own temperatures. A call that names a language through <see cref="LayaPredictOptions.Lang"/> (or a router that
+    /// detected one) replaces the checkpoint's temperature, and its per-bucket map, with that language's. Keys are
+    /// matched as Python matches them, on the part before the first <c>-</c>, lower-cased (<c>"de-AT"</c> and
+    /// <c>"DE"</c> are <c>"de"</c>), and the last of several keys that collapse to the same language wins; a table
+    /// given as a list of pairs keeps that order. Default <see langword="null"/>: no overrides.
+    /// </summary>
+    /// <remarks>
+    /// Checked when the engine is created, not when it is set. A malformed entry makes <see cref="LayaEngine.Create"/>
+    /// throw an <see cref="ArgumentException"/> carrying Python's <c>ValueError</c> text, and a value the clamp had to
+    /// replace is reported once per language through <see cref="System.Diagnostics.Trace"/>, as the checkpoint's own
+    /// temperatures are. A <see cref="LayaRouter"/> hands this table to every engine it builds.
+    /// </remarks>
+    public IEnumerable<KeyValuePair<string, LayaLangTemperature?>>? LangTemperatures { get; set; }
+
+    /// <summary>
+    /// Path of a calibration file, Python's <c>calibration</c> constructor option (<c>load_calibration</c>): a JSON object
+    /// with <c>temperature</c> (three numbers), <c>temperature_by_options</c> (bucket to number), an optional
+    /// <c>version</c> and an optional <c>binning_map</c> (bucket to <c>{"bins": n, "values": [n numbers in [0, 1]]}</c>).
+    /// It is read when the engine is created, after the checkpoint's own temperatures and the
+    /// <see cref="LangTemperatures"/> table, and replaces the checkpoint's temperature and its per-bucket map. The
+    /// binning map recalibrates <c>answer_confidence</c> (and only that) of every answer whose option-count bucket the
+    /// map names, after the temperature softmax; a call that names a language of <see cref="LangTemperatures"/> is not
+    /// binned. A file with no <c>binning_map</c> installs none. Default <see langword="null"/> or empty: no file.
+    /// </summary>
+    /// <remarks>
+    /// The file is read as UTF-8 and parsed as Python's <c>json.load</c> parses it (<c>NaN</c> and <c>Infinity</c>
+    /// accepted), like <c>rl_agent_config.json</c>. A malformed file makes <see cref="LayaEngine.Create"/> throw an
+    /// <see cref="InvalidDataException"/> whose message is Python's exception type and text; a temperature outside
+    /// <see cref="Laya.Calibration.TempMin"/>..<see cref="Laya.Calibration.TempMax"/> is clamped and reported once through
+    /// <see cref="System.Diagnostics.Trace"/>. A version 2 file's recorded checkpoint (<c>model_id_or_path</c>, <c>subfolder</c>,
+    /// <c>config</c>) is not compared with the engine's: Python's <c>model_id_or_path</c> is the string its caller passed, which this
+    /// SDK has no equivalent of, so that warning is not emitted. A
+    /// <see cref="LayaRouter"/> hands this path to every engine it builds. There is no per-call form.
+    /// </remarks>
+    public string? Calibration { get; set; }
+
     // ── internal helpers ──────────────────────────────────────────────────────
 
     /// <summary>

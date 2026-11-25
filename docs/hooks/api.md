@@ -4,12 +4,13 @@ Everything on this page is importable from `laya` (the common names) or `laya.ho
 whole surface).
 
 ```python
-from laya import PredictContext, PredictHook, Hook
+from laya import PredictContext, PredictHook, Hook, OptionStabilityHook
 from laya.hooks import HOOK_EVENTS, normalise_hooks, dispatch, aggregate_usage
 ```
 
 - [PredictContext](#predictcontext)
 - [Hook protocol](#hook-protocol)
+- [OptionStabilityHook](#optionstabilityhook)
 - [Convenience types](#convenience-types)
 - [Configuration surface](#configuration-surface)
 - [Event payloads](#event-payloads)
@@ -142,6 +143,82 @@ class Audit(BaseHook):
 
 `Hook` is best when you want structural typing (any object with the right methods); `BaseHook` is
 best when you want an explicit base to subclass and call `super()` on.
+
+## OptionStabilityHook
+
+`OptionStabilityHook` evaluates prediction reliability across meaning-preserving option permutations and letter renamings (addressing issue #635). It executes variants in the same single-forward-pass batch without multiple network calls or serial invocations.
+
+Layout-aware (#635, #951): on checkpoints using parallel option layouts (`option_layout="parallel"`), options cannot attend to each other so reordering cannot move decisions by construction. The hook automatically detects layout from the agent config, executing rename-only probes on parallel checkpoints while running both rename and reorder probes on sequential checkpoints.
+
+```python
+from laya import OptionStabilityHook
+
+# Required accept and escalate thresholds; pass None to disable categorical triage:
+stability_hook = OptionStabilityHook(accept=0.85, escalate=0.60, variants="fast")
+agent = laya.load("convaiinnovations/laya", hooks=[stability_hook])
+```
+
+Thresholds `accept` and `escalate` are required keyword arguments: categorical gating decisions (`ACCEPT`, `VERIFY`, `ESCALATE`) depend directly on application error tolerance, option count, and temperature calibration (Issue #1245). Pass `accept=None, escalate=None` to evaluate continuous stability signals without applying categorical gating.
+
+
+It attaches a `reliability` diagnostic block to each choice question's answer:
+- `probes`: List of probe kinds that executed (e.g. `["rename"]`, `["reorder", "rename"]`, or `[]`).
+- `option_layout`: Checkpoint layout (`"parallel"` or `"sequential"`).
+- `soft_stability`: Mean probability assigned to the chosen option across all evaluated variants, without additional rounding (`None` if unprobed). This is the exact value used for `decision`.
+- `stability`: Fraction of variants whose argmax choice agrees with the original decision (`None` if unprobed).
+- `rename_stability`: Stability across rename variants (`None` if no rename probe ran).
+- `reorder_stability`: Stability across reorder variants (`None` if no reorder probe ran).
+- `decision`: Categorical classification (`ACCEPT`, `VERIFY`, or `ESCALATE`, or `None` if unprobed).
+- `variant_choices`: Mapping of variant name to decoded choice.
+- `variant_support`: Mapping of variant name to probability mass on the primary choice.
+
+### Calibrating and replaying decisions
+
+Collect `soft_stability` with `accept=None, escalate=None` on labelled evaluation examples,
+then pass those numeric values and correctness labels to `laya.hooks.calibrate_reliability`.
+Only fit or replay probed, numeric scores; exclude unprobed reports with `soft_stability=None`
+and keep their `decision=None`.
+The fitter requires equal, nonempty, sized score and label sequences; generators raise
+`TypeError`. Scores and both accuracy targets must be finite `numbers.Real` values in
+`[0, 1]`, including NumPy scalars such as `numpy.float32` and `numpy.int64`, but excluding
+`bool` and `numpy.bool_`; invalid lengths or values raise `ValueError`. Correctness labels
+must be `bool` or `numpy.bool_` values (as produced by comparing NumPy arrays), otherwise
+it raises `TypeError`. It does not drop unmatched rows or coerce labels such as `0`/`1`
+or `"false"`. Returned cutoffs are plain Python `float` values, including when fitting
+NumPy inputs, so they can be saved in JSON.
+It chooses cutoffs from the distinct input scores at their supplied precision; equal scores
+stay in the same group. `ACCEPT` includes scores equal to `accept`, while `ESCALATE` requires
+a score strictly below `escalate`. If no cutoff meets the requested accuracy, `accept=1.01`
+accepts nothing. These are fits to the supplied examples, not a guarantee on unseen data.
+
+Keep the numeric scores and thresholds unchanged when saving them (for example, in JSON).
+Replaying `decide_reliability(report["soft_stability"], accept, escalate)` then agrees with
+the hook for the same evaluated variants and decoded probabilities. Format a separate display
+string if fewer decimal places are wanted; do not fit or gate on that string. The other stability
+diagnostics and `variant_support` retain their four-decimal formatting and are not substitutes
+for `soft_stability` when replaying the gate.
+
+Earlier reports rounded `soft_stability` to four decimals even though the gate used the
+unrounded mean. Previously saved reports cannot recover that lost precision: recollect them
+before refitting thresholds. Fixed thresholds still use the same runtime comparison; the
+reported score and newly fitted cutoffs may now contain more decimal places.
+
+### What it costs
+
+One forward pass, not several, but a wider one: the variants are extra rows in the same batch.
+A four-option `choice` costs 3 rows under `variants="fast"` and 7 under `"full"`, against 1 with
+no hook. On a GPU or MPS those extra rows are largely absorbed by the batch; on a CPU they are
+not, and the cost is close to linear in rows. Measured here on one 4-option choice, CPU, median
+of 15 calls after 4 warmups:
+
+| | rows | median | against baseline |
+|---|---:|---:|---:|
+| no hook | 1 | 62.5 ms | 1.00x |
+| `variants="fast"` | 3 | 123.9 ms | 1.98x |
+| `variants="full"` | 7 | 230.5 ms | 3.69x |
+
+So on CPU this is a diagnostic to enable deliberately, per request or on a sample of traffic,
+rather than everywhere by default. Scale the row counts by option count from the table in #908.
 
 ## Convenience types
 
@@ -282,6 +359,12 @@ agent.predict(...)          # alias of system_one
 
   `usage["windows"]` is total over every path, including the one where a state already fit a single
   window, so a cached answer never reads as a window the model read.
+
+  End hooks may reorder result rows: an unchanged answer keeps the index and token span of its
+  original window. Attribution requires the original answer object and unchanged prediction fields
+  (type, choice/noul/score, probabilities, legend and confidence). Cloned, replaced or edited answers
+  omit `answer["window"]`; reliability and action annotations are retained. Adding the window to
+  the returned answer does not mutate the per-window answer a hook may have cached.
 
 ### Router
 

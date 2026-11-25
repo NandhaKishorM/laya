@@ -2,10 +2,13 @@ import {
   LayaAbortError, LayaAPIError, LayaConnectionError, LayaError, LayaResponseError,
   LayaTimeoutError, LayaValidationError,
 } from './errors.js';
-import type { Health, Prediction, PredictOptions, Questions, RequestOptions, State } from './types.js';
+import type { BatchPrediction, BatchPredictOptions, Health, Prediction, PredictOptions, Questions, RequestOptions,
+  RouteOptions, RouteSnapshot, State } from './types.js';
 import { isMinConfidenceKey } from './buckets.js';
 import { isRecord, validateJson, validateQuestions, validateTimeout } from './validation.js';
-import { validateHealth, validatePrediction } from './response.js';
+import { validateBatchPrediction, validateHealth, validatePrediction, validateRouteSnapshot } from './response.js';
+
+const ROUTE_OPTIONS = new Set(['model', 'task', 'lang', 'langGuess', 'explain', 'signal', 'timeoutMs']);
 
 /** One threshold in `[0, 1]`: booleans are not thresholds even though they read as 0/1. */
 function isThreshold(value: unknown): value is number {
@@ -29,7 +32,7 @@ export interface LayaOptions {
   /** Server root URL, optionally including a reverse-proxy path prefix. */
   baseURL?: string;
   apiKey?: string;
-  /** Optional local checkpoint or alias to send with every prediction. */
+  /** Optional local checkpoint or alias to send with every prediction and routing request. */
   model?: string;
   /** Default 120000 ms; cold checkpoint downloads may require more. Zero disables. */
   timeoutMs?: number;
@@ -74,6 +77,65 @@ export class Laya {
     return result;
   }
 
+  /** Send independent states with one shared question set in one HTTP request. */
+  async predictBatch<const Q extends Questions>(states: readonly State[], questions: Q,
+      options: BatchPredictOptions = {}): Promise<BatchPrediction<Q>> {
+    validateQuestions(questions);
+    if (!Array.isArray(states) || states.length === 0) {
+      throw new LayaValidationError('states must be a nonempty array');
+    }
+    for (const state of states) this.validateState(state);
+    if (options.batchSize !== undefined && (!Number.isInteger(options.batchSize) || options.batchSize < 1)) {
+      throw new LayaValidationError('batchSize must be a positive integer');
+    }
+    if (options.sortByLength !== undefined && typeof options.sortByLength !== 'boolean') {
+      throw new LayaValidationError('sortByLength must be a boolean');
+    }
+    const body = { states, ...this.predictionBody(questions, options),
+      ...(options.batchSize !== undefined ? { batch_size: options.batchSize } : {}),
+      ...(options.sortByLength !== undefined ? { sort_by_length: options.sortByLength } : {}),
+    };
+    validateJson(body);
+    const serialized = JSON.stringify(body);
+    // Validate against the sent request, even if callers edit inputs while waiting.
+    const { questions: sentQuestions, states: { length: count } } = JSON.parse(serialized) as
+      { questions: Q; states: State[] };
+    const result = await this.request<BatchPrediction<Q>>('/v1/systemone/batch', serialized, options);
+    validateBatchPrediction(result, sentQuestions, count);
+    return result;
+  }
+
+  /** Inspect the deployed Router without requesting inference. Requires a server with /v1/route. */
+  async route(state: State, questions: Questions = {}, options: RouteOptions = {}): Promise<RouteSnapshot> {
+    if (!isRecord(options)) throw new LayaValidationError('route options must be an object');
+    for (const key of Object.keys(options)) {
+      if (!ROUTE_OPTIONS.has(key)) throw new LayaValidationError(`${key} is not a routing option`);
+    }
+    if (options.explain !== undefined && typeof options.explain !== 'boolean') {
+      throw new LayaValidationError('explain must be a boolean');
+    }
+    this.validateState(state);
+    if (!isRecord(questions)) throw new LayaValidationError('questions must be an object');
+    // Routing can use only the question IDs. Do not impose inference's required fields here.
+    validateJson({ state, questions });
+    for (const [id, question] of Object.entries(questions)) {
+      if (isRecord(question) && question.type === 'choice' && Array.isArray(question.criteria)) {
+        const labels = question.criteria;
+        if (!labels.length || labels.some(label => typeof label !== 'string') || new Set(labels).size !== labels.length) {
+          throw new LayaValidationError(`questions.${id}: choice criteria must contain unique string labels`);
+        }
+      }
+    }
+    const explain = options.explain === true;
+    const body = { state, ...this.routingBody(questions, options),
+      ...(options.explain !== undefined ? { explain: options.explain } : {}),
+    };
+    validateJson(body);
+    const result = await this.request<RouteSnapshot>('/v1/route', JSON.stringify(body), options);
+    validateRouteSnapshot(result, explain);
+    return result;
+  }
+
   /** Query the self-hosted Laya server's health probe. */
   async health(options: RequestOptions = {}): Promise<Health> {
     const result = await this.request<Health>('/health', undefined, options);
@@ -82,9 +144,36 @@ export class Laya {
   }
 
   private body(state: State, questions: Questions, options: PredictOptions): string {
+    this.validateState(state);
+    const body = { state, ...this.predictionBody(questions, options) };
+    validateJson(body);
+    return JSON.stringify(body);
+  }
+
+  private validateState(state: State): void {
     if (state !== null && typeof state !== 'string' && !Array.isArray(state) && !isRecord(state)) {
       throw new LayaValidationError('state must be text, a JSON object, an array, or null');
     }
+  }
+
+  private predictionBody(questions: Questions, options: PredictOptions) {
+    const body: ReturnType<Laya['routingBody']> & {
+      max_len?: number; head_max_len?: number; min_confidence?: number | Record<string, number>;
+    } = this.routingBody(questions, options);
+    for (const key of ['maxLen', 'headMaxLen'] as const) {
+      const value = options[key];
+      if (value !== undefined && (!Number.isInteger(value) || value < 1)) {
+        throw new LayaValidationError(`${key} must be a positive integer`);
+      }
+    }
+    if (options.minConfidence !== undefined) validateMinConfidence(options.minConfidence);
+    if (options.maxLen !== undefined) body.max_len = options.maxLen;
+    if (options.headMaxLen !== undefined) body.head_max_len = options.headMaxLen;
+    if (options.minConfidence !== undefined) body.min_confidence = options.minConfidence;
+    return body;
+  }
+
+  private routingBody(questions: Questions, options: RouteOptions) {
     if (options.task !== undefined && (typeof options.task !== 'string' || !options.task.trim())) {
       throw new LayaValidationError('task must be a nonempty string');
     }
@@ -94,39 +183,27 @@ export class Laya {
         throw new LayaValidationError(`${key} must be a nonempty language code string`);
       }
     }
-    for (const key of ['maxLen', 'headMaxLen'] as const) {
-      const value = options[key];
-      if (value !== undefined && (!Number.isInteger(value) || value < 1)) {
-        throw new LayaValidationError(`${key} must be a positive integer`);
-      }
-    }
-    if (options.minConfidence !== undefined) validateMinConfidence(options.minConfidence);
     const model = options.model ?? this.model;
     if (model !== undefined && (typeof model !== 'string' || !model.trim())) {
       throw new LayaValidationError('model must be a nonempty string');
     }
     const wireQuestions = Object.fromEntries(Object.entries(questions).map(([id, question]) => [id,
-      question.type === 'choice' && Array.isArray(question.criteria)
+      isRecord(question) && question.type === 'choice' && Array.isArray(question.criteria)
         ? { ...question, criteria: Object.fromEntries(question.criteria.map(label => [label, null])) }
         : question,
     ]));
     const body: {
-      state: State; questions: typeof wireQuestions; model?: string; task?: string;
-      lang?: string; lang_guess?: string; max_len?: number; head_max_len?: number;
-      min_confidence?: number | Record<string, number>;
-    } = { state, questions: wireQuestions };
+      questions: typeof wireQuestions; model?: string; task?: string;
+      lang?: string; lang_guess?: string;
+    } = { questions: wireQuestions };
     if (model !== undefined) body.model = model;
-    // The per-request controls `/v1/systemone` forwards when the request sends them (see
+    // The per-request controls routing and prediction endpoints forward when sent (see
     // docs/http-api.md); absent options stay absent so the deployment's own Router
     // settings remain in charge.
     if (options.task !== undefined) body.task = options.task;
     if (options.lang !== undefined) body.lang = options.lang;
     if (options.langGuess !== undefined) body.lang_guess = options.langGuess;
-    if (options.maxLen !== undefined) body.max_len = options.maxLen;
-    if (options.headMaxLen !== undefined) body.head_max_len = options.headMaxLen;
-    if (options.minConfidence !== undefined) body.min_confidence = options.minConfidence;
-    validateJson(body);
-    return JSON.stringify(body);
+    return body;
   }
 
   private async request<T>(path: string, body: string | undefined, options: RequestOptions): Promise<T> {

@@ -29,6 +29,7 @@ import urllib.request
 import urllib.parse
 from typing import Any, Dict, List, Optional, Sequence, Union
 
+from .. import __version__
 from ..router import Router
 from ..serve import BODY_CONTROLS, BODY_REFUSALS
 
@@ -59,16 +60,31 @@ def _timeout_from_env() -> float:
     return seconds if math.isfinite(seconds) and seconds > 0 else DEFAULT_TIMEOUT_S
 
 
+def _resolve_user_agent(value: Optional[str]) -> str:
+    raw = os.environ.get("LAYA_USER_AGENT", "") if value is None else value
+    if not isinstance(raw, str):
+        raise TypeError("user_agent must be a string or None")
+    # Unlike a bad timeout, an invalid header must fail rather than hide control characters
+    # behind a default. Check before trimming so trailing CR/LF cannot disappear.
+    if any((ord(char) < 32 and char != "\t") or ord(char) == 127 or ord(char) > 255 for char in raw):
+        raise ValueError("LAYA_USER_AGENT / user_agent must be a single Latin-1 header value without control characters")
+    return raw.strip(" \t") or "laya/" + __version__
+
+
 class RemoteRouter(Router):
     """Route locally, answer from a ``laya-serve`` at ``base_url``.
 
     ``base_url`` is the server origin (``http://127.0.0.1:8000``); the ``/v1/systemone`` paths are
     appended here. ``api_key``, when given, is sent as ``Authorization: Bearer`` and must match the
     server's ``LAYA_API_KEY``.
+
+    ``user_agent`` overrides ``LAYA_USER_AGENT``; ``None`` reads the environment. A selected
+    empty or space/tab-only value uses ``laya/<version>``. Header values must be Latin-1 and
+    contain no ASCII controls other than tab. The value is resolved once at construction.
     """
 
     def __init__(self, base_url: str, api_key: Optional[str] = None,
-                 timeout: Optional[float] = None, **router_kwargs: Any):
+                 timeout: Optional[float] = None, *, user_agent: Optional[str] = None, **router_kwargs: Any):
         # device/preload make no sense for a router that never builds an Agent.
         router_kwargs.pop("device", None)
         router_kwargs.pop("preload", None)
@@ -81,11 +97,12 @@ class RemoteRouter(Router):
         self.timeout = _timeout_from_env() if timeout is None else float(timeout)
         if not math.isfinite(self.timeout) or self.timeout <= 0:
             raise ValueError("timeout must be a finite positive number")
+        self.user_agent = _resolve_user_agent(user_agent)
 
     # ------------------------------------------------------------------ transport
     def _request(self, path: str, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         data = None if body is None else json.dumps(body).encode("utf-8")
-        headers = {"Accept": "application/json"}
+        headers = {"Accept": "application/json", "User-Agent": self.user_agent}
         if data is not None:
             headers["Content-Type"] = "application/json"
         if self.api_key:
@@ -174,7 +191,16 @@ class RemoteRouter(Router):
         max_len: Optional[int] = None,
         head_max_len: Optional[int] = None,
         min_confidence: Optional[float] = None,
+        image: Any = None,
+        audio: Any = None,
+        video: Any = None,
     ) -> Dict[str, Any]:
+        if any(value is not None for value in (image, audio, video)):
+            # `Router.predict` takes these since 0.4.25 for the vega lane; laya-serve has no media
+            # encoding, so the remote says so here rather than sending a file name as a state
+            raise RemoteError("unsupported_remote",
+                              "images, recordings and clips cannot be sent to laya-serve; use "
+                              "laya.Agent(vegaml=True) or a local Router with the vega lane")
         if hooks_timeout is not None:
             raise RemoteError("unsupported_remote", "hooks_timeout belongs to the server's hooks")
         if any(value is not None for value in (hooks, on_predict_start, on_predict_end, hooks_raise)):

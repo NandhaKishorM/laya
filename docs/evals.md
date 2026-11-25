@@ -154,7 +154,7 @@ from laya.evals import Dataset
 from laya.evals_shortlist import evaluate_shortlist
 from laya.shortlist import embed_fn_from_agent
 
-agent = laya.load()
+agent = laya.load("laya")   # the classic encoder: the shortlist reads its embeddings
 dataset_path = "intents.jsonl"
 dataset = Dataset.from_jsonl(dataset_path)
 report = evaluate_shortlist(
@@ -184,6 +184,47 @@ This does not reproduce the BANKING77 results in [issue #102](https://github.com
 those numbers depend on its dataset, checkpoint and bi-encoder. This API makes the
 same kind of diagnosis repeatable on a caller's own labelled set.
 
+## Attributing tournament errors
+
+For a labelled many-option choice set, `laya.evals_tournament.evaluate_tournament`
+runs the existing `predict_tournament` path and keeps its finalist metadata in the
+regular evaluation report:
+
+```python
+import laya
+from laya.evals import Dataset
+from laya.evals_tournament import evaluate_tournament
+
+agent = laya.load("laya")   # the classic encoder
+dataset_path = "intents.jsonl"
+report = evaluate_tournament(
+    agent, Dataset.from_jsonl(dataset_path), group_size=16,
+    checkpoint_id="my-checkpoint@revision", dataset_path=dataset_path,
+)
+print(report.overall)
+print(report.cases[0]["tournament_status"])
+```
+
+Each choice case records its finalists and number of elimination rounds, and is
+classified as `correct`, `elimination_miss` (the gold label did not reach the
+final call), or `final_choice_miss` (it survived, but the final call chose another
+label). `tournament_survival_rate` is the fraction of all choices whose gold label
+reached the final call; choices needing no elimination are included. Conditional
+`tournament_accuracy_on_survivors` is omitted when none survived. Ordinary
+`choice_accuracy` remains end-to-end accuracy, and all three metrics appear in the
+existing language, model, question and tag slices. Request latency includes every
+tournament round; the report does not time rounds separately.
+
+Use the checkpoint and group size you intend to deploy. The caller supplies the
+checkpoint identifier, ideally an immutable revision; the report cannot inspect
+the weights. Passing `dataset_path` records a SHA256 of the JSONL bytes. The
+`laya-tournament-evals-report/1` schema and group size prevent a baseline gate
+from comparing different strategies as though they were the same measurement.
+Compare group sizes side by side on development data, then evaluate the chosen
+size once on held-out data. The runtime's final probabilities and confidence are
+over finalists, not over the original labels. The metadata identifies whether
+elimination lost the gold label, but not which round lost it.
+
 ## Evaluating an ONNX export
 
 `run --onnx PATH` scores an exported ONNX model through `ONNXAgent` instead of the torch
@@ -194,6 +235,17 @@ gets gated by the same thresholds and baselines as the torch path:
 python scripts/export_onnx.py --model convaiinnovations/laya --output laya.onnx --quantize
 laya-evals run data.jsonl --onnx laya.int8.onnx --max-ece 0.05
 ```
+
+The export **verifies itself before it exits**: it runs the graph it just wrote in ONNX Runtime at
+batch 1, 2 and 3 and compares against PyTorch, and `scripts/export_onnx.py --quantize` does the same
+for the INT8 copy at a looser tolerance. A graph that cannot serve more than one question fails the
+export instead of being written and deployed. That needs `onnxruntime` (`pip install laya[onnx]`);
+`scripts/export_onnx.py --no-verify` skips it if you only have the exporter installed.
+
+Marker width is dynamic in the exported graph for two or more markers (a graph traced at 2 runs at
+3, 4, 5 and 8), but exactly one marker is baked out by a Python branch in the model, so a
+one-criterion `score` question is not servable from ONNX when every question in the batch has one
+criterion; use the torch path for those. There is no need to re-export per criteria count.
 
 `--model` names the checkpoint the export came from — a Hub id or local path, not a Router
 short name like `english`, since there is no Router on this path (default
@@ -231,6 +283,12 @@ One JSON object per line (JSONL). Blank lines and lines starting with `#` are ig
 | `model` | no | force a checkpoint for this row; `--model` overrides it. A row that forces nothing is labelled with whatever checkpoint the `Router` answered with |
 
 `research/evals/dataset.template.jsonl` has a commented example.
+
+A row built in Python with `Example(...)` is held to the same three rules as a JSONL row: `Dataset`
+refuses one whose `questions` or `expected` is not an object, or whose `expected` names a question
+`questions` does not carry, and quotes the row's index in the message. Both routes fail as
+`EvalError` before the first model call, so a mistake in a dataset never arrives as a verdict about
+the runner.
 
 ## Metrics
 
@@ -455,7 +513,7 @@ is reviewable on its own:
 | `schema` | the report shape, `laya-evals-report/1`, so a consumer can refuse one it cannot read |
 | `dataset` | the path as typed -- a name, not a hash |
 | `dataset_sha256` | the sha256 of the dataset bytes that were parsed |
-| `questions_sha256` | a fingerprint of the question schema: every question's id, type, `instructions` and `criteria`, over the whole dataset |
+| `questions_sha256` | a fingerprint of the question schema: every question's id, type, `instructions`, `labels` and `criteria`, plus `option_order` on any row that names it, over the whole dataset |
 | `laya_version` | the `laya` that computed the numbers |
 | `coverage_metric_definition` | which definition of `aurc` / `selective_accuracy@*` produced this report (see [coverage cuts](#coverage-cuts-and-ties)). A relative gate rule on either refuses a baseline recorded under a different one, rather than subtracting numbers that do not mean the same thing |
 | `thresholds` | the gate this run applied: `min`, `max` and `baseline_tolerance` |
@@ -487,6 +545,17 @@ a copy edit is treated as a new experiment. That is the honest default -- the al
 similarity heuristic standing between a run and its baseline, and no evaluation system in common
 use has one.
 
+`option_order` is the one field hashed conditionally, and only when a row names it. It is a
+caller-supplied key: `laya/mcp/server.py` advertises it, `Agent._check_question` and
+`laya/mcp/tools.py::_check_option_order` validate it as a permutation of the option indices, and
+`laya/common.py::build_sequence` and `unpermute_probs` read it to place each answer slot, so a row
+that permutes its options asks a different question and two such datasets must not share a
+fingerprint. `research/eval/metamorphic.py::permute_options` measures the same sensitivity from the
+other side -- it exists to shuffle the option list and check that the answers follow. Hashing an
+absent key as `null` would move the digest of every dataset that never uses the field, so an absent
+key stays out of the hash and such a dataset keeps the fingerprint its committed baseline already
+carries.
+
 Nothing time-bearing is recorded, so a report is still byte-reproducible for a fixed runner.
 
 `REPORT_SCHEMA`, `questions_fingerprint(dataset)` and `file_fingerprint(path)` are public, so a
@@ -496,7 +565,9 @@ caller driving `laya.evals.evaluate` directly gets the same identity a CLI run d
 
 - Keep the dataset, a baseline report (`--json` output you have reviewed), and the tolerances
   together, committed, so a change is a reviewable diff. `--tolerance METRIC=VALUE` is the
-  maximum absolute drift allowed for that metric.
+  maximum absolute drift allowed for that metric. It has to be a limit that can fail: `Infinity`
+  is one every finite drift fits inside, so it is refused rather than read as no gate for that
+  metric.
 - `laya-evals run ... --baseline baseline.json --tolerance ...` exits non-zero on drift, so it
   drops into CI unchanged. `laya.evals.EvalReport.compare` and `assert_regression` expose the
   same logic for tests.
@@ -531,9 +602,13 @@ The harness is deterministic for a fixed checkpoint revision, so a report is rep
 `run` records the dataset, model and device, plus the [timing](#batching-and-timing) facts of the
 run, in the report's `config` block, and `revisions`: the commit each checkpoint that answered was
 actually loaded from. `--revision <SHA>` pins that commit for every checkpoint the run loads, and
-`--revision english=<SHA>` pins one checkpoint (repeatable) — which is the form an auto-routing run
+`--revision english=<SHA>` pins one checkpoint — which is the form an auto-routing run
 wants, since the three checkpoints are three repositories and one commit cannot exist in all of
-them. Left unpinned, the run takes the checkpoint's default branch and the report still says which
+them. Repeat a pin to say the same commit twice; two different commits for one checkpoint — however
+it is spelled, so `en=` beside `english=` counts — exit 2 instead of loading whichever came last,
+because `revisions` reports the commit that ANSWERED and a dropped pin would leave no trace. The
+same refusal covers two different bare commits.
+Left unpinned, the run takes the checkpoint's default branch and the report still says which
 commit answered, so a baseline drift can be attributed to the weights or to the code.
 `laya/revisions.py` publishes reviewed commit SHAs in `PINNED_REVISIONS` for callers who want to
 opt in. With `--onnx`, only a bare `--revision <SHA>` applies, to the config and tokenizer download.
@@ -564,10 +639,11 @@ laya-evals evidence --checkpoint ./my-checkpoint [--report report.json]
 
 A checkpoint directory must contain `rl_agent_config.json`. Calibration evidence is derived from
 the persisted `training.laya_train_calibration` block: a legacy checkpoint with no training
-metadata is `UNKNOWN`; a question type with zero items is `MISSING`; a type whose entry records
-any upstream `issues` text (not fitted, below `MIN_TYPE_N`/`CALIB_WARN_N`, clamped, unchanged
-fit) is `INSUFFICIENT`; a clean fit is `PRESENT`. The helper trusts the persisted `issues`
-written by #933 instead of keeping a second numeric threshold source.
+metadata is `UNKNOWN`; an entry whose `items` is not an integer count — a missing key, a string, a
+JSON `true` — is `UNKNOWN` rather than a count of one; a question type with zero items is `MISSING`;
+a type whose entry records any upstream `issues` text (not fitted, below `MIN_TYPE_N`/`CALIB_WARN_N`,
+clamped, unchanged fit) is `INSUFFICIENT`; a clean fit is `PRESENT`. The helper trusts the persisted
+`issues` written by #933 instead of keeping a second numeric threshold source.
 
 The eval report's identity fields (`schema`, `dataset_sha256`, `questions_sha256`, `laya_version`)
 are reported with the same semantics as `run`. The checkpoint↔report relationship is claimed only

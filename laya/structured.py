@@ -99,11 +99,16 @@ def _schema_of(model: Any) -> Dict[str, Any]:
 
 
 def _enum_field(path: str, name: str, values: Sequence[Any], description: Optional[str]) -> _Field:
+    # A JSON 'enum' is an array. Reject a bare scalar before len(): a str is iterable, so without
+    # this check it silently splits into per-character options instead of erroring (the module
+    # promises malformed schemas raise a SchemaError that names the path).
+    if not isinstance(values, (list, tuple)):
+        raise SchemaError("%s: 'enum' must be an array of values, got %s" % (path, type(values).__name__))
     if len(values) > MAX_OPTIONS:
         raise SchemaError("%s: %d options exceeds MAX_OPTIONS=%d" % (path, len(values), MAX_OPTIONS))
     if not values:
         raise SchemaError("%s: 'enum' must not be empty" % path)
-    if all(isinstance(v, bool) for v in values):
+    if all(isinstance(v, bool) for v in values) and len(set(values)) == 2:
         return _noul_field(path, name, description)
     options = [(("null" if v is None else str(v)), v) for v in values]
     if len({label for label, _ in options}) != len(options):
@@ -128,7 +133,14 @@ def _noul_field(path: str, name: str, description: Optional[str]) -> _Field:
 def _score_field(path: str, name: str, prop: Dict[str, Any],
                  description: Optional[str]) -> _Field:
     lo, hi = prop.get("minimum"), prop.get("maximum")
-    if not isinstance(lo, int) or not isinstance(hi, int):
+    # `bool` is a subclass of `int`, so `isinstance(True, int)` is true: a JSON `"minimum": true`
+    # would otherwise slip through and silently become a bound of 1 (`"maximum": false` a bound of
+    # 0), even though the same message rejects `"0"` and `1.5`. `_enum_field` below refuses a
+    # `[true, false]` enum on the same principle -- a boolean is a yes/no, not a number -- so the
+    # exclusion belongs here too, routed into the existing "needs integer" error the string and
+    # float bounds already raise.
+    if (isinstance(lo, bool) or isinstance(hi, bool)
+            or not isinstance(lo, int) or not isinstance(hi, int)):
         raise SchemaError(
             "%s: a numeric field needs integer 'minimum' and 'maximum' to become a score" % path)
     if hi < lo:
@@ -199,7 +211,13 @@ def _field(path: str, name: str, prop: Dict[str, Any], root: Optional[Dict[str, 
             branch.update((k, v) for k, v in prop.items() if k != "allOf")
             return _field(path, name, branch, root, seen)
         union = prop.get("anyOf") or prop.get("oneOf")
-        if union is not None:
+        # The `allOf` branch above guards its wrapper's shape before iterating it; an `anyOf`/`oneOf`
+        # that is not an array (a JSON number, a boolean -- `bool` subclasses `int` and so is neither
+        # `None` nor iterable the way a list is) used to fall straight into the comprehension below
+        # and leak `TypeError: 'int' object is not iterable`. A non-array union is not a recognised
+        # optional wrapper, so it is left to the terminal "unsupported schema" rejection, which names
+        # the path exactly like the non-array `enum` case does.
+        if isinstance(union, list):
             branches = [b for b in union if isinstance(b, dict) and b.get("type") != "null"]
             if len(branches) != 1:
                 raise SchemaError(
@@ -262,7 +280,11 @@ def _project(answers: Dict[str, Any], fields: Sequence[_Field]) -> Dict[str, Any
     values: Dict[str, Any] = {}
     for f in fields:
         answer = answers.get(f.name)
-        if answer is None:
+        # A field whose answer is not an answer object carries nothing to project -- exactly the
+        # absent field the `None` branch already omits. `apply_confidence_gate` makes the same call
+        # and skips a non-dict answer (confidence.py:298); reading `.get` off one instead raised a
+        # raw AttributeError here and crashed the whole projection.
+        if not isinstance(answer, dict):
             continue
         if answer.get("low_confidence"):
             values[f.name] = None
@@ -304,6 +326,10 @@ def _details(values: Dict[str, Any], answers: Dict[str, Any], result: Dict[str, 
     answer_confidence: Dict[str, Optional[float]] = {}
     probabilities: Dict[str, Dict[str, Any]] = {}
     for name, answer in answers.items():
+        if not isinstance(answer, dict):
+            # Same rule as `_project` and `apply_confidence_gate`: a non-dict answer is no answer,
+            # so it reports no confidence rather than raising AttributeError on `.get`.
+            continue
         confidence[name] = float(answer.get("confidence", 0.0))
         # Read through the module that owns the definition, so this and the `min_confidence` gate
         # cannot disagree about which quantity is being reported.

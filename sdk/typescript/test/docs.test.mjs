@@ -11,6 +11,11 @@
  * client hands to `fetch` is captured, and the table is compared against the keys that were really put
  * on the wire. Nothing here transcribes the client's option list -- if `body()` gains or drops a control
  * the table has to move with it, in both directions.
+ *
+ * The same seam holds the page's statement about the paths it calls. It promised `/v1/systemone` was
+ * "the only endpoint the client calls" in the sentence that introduces `health`, while `health()` had
+ * been issuing `GET /health` the whole time, so an exclusivity claim is now read back off the requests
+ * the client actually makes rather than taken on faith from the prose.
  */
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -30,6 +35,9 @@ const RESULT = {
   usage: { input_tokens: 4, output_tokens: 0 },
 };
 
+/** The liveness answer, which is the only `/health` payload every caller is guaranteed to get. */
+const HEALTH = { status: 'ok' };
+
 /** The request body the client would send for `options`, minus `state` and `questions`. */
 async function controls(options) {
   let body;
@@ -42,6 +50,31 @@ async function controls(options) {
   assert.deepEqual([state, Object.keys(questions)], ['the state', ['single']],
     'a request must always carry the state and the questions it was given');
   return Object.keys(rest).sort();
+}
+
+/** The `[method, path]` pairs one call really put on the wire, and the error it threw, if any. */
+async function attempt(run) {
+  const seen = [];
+  const laya = new Laya({ fetch: async (url, init) => {
+    const path = new URL(url).pathname;
+    seen.push([init.method, path]);
+    const payload = path === '/v1/route' ? { model: 'english', repo: 'local', reason: 'fixture' }
+      : path === '/health' ? HEALTH : path === '/v1/systemone/batch'
+      ? { results: [RESULT], total_usage: { input_tokens: 4, output_tokens: 0 } } : RESULT;
+    return new Response(JSON.stringify(payload), { headers: { 'content-type': 'application/json' } });
+  } });
+  let error = null;
+  try {
+    await run(laya);
+  } catch (cause) {
+    error = cause;
+  }
+  return { seen, error };
+}
+
+/** The page as prose, so a claim is checked against the sentence that makes it rather than the file. */
+function sentences(page) {
+  return page.split(/(?<=[.!?])\s+/);
 }
 
 /** A value for every option the table names, chosen to survive the client's own validation. */
@@ -90,6 +123,51 @@ test('the design page names every control the client puts on the wire, and only 
     'a bare predict() sends state and questions only');
 });
 
+test('the client calls exactly the endpoints the page says it calls', async () => {
+  const page = readFileSync(PAGE, 'utf8');
+  const paths = new Map();
+  for (const [method, run] of [['predict', l => l.predict('the state', QUESTIONS, {})],
+                               ['predictBatch', l => l.predictBatch(['the state'], QUESTIONS)],
+                               ['route', l => l.route('the state')], ['health', l => l.health()]]) {
+    const { seen, error } = await attempt(run);
+    assert.equal(error, null, `${method}() must reach the fixture, got ${error && error.name}: ${error && error.message}`);
+    assert.equal(seen.length, 1, `${method}() made ${JSON.stringify(seen)}, and the page describes one request per call`);
+    paths.set(method, seen[0]);
+  }
+  assert.deepEqual([...paths], [['predict', ['POST', '/v1/systemone']],
+    ['predictBatch', ['POST', '/v1/systemone/batch']], ['route', ['POST', '/v1/route']], ['health', ['GET', '/health']]],
+    "the client's network surface moved; update the page and its executable contract");
+
+  // Each call has to be stated by a sentence that names the method and the path it reaches. The page
+  // used to promise `/v1/systemone` was "the only endpoint the client calls" in the same sentence that
+  // introduced `health`, while `health()` had been issuing `GET /health` the whole time.
+  for (const [method, [, path]] of paths) {
+    const stated = sentences(page).find(s => s.includes('`' + method + '`') && s.includes('`' + path + '`'));
+    assert.ok(stated, `the client sends ${paths.get(method)[0]} ${path} from ${method}(), which no sentence of the page pairs with that method`);
+  }
+
+  // An exclusivity claim is decidable at the same seam: "the only endpoint the client calls" holds only
+  // if the client calls one path, and "the only <kind> endpoint" holds only if the sentence names the
+  // path of every method of that kind. `health` probes; `predict` and `predictBatch` carry decisions.
+  const KINDS = { inference: ['predict', 'predictBatch'] };
+  for (const sentence of sentences(page)) {
+    const claim = /\bthe only\b[^.]{0,40}?\bendpoints?\b/i.exec(sentence);
+    if (!claim) continue;
+    const kind = (/\bthe only\s+([\w-]+)\s+endpoints?\b/i.exec(sentence) || [])[1];
+    const covered = kind === undefined ? [...paths.keys()] : KINDS[kind.toLowerCase()];
+    assert.ok(covered, `the page claims ${JSON.stringify(claim[0])} and this test cannot say which client `
+      + `methods "${kind}" covers; add it to KINDS`);
+    if (kind === undefined) {
+      assert.equal(covered.length, 1, `the page calls one endpoint the only one the client calls, but the `
+        + `client calls ${covered.length}: ${JSON.stringify([...paths.values()])}`);
+    }
+    for (const method of covered) {
+      assert.ok(sentence.includes('`' + paths.get(method)[1] + '`'),
+        `the page claims ${JSON.stringify(claim[0])} without naming ${paths.get(method)[1]}, which ${method}() calls`);
+    }
+  }
+});
+
 test('no sentence on the page claims a control it documents is unsupported', async () => {
   const page = readFileSync(PAGE, 'utf8');
   const fields = [...controlTable(page).values()];
@@ -117,14 +195,13 @@ test('the endpoint surface the page describes is the one the client declares',
     // A member is public if it is spelled out as a signature; `private body;` collapses to the keyword.
     const declared = [...declaration.matchAll(/^ {4}(?!constructor)(\w+)[<(]/gm)]
       .map(([, name]) => name).sort();
-    assert.deepEqual(declared, ['health', 'predict'],
-      'the client gained or lost a public method; the page describes exactly these two');
+    assert.deepEqual(declared, ['health', 'predict', 'predictBatch', 'route'],
+      'the client gained or lost a public method; update the endpoint inventory');
     for (const name of declared) {
       assert.ok(page.includes('`' + name + '`'),
         `the page never names the ${name}() method the client declares`);
     }
-    // The page's negative claim, on the code side: there is no standalone routing call to make.
-    for (const absent of ['route', 'decide', 'classify']) {
+    for (const absent of ['decide', 'classify']) {
       assert.equal(Laya.prototype[absent], undefined, `Laya unexpectedly exposes ${absent}()`);
     }
   });

@@ -70,6 +70,143 @@ print(decision.reason)  # why that checkpoint was selected
 `decision["model"]` and `decision["reason"]`. `Router.predict()` includes the same decision under
 the result's `"routing"` key.
 
+## The vega lane
+
+Since 0.4.25 a `Router` has a fourth lane beside the three encoder checkpoints: `vega`, served by
+`laya.Agent(vegaml=True)`, the frozen 0.8B universal reader with vegaml's decision engine. It is on
+by default when the `vegaml` package is installed (it ships with laya 0.4.23 and newer) and built
+on first use, so a Router costs nothing more to construct than before. Text the encoders can read
+keeps going to the encoders, with the same decisions and the same reasons as before. The lane only
+takes what the encoders cannot:
+
+| input | routed to vega because |
+|---|---|
+| `image=`, `audio=` or `video=` instead of a state | the encoders have no vision or speech path |
+| a state past `vega_over_tokens` (8,192, the most any encoder reads) | the encoders would truncate it; vega reads up to 73,728 tokens whole |
+| a question the vega agent has a fitted head for | the head was fitted on your rows for that question |
+
+```python
+from laya import Router
+
+router = Router()                                    # the lane is on if vegaml is installed
+router.predict(ticket, questions)                    # English text: english, as before
+router.predict(seventy_page_contract, questions)     # about 40,000 tokens: vega, read whole
+router.predict(None, questions, image="invoice.png") # vega
+router.predict(None, questions, audio="call.wav")    # vega, transcribed then decided
+router.route(long_text, questions).reason            # "state is about 40000 tokens, past the 8192 ..."
+```
+
+`Router(vega=False)` turns the lane off and the Router behaves exactly as it did before, including
+refusing media with a message that names the lane. `Router(vega=True)` insists on it and raises at
+construction when vegaml is missing. `Router(vega="4b")` names a different reader (any name
+`laya.Agent(vegaml=...)` takes), and `Router(vega=agent)` attaches an agent you already built, which
+is how fitted heads reach the Router: fit on the agent, hand it over, and the questions it serves
+route to it. `model="vega"` selects the lane explicitly like any other checkpoint name.
+
+Two things stay on the encoders on purpose. `predict_batch` never routes to vega, because a batch
+shares one forward pass on one checkpoint; send media and long states one at a time. And the HTTP
+server refuses `image`, `audio` and `video` in a body with a message saying where media goes, since
+the JSON surface has no media encoding yet.
+
+Images and video through the lane need `pip install 'laya[vision]'` (Pillow and torchvision) and
+audio files `pip install 'laya[audio]'` (soundfile); text and a numpy waveform need nothing more.
+
+Answers from the lane carry vega's fields on top of laya's: `prediction_set`, `abstain`, `unbound`
+and `route`; see [vega inside laya](vegaml.md).
+
+## Explain a detection result
+
+Use `explain=True` to inspect why built-in detection reached its result, without loading a
+checkpoint. The existing detection fields and routing rules stay unchanged; only the optional
+`diagnostic` field is added.
+
+```python
+from laya import Router
+from laya.lang import analyse
+
+detection = analyse("Turn lights off", explain=True)
+print(detection["diagnostic"])
+# {"stage": "whole_state", "reason": "insufficient_words", "source": None}
+
+router = Router(default="english")
+decision = router.route("Turn lights off", explain=True)
+assert decision["model"] == "english"
+assert decision["detection"]["language_undecided"] is True
+```
+
+The detector's reason is separate from the router's policy: an unidentified language follows
+the configured `default`, which need not be multilingual. Reasons describe heuristic branches,
+not calibrated language confidence. Explicit model/task/language overrides, an accepted
+`lang_guess`, and automatic workflow selection still skip detection and return
+`detection=None`. As before, an `on_route` hook can replace the whole decision.
+
+For structured input, a later value can change the result even when a long earlier value has
+filled the joined-text window:
+
+```python
+state = {
+    "note": "This is an English note about the order. " * 140,
+    "payload": {"customer": "Ich kann mich nicht anmelden und brauche Hilfe"},
+}
+detection = analyse(state, explain=True)
+assert detection["language"] == "de"
+assert detection["mixed_segment"] is None  # its existing meaning is unchanged
+assert detection["diagnostic"] == {
+    "stage": "value",
+    "reason": "named_value",
+    "source": {"leaf_index": 1, "path": ["payload", "customer"], "line": 1},
+}
+```
+
+`stage` is `whole_state` for the initial joined sample, `segment` for the first qualifying
+line in the shared scan window, or `value` for the subsequent per-value fallback. Only the
+selected result is reported; this is not a trace of every candidate.
+An override changes only the fields it changed before: for example, a late non-Latin value can
+make `is_english=False` while `script_profile` still describes the initial Latin sample. The
+diagnostic identifies the override's source; it does not relabel those older measurements.
+
+| Reason | Meaning |
+|---|---|
+| `no_letters` | The initial sample contains no alphabetic characters. |
+| `non_latin_script` | The script check selected a non-Latin script, including mixed-script promotion. |
+| `insufficient_words` | The Latin language guess returned before general scoring because it had fewer than four words. |
+| `no_language_evidence` | General word scoring did not identify a language. |
+| `language_evidence` | Word evidence identified a language; see the existing `language` field. |
+| `short_swedish` | The existing short Swedish phrase rule identified the language. |
+| `caps_veto` | The all-capitals evidence check rejected the language name. |
+| `caps_filtered` | The language name was reconsidered with acronym-shaped capitals removed. |
+| `non_english_markers` | No language was named, but diacritics or a shared Nordic marker still made the text non-English. This takes precedence over an inconclusive word/caps reason. |
+| `named_segment` | A named non-English prose segment overrode the joined result. |
+| `named_value` | The selected fallback line passed the named-language prose check. |
+| `non_latin_value` | The selected fallback line passed the non-Latin word/letter check. |
+| `diacritic_value` | The selected fallback line passed the diacritic and word-count check. |
+
+For `whole_state`, `source` is `None`: the joined sample need not correspond to a single field.
+Other stages report a zero-based `leaf_index` in the existing string-leaf traversal and a
+one-based `line` within that decoded leaf. `path` is an array of mapping keys and sequence
+indices, so keys containing dots or slashes remain unambiguous; a root string has path `[]`.
+The detector's existing depth and character limits still apply. Invalid UTF-8 byte leaves and
+non-text values do not contribute a leaf index.
+
+A path retains string keys of at most 128 characters and integer keys with at most 63 bits of
+magnitude, including negative integers. If a key anywhere on that path is unsupported or exceeds
+those bounds, the entire path is `None`; the leaf index and line remain available. No arbitrary
+key is stringified, and the diagnostic adds no input text. The existing `mixed_segment` can
+still contain text from the segment scan, as it did before.
+
+`Router.route_batch(requests, explain=True)` applies the same option to the whole routing batch,
+preserving order. The CLI exposes it in route-only mode:
+
+```bash
+laya "Turn lights off" --explain --json
+laya --batch tickets.txt --explain --json
+```
+
+The flag also works in interactive mode and ordinary text output. Combining it with
+`--predict`, `--preset` or `--questions` is rejected: diagnostics belong to the routing call,
+not a separate detector pass attached to an inference result.
+
+
 ## Override language routing
 
 Use `lang=` when the application already knows the request language. Language tags such as

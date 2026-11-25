@@ -260,6 +260,33 @@ def _gold_label(q: Mapping, gold: Any) -> str:
     raise ValueError("a choice gold must be one of the question's options %r, got %r" % (labels, gold))
 
 
+def _laya_choice_label(q: Mapping, value: Any) -> Any:
+    """The caller's spelling of one choice label the engine answered with.
+
+    ``_to_vega_questions`` hands vega a string-keyed criteria map, and the engine answers in that
+    vocabulary. laya documents that a label comes back exactly as it was written
+    (``docs/questions-and-answers.md``), so an int ``1`` must not leave as ``"1"``: its
+    probabilities would be keyed by a label the question never offered, and
+    ``predict_tournament`` feeds the winner back into the criteria map on the next round, where
+    the string form of a non-string label raises ``KeyError``.
+
+    An exact key wins first, so a question that really does offer both ``1`` and ``"1"`` keeps the
+    engine's own spelling; a label the question does not offer is returned unchanged.
+    """
+    crit = q.get("criteria")
+    labels = list(crit.keys()) if isinstance(crit, dict) else list(crit or [])
+    # Exact type first: Python reads True == 1, so an untyped match would turn the bool label
+    # True into the int 1. The string form is the engine's own spelling, used when the types
+    # cannot meet (the engine answered "1" for the int label 1).
+    for label in labels:
+        if label is value or (type(label) is type(value) and label == value):
+            return label
+    for label in labels:
+        if str(label) == str(value):
+            return label
+    return value
+
+
 def _fold(answer: Mapping, q: Mapping) -> Dict[str, Any]:
     """One vegaml answer in laya's shape, with vega's extra fields kept.
 
@@ -267,16 +294,28 @@ def _fold(answer: Mapping, q: Mapping) -> Dict[str, Any]:
     ``"false"``/``"true"``; laya spells them lower case, so the keys are folded here once and
     scoring code downstream never sees two spellings. Not folding this is how a benchmark read
     every yes/no task at 0.000 for a day.
+
+    A choice answer is translated back to the labels the caller wrote. The engine answers in its
+    string-keyed vocabulary, while laya's contract is that ``choice``, ``prediction_set`` and the
+    ``probabilities`` keys carry the caller's labels unchanged; leaving the engine's spelling in
+    place made an int label come back as ``"1"``.
     """
     t = q["type"]
-    probs = {str(k): _engine_number(v, "the probability of %r" % (k,))
-             for k, v in (answer.get("probs") or {}).items()}
+    raw_probs = answer.get("probs") or {}
+    probs = {(_laya_choice_label(q, k) if t == "choice" else str(k)):
+             _engine_number(v, "the probability of %r" % (k,))
+             for k, v in raw_probs.items()}
     if t == "noul":
-        low = {k.lower(): v for k, v in probs.items()}
+        low = {str(k).lower(): v for k, v in probs.items()}
         probs = {"false": low.get("false", 0.0), "true": low.get("true", 0.0)}
     pset = answer.get("prediction_set")
     if pset is not None:
-        pset = [str(p).lower() if t == "noul" else str(p) for p in pset]
+        if t == "noul":
+            pset = [str(p).lower() for p in pset]
+        elif t == "choice":
+            pset = [_laya_choice_label(q, p) for p in pset]
+        else:
+            pset = [str(p) for p in pset]
     out: Dict[str, Any] = {
         "type": t,
         "probabilities": {k: round(v, 6) for k, v in probs.items()},
@@ -302,7 +341,8 @@ def _fold(answer: Mapping, q: Mapping) -> Dict[str, Any]:
         out["legend"] = {str(i): c for i, c in enumerate(q["criteria"])}
     else:
         ch = answer.get("choice")
-        out["choice"] = str(ch) if ch is not None else (max(probs, key=probs.get) if probs else None)
+        out["choice"] = (_laya_choice_label(q, ch) if ch is not None
+                         else (max(probs, key=probs.get) if probs else None))
     for k in ("settle_steps", "energy", "adapter", "gate", "view_agreement", "cv_accuracy"):
         if k in answer:
             out[k] = answer[k]

@@ -114,6 +114,12 @@ public static class LanguageDetection
             "pueden", "quiero", "necesito", "hemos", "han", "sobre", "entre", "cuando", "donde",
             "porque", "aunque", "también", "ya", "eso", "esto", "esa", "ese", "nada", "algo",
             "aquí", "hoy", "gracias",
+            "ahora", "alguien", "ayer", "buenas", "cual", "cuales", "cuál", "cuáles", "cuándo",
+            "cómo", "desde", "despues", "después", "dónde", "entonces", "estan", "estoy", "están",
+            "hace", "hacer", "hago", "hasta", "hola", "luego", "mis", "nadie", "ninguna",
+            "nosotros", "nuestra", "nuestro", "otra", "pueda", "puedes", "puedo", "pues", "quien",
+            "quienes", "quisiera", "quién", "sabes", "siempre", "tambien", "tardes", "tienes",
+            "todavia", "todavía", "tus", "usted", "ustedes",
         },
         ["pt"] = new(StringComparer.Ordinal)
         {
@@ -128,6 +134,8 @@ public static class LanguageDetection
             "então", "estamos", "estava", "estou", "ficou", "fiz", "gostaria", "ja", "meus", "minhas",
             "nao", "nenhum", "nenhuma", "ninguem", "ninguém", "noite", "nossa", "nosso", "obrigada",
             "pra", "sao", "tambem", "também", "tarde", "tá", "vc", "vcs", "voce", "voces", "você", "vocês",
+            "amanha", "amanhã", "elas", "eles", "estao", "estão", "faco", "faz", "fazer", "faço",
+            "nós", "outra", "outras", "outros", "precisa", "quais", "qual", "quem",
         },
         ["it"] = new(StringComparer.Ordinal)
         {
@@ -140,6 +148,7 @@ public static class LanguageDetection
             "ieri", "grazie", "ciao", "scusa",
             "nel", "nell", "negli", "sul", "sulla", "sulle", "dal", "dalla", "dallo", "dagli", "dei",
             "delle", "dello", "degli", "agli", "alle", "col",
+            "qual",
         },
         ["nl"] = new(StringComparer.Ordinal)
         {

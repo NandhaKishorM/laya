@@ -205,7 +205,19 @@ _STOP = {
            "ni", "dos", "tres", "fue", "fueron", "ser", "tiene", "tienen", "tengo", "puede",
            "pueden", "quiero", "necesito", "hemos", "han", "sobre", "entre", "cuando", "donde",
            "porque", "aunque", "también", "ya", "eso", "esto", "esa", "ese", "nada", "algo",
-           "aquí", "hoy", "gracias"},
+           "aquí", "hoy", "gracias",
+           # Unaccented counterparts, first-person modals, possessives and time/support function
+           # words symmetric with `pt`: ASCII-normalising ticket and telephony pipelines strip
+           # accents, leaving short Spanish messages undecided and letting English templates
+           # outvote them in mixed states. `dime`, `favor`, `sin` and `solo` stay out (English
+           # words); `estamos`, `aqui` and `diga` stay out so they do not steal Portuguese hits.
+           "puedo", "puedes", "pueda", "estoy", "estan", "están", "mis", "tus",
+           "nuestro", "nuestra", "hago", "hace", "hacer", "despues", "después",
+           "todavia", "todavía", "tambien", "ahora", "ayer", "siempre", "hasta", "desde",
+           "alguien", "nadie", "ninguna", "entonces", "nosotros", "ustedes", "usted",
+           "quien", "quién", "quienes", "cual", "cuál", "cuales", "cuáles",
+           "cuándo", "dónde", "cómo", "hola", "buenas", "tardes", "quisiera", "pues",
+           "luego", "otra", "tienes", "sabes"},
     "pt": {"os", "as", "que", "em", "um", "uma", "para", "com", "não", "é", "se", "do", "da",
            "dos", "das", "mas", "são", "está", "este", "esta", "muito", "pelo", "pela",
            # `no` is Portuguese too, and among the most frequent words it has; it is also one of the
@@ -227,14 +239,19 @@ _STOP = {
            # the words a ticket keeps once the jargon is English ("Deu erro 500 no endpoint de login
            # depois do update"): time and person words plus the past tenses a bug report is told in
            "depois", "antes", "então", "entao", "ninguém", "ninguem", "alguém", "alguem", "nenhum",
-           "nenhuma", "estava", "ficou", "fiz", "deu"},
+           "nenhuma", "estava", "ficou", "fiz", "deu",
+           # Common closed-class verbs, pronouns and interrogatives (with unaccented pairs) that
+           # short Portuguese tickets lean on (`como faco para reembolsar?`, `qual o prazo...`).
+           "faço", "faco", "fazer", "faz", "eles", "elas", "nós", "estao", "estão",
+           "qual", "quais", "quem", "outra", "outros", "outras", "precisa",
+           "amanha", "amanhã"},
     "it": {"il", "lo", "gli", "che", "di", "per", "con", "non", "è", "si", "del", "della", "sono",
            "questo", "questa", "anche", "come", "più", "sono", "nella", "alla",
            "la", "le", "un", "uno", "una", "e", "ed", "o", "da", "su", "tra", "fra", "mi",
            "ci", "ne", "ho", "hai", "ha", "abbiamo", "avete", "hanno", "era", "stato", "stata",
            "devo", "deve", "devono", "voglio", "vorrei", "mio", "mia", "tuo", "sua", "quando",
            "dove", "perche", "molto", "poco", "sempre", "mai", "già", "ancora", "adesso", "oggi",
-           "ieri", "grazie", "ciao", "scusa",
+           "ieri", "grazie", "ciao", "scusa", "qual",
            # the articulated prepositions: Italian-only words, which is what lets a state made of
            # shared articles (`la fattura`) still name the language rather than stay undecided
            "nel", "nell", "negli", "sul", "sulla", "sulle", "dal", "dalla", "dallo", "dagli", "dei",

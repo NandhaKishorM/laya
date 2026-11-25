@@ -406,17 +406,16 @@ def _run_onnx(sess, feeds_np):
     return sess.run(["logits", "act_logits"], feeds)
 
 
-def verify(out_dir: str, cfg: dict, seq_lens=None, batch_sizes=None, marker_counts=None):
+def verify(out_dir: str, cfg: dict, seq_lens=None, batch_sizes=None, marker_counts=None, *, pt_model=None):
     """Verify the exported ONNX matches PyTorch across a range of tensor shapes.
 
     Feeds synthetic zero-valued tensors so no text or tokenizer is needed.
-    Reports max absolute difference on logits and act_logits for every shape.
+    With the PyTorch model used for export, report the maximum differences in logits
+    and act_logits across the sweep. Without it, check the fixtures and output shapes.
     """
     import numpy as np
     import onnxruntime as ort
     import torch
-
-    from laya.common import build_model as _build_model
 
     if seq_lens is None:
         seq_lens = [16, 32, 64, 128, 256, cfg.get("max_len", 512)]
@@ -425,9 +424,6 @@ def verify(out_dir: str, cfg: dict, seq_lens=None, batch_sizes=None, marker_coun
     if marker_counts is None:
         marker_counts = [2, 5, 9]
 
-    # Load the exported model weights for PyTorch re-evaluation.
-    # Re-use the fixtures.npz rather than re-downloading to avoid an extra
-    # snapshot_download; the fixtures were written from the same weights.
     fixtures_path = os.path.join(out_dir, "fixtures.npz")
     if not os.path.exists(fixtures_path):
         raise SystemExit("fixtures.npz not found in %s; run without --verify first" % out_dir)
@@ -466,12 +462,6 @@ def verify(out_dir: str, cfg: dict, seq_lens=None, batch_sizes=None, marker_coun
         % (len(seq_lens), len(batch_sizes), len(marker_counts),
            len(seq_lens) * len(batch_sizes) * len(marker_counts))
     )
-
-    # We need PyTorch weights for the shape sweep comparison.  Load from the
-    # original checkpoint directory if it is still cached locally.
-    # If not available, skip PyTorch comparison and only check that the ONNX
-    # session runs without error and produces the expected output shapes.
-    pt_model = _load_pt_model_if_cached(cfg, out_dir)
 
     max_d_logits = max_d_act = 0.0
     n_ok = n_skip = 0
@@ -519,7 +509,7 @@ def verify(out_dir: str, cfg: dict, seq_lens=None, batch_sizes=None, marker_coun
         )
     else:
         print(
-            "  shape sweep done: %d combos (PyTorch not available, "
+            "  shape sweep done: %d combos (no reference model supplied, "
             "shape/session checks only)" % (n_ok + n_skip)
         )
 
@@ -535,54 +525,6 @@ def _make_synthetic_feeds(B, seq, M):
         "marker_mask":    np.ones((B, M), dtype=np.bool_),
         "qtype":          np.zeros(B, dtype=np.int64),
     }
-
-
-def _load_pt_model_if_cached(cfg, out_dir):
-    """Return a loaded PyTorch model if weights are available locally, else None."""
-    from safetensors.torch import load_file
-    import torch
-
-    # The export was done from a snapshot_download() cache; try to locate the
-    # safetensors file there.  If it is gone (evicted or never downloaded because
-    # the user supplied a local path that has since been removed), skip PT compare.
-    cache_candidates = []
-    # Check if there is a safetensors file alongside the onnx output (for local-path exports).
-    out_parent = os.path.dirname(out_dir)
-    for candidate in [
-        os.path.join(out_parent, "model.safetensors"),
-        os.path.join(out_dir, "model.safetensors"),   # shouldn't normally exist here
-    ]:
-        if os.path.exists(candidate):
-            cache_candidates.append(candidate)
-
-    # Also check the HF cache for a known pattern.
-    try:
-        import huggingface_hub
-        cache_info = huggingface_hub.scan_cache_dir()
-        for repo in cache_info.repos:
-            for rev in repo.revisions:
-                for f in rev.files:
-                    if f.file_name == "model.safetensors" and os.path.exists(f.file_path):
-                        cache_candidates.append(str(f.file_path))
-    except Exception:
-        pass
-
-    # Find a safetensors that is compatible with this cfg's architecture.
-    for sf_path in cache_candidates:
-        try:
-            model = build_model(cfg)
-            weights = load_file(sf_path)
-            model.load_state_dict(weights, strict=True)
-            try:
-                model.encoder.config.reference_compile = False
-            except Exception:
-                pass
-            model.eval()
-            return model
-        except Exception:
-            continue
-
-    return None
 
 
 # ─── ONNX graph signature check ─────────────────────────────────────────────
@@ -749,7 +691,7 @@ def export_one(name_or_path: str, out_root: str, token: str, opset: int, do_veri
     # 9. Verify if requested.
     if do_verify:
         print("  verifying...")
-        verify(out_dir, cfg)
+        verify(out_dir, cfg, pt_model=model)
 
     elapsed = time.perf_counter() - t0
     print("  done in %.1f s -> %s" % (elapsed, out_dir))

@@ -38,6 +38,8 @@ out = agent.predict("We were billed twice for March. Refund it today or we cance
 out["answers"]["department"]["choice"]     # 'billing', with probabilities, a prediction set and abstain
 ```
 
+Python 3.10 or newer. Optional extras (HTTP server, MCP, LangChain, ONNX, images, audio), `uv`, GPU builds and per-platform steps are in [Installation details](#installation-details).
+
 ## What it does
 
 - **Text, images, audio and video.** `agent.predict(...)` with `image=`, `audio=` or `video=` gives the same typed answers as for text.
@@ -109,31 +111,9 @@ Jev leads on day one (23 of 31 questions); they are level at 40; laya leads at 1
 
 **Multilingual, non-autoregressive System 1 decision engine.** Typed decisions over 100+ languages in a single forward pass — 33 ms — trained with reinforcement learning against strictly proper scoring rules (RLCD), with a router that picks the right checkpoint per request.
 
-## Installation
-
-```bash
-python -m pip install laya
-```
-
-With [uv](https://docs.astral.sh/uv/), run `uv add laya` in a uv project or `uv pip install laya` in a virtual environment.
-
-Python 3.10 or newer. Optional extras: `laya[serve]` (HTTP server), `laya[mcp]` (MCP server), `laya[langchain]` (LangChain and LangGraph), `laya[llamaindex]` (LlamaIndex selectors), `laya[crewai]` (CrewAI routing), `laya[onnx]` (ONNX Runtime), `laya[fast]` (TileLang GPU fast path), `laya[structured]` (pydantic models in `decide`), `laya[vision]` (Pillow and torchvision, for `predict(image=...)` and `predict(video=...)`), `laya[audio]` (soundfile, to decode audio files). Step-by-step setup for each platform, CPU-only or GPU PyTorch builds, and troubleshooting are in [Installation details](#installation-details).
-
-For TypeScript / Node.js / browser, see [`laya-ts/`](https://github.com/NandhaKishorM/laya/tree/main/laya-ts/). npm releases (`npm install laya-ts`) are published from this repository's `laya-ts-v*` release tags.
-
-**Long documents.** `laya-multilingual` reads up to 8,192 tokens with `max_len=8192`. Measured accuracy and time by document length, reproducible with [`research/scripts/bench_long_context.py`](https://github.com/NandhaKishorM/laya/blob/main/research/scripts/bench_long_context.py):
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/long_context_8192.png" alt="laya-multilingual with max_len=8192: 16 to 18 of 20 requests correct with up to about 4,000 tokens of text before them, more variable beyond" width="100%" />
-</p>
-
 ## Quickstart
 
 Since 0.5.0 `laya.Agent()` loads laya's new engine: a frozen 0.8B reader with a small physics engine on top, so every answer carries a conformal prediction set, an abstain flag, an out-of-distribution flag and a route decided without a threshold you had to guess at. Text, images, speech and 73k-token documents go through the same call. Python 3.10 or newer; details in [vega inside laya](#vega-inside-laya-agentvegamltrue).
-
-```bash
-python -m pip install -U laya   # 0.5.0 or newer: the new engine is the default
-```
 
 ```python
 import laya
@@ -312,13 +292,19 @@ for text in ["मुझसे मार्च में दो बार शु�
 # multilingual technical
 ```
 
+**Long documents.** `laya-multilingual` reads up to 8,192 tokens with `max_len=8192`. Measured accuracy and time by document length, reproducible with [`research/scripts/bench_long_context.py`](https://github.com/NandhaKishorM/laya/blob/main/research/scripts/bench_long_context.py):
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/NandhaKishorM/laya/main/assets/long_context_8192.png" alt="laya-multilingual with max_len=8192: 16 to 18 of 20 requests correct with up to about 4,000 tokens of text before them, more variable beyond" width="100%" />
+</p>
+
 > **Long documents on the checkpoints: `laya-multilingual` reads up to 8,192 tokens.** It ships with a 1,024-token limit that cuts long documents off, so pass `max_len=8192` for them:
 >
 > ```python
 > result = router.predict(long_document, questions, model="multilingual", max_len=8192)
 > ```
 >
-> In the table above, 16 to 18 of 20 requests were answered correctly with up to about 4,000 tokens of text before them; beyond that results vary (8 to 17 of 20), so check long-document accuracy on your own data. Short inputs give identical answers with `max_len=8192`, and speed follows the input's real length, not the limit: short inputs are unchanged, and a 4,000-token input takes about 1.7 s on an Apple GPU. Name the checkpoint with `model="multilingual"`, since long mostly-English text would otherwise route to the English checkpoint. With `vegaml=True` none of this applies: the reader takes 73,728 tokens whole.
+> In the chart above, 16 to 18 of 20 requests were answered correctly with up to about 4,000 tokens of text before them; beyond that results vary (8 to 17 of 20), so check long-document accuracy on your own data. Short inputs give identical answers with `max_len=8192`, and speed follows the input's real length, not the limit: short inputs are unchanged, and a 4,000-token input takes about 1.7 s on an Apple GPU. Name the checkpoint with `model="multilingual"`, since long mostly-English text would otherwise route to the English checkpoint. With `vegaml=True` none of this applies: the reader takes 73,728 tokens whole.
 
 From the command line, `laya "My payment failed twice" --preset triage` answers a ready-made question set. More in the [full quickstart](#quickstart-route-mode-recommended) and the [docs](https://nandhakishorm.github.io/laya/).
 
@@ -326,7 +312,7 @@ From the command line, `laya "My payment failed twice" --preset triage` answers 
 
 The shipped checkpoints work zero-shot, but fine-tuning on decisions from your own domain is where accuracy jumps. On the typed-decisions benchmark (2,000 decisions across four workflows), the fine-tuned `laya-typed-decisions` checkpoint scores **0.766** accuracy, against **0.362** for the base English checkpoint on the same decisions.
 
-**[Fine-tuning notebook](https://github.com/NandhaKishorM/laya/blob/main/notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb)** (Kaggle 2xT4) and **[Apple Silicon script](https://github.com/NandhaKishorM/laya/blob/main/notebooks/laya_finetune_typed_decisions_mps.py)** (MPS / CPU): run the whole loop (build dataset, train with RLCD, calibrate temperatures, evaluate, export). Details in [Fine-Tuning](#fine-tuning).
+How to do it, on Kaggle or on Apple Silicon: [Fine-Tuning](#fine-tuning).
 
 ## Documentation
 
@@ -351,9 +337,16 @@ unaccented Spanish and Portuguese route to the multilingual checkpoint (#1526).
 | [`LOCAL_SETUP.md`](https://github.com/NandhaKishorM/laya/blob/main/LOCAL_SETUP.md) | running this checkout on macOS/Intel: pinned stack, checkpoint manifest, the two portability fixes, every verification run and its result |
 | [`BENCHMARKS.md`](https://github.com/NandhaKishorM/laya/blob/main/BENCHMARKS.md) | every benchmark run consolidated, all 51 languages, with the limits stated plainly |
 | [`research/README.md`](https://github.com/NandhaKishorM/laya/blob/main/research/README.md) | the harnesses that produce those numbers, and how to re-run them |
+| [Engineering write-up](https://dev.to/nandakishor_m_6cc0adfde9f/i-built-non-autoregressive-decision-models-a-year-ago-then-a-frontier-lab-called-it-a-18me) | the story of how laya was built |
 
 
 ## Installation details
+
+With [uv](https://docs.astral.sh/uv/), run `uv add laya` in a uv project or `uv pip install laya` in a virtual environment.
+
+Python 3.10 or newer. Optional extras: `laya[serve]` (HTTP server), `laya[mcp]` (MCP server), `laya[langchain]` (LangChain and LangGraph), `laya[llamaindex]` (LlamaIndex selectors), `laya[crewai]` (CrewAI routing), `laya[onnx]` (ONNX Runtime), `laya[fast]` (TileLang GPU fast path), `laya[structured]` (pydantic models in `decide`), `laya[vision]` (Pillow and torchvision, for `predict(image=...)` and `predict(video=...)`), `laya[audio]` (soundfile, to decode audio files). Step-by-step setup for each platform, CPU-only or GPU PyTorch builds, and troubleshooting are in [Installation details](#installation-details).
+
+For TypeScript / Node.js / browser, see [`laya-ts/`](https://github.com/NandhaKishorM/laya/tree/main/laya-ts/). npm releases (`npm install laya-ts`) are published from this repository's `laya-ts-v*` release tags.
 
 Python 3.10 or newer. The dependencies set that floor: `huggingface_hub` 1.x, `transformers` 5.x and `torch` 2.14 all require 3.10.
 
@@ -712,20 +705,6 @@ downloaded models between runs.
 Laya ships three checkpoints. The built-in **`Router`** is the recommended entry point: it evaluates any state in any language, automatically detects scripts and languages in sub-milliseconds, and dispatches to the optimal checkpoint in a single forward pass.
 
 > **Since 0.4.25, with vegaml installed:** the same `Router` also takes `image=`, `audio=` or `video=` in place of a state and sends them, states past 8,192 tokens, and questions with fitted heads to `laya.Agent(vegaml=True)`; everything else routes exactly as below. `Router(vega=False)` turns that off. See [the vega lane](https://nandhakishorm.github.io/laya/routing/#the-vega-lane).
-
-### Minimal example (30 seconds)
-
-```python
-from laya import Router
-
-router = Router()  # downloads only the selected checkpoint on first use
-result = router.predict(
-    {"body": "We were billed twice. Please refund the duplicate."},
-    {"billing": {"type": "noul", "instructions": "Does the user request a refund?"}},
-)
-print(result["answers"]["billing"]["noul"])  # P(true), a float from 0.0 to 1.0
-print(result["routing"]["model"])            # which checkpoint answered, e.g. 'english'
-```
 
 Input is any state (`str`, `dict`, or `list` — text, email, ticket, JSON document) plus a dict of typed
 questions (`choice` = pick one label, `score` = ordinal levels, `noul` = yes/no statement check).
@@ -1252,23 +1231,7 @@ for measurements and limitations.
 
 ## vega inside laya: `Agent(vegaml=True)`
 
-One argument swaps the engine under laya's surface for [vegaml](https://github.com/NandhaKishorM/vegaml)'s:
-a frozen 0.8B universal reader with a small physics engine on top. Every method keeps its
-laya name; the answers gain what the engine knows that an encoder does not.
-
-```python
-import laya
-
-agent = laya.Agent(vegaml=True)                  # vegaml ships with laya 0.4.23 and newer
-out = agent.predict(state, questions)
-
-ans = out["answers"]["department"]
-ans["choice"]                                   # as always
-ans["prediction_set"]                           # the conformal set at alpha=0.1
-ans["abstain"]                                  # the engine's own refusal
-ans["unbound"]                                  # far from every well: likely off-distribution
-ans["route"], ans["route_reason"]               # "auto" or "review", decided for you
-```
+The new engine is covered in the [Quickstart](#quickstart): what it returns, fitting on your labels, images, audio, video and routing between it and the laya checkpoints. How the two compare:
 
 | | laya checkpoints | `Agent(vegaml=True)` |
 |---|---|---|
@@ -1278,20 +1241,6 @@ ans["route"], ans["route_reason"]               # "auto" or "review", decided fo
 | refusal | `min_confidence` you choose | `abstain`, `unbound`, the conformal set, the fitted band |
 | images, speech, video | no | `agent.predict(image=img, ...)`, `agent.predict(audio=wav, ...)`, `agent.predict(video=clip, ...)` |
 | speed on text (T4) | ~16 ms a decision batched | ~72 ms a decision |
-
-```python
-agent.fit(rows)                                 # rows: {"state", "questions", "gold" or "expected"}
-agent.predict(state, questions)                 # heads serve where they beat the engine; route from the band
-agent.save_calibration("fit/"); agent.load_calibration("fit/")
-agent.predict_long(document, questions)         # no windowing up to 73k tokens
-agent.predict(image=img, questions=questions)   # the reader's vision tower
-agent.predict(audio=wav, questions=questions, sampling_rate=16000)   # transcribed, then decided
-agent.predict(video="call.mp4", questions=questions)                  # speech if any, else frames
-
-from laya.vega import Router
-router = Router(fast=laya.Agent("convaiinnovations/laya"), vega=agent)   # laya for short English text, vega otherwise
-router.predict(state, questions)["routing"]     # {"model": "fast" | "vega", "reason": ...}
-```
 
 **Nothing here needs a threshold from you.** `route` comes from the fitted band when you have
 run `fit` or `calibrate`, and otherwise from the engine's own conformal set, abstain flag and
@@ -2010,14 +1959,6 @@ Embedding the message alone gave the highest or tied-highest recall@20 for both 
 
 ---
 
-## Live Demo & Resources
-
-* **Hugging Face Model:** [convaiinnovations/laya](https://huggingface.co/convaiinnovations/laya)
-* **Interactive Web Demo:** [convaiinnovations/laya-demo](https://huggingface.co/spaces/convaiinnovations/laya-demo)
-* **Engineering Writeup:** [Read the full story on Dev.to](https://dev.to/nandakishor_m_6cc0adfde9f/i-built-non-autoregressive-decision-models-a-year-ago-then-a-frontier-lab-called-it-a-18me)
-
----
-
 ## Fine-Tuning
 
 Fine-tune Laya on your own domain data. Two training options are provided:
@@ -2051,12 +1992,6 @@ The notebook's calibration samples come from its training items; evaluate on sep
 data before claiming an improvement. Already published checkpoints are not rewritten.
 Run the CPU-only regression checks with `python tests/test_calibration_persistence.py`
 (synthetic configs and tiny local fixtures; no pretrained downloads or training).
-
-Fine-tuning is where most of the value is. On the typed-decisions benchmark the base
-checkpoints score near chance zero-shot (0.36 and 0.35 against a 0.318 random baseline),
-while the fine-tuned checkpoint reaches **0.766** on the same 2,000 decisions -- above
-TypeSafe Jev's published 0.727 and above the 0.735 teacher self-agreement ceiling. Treat Laya
-as a fast base to specialise, not as a zero-shot decision engine.
 
 Runtime on 2xT4 is roughly 4-5 hours for 4 epochs over ~30k questions.
 

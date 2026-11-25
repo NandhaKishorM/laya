@@ -154,7 +154,7 @@ answer you confirm, on the machine it runs on: no fine-tuning, and no GPU needed
 
 It comes from a separate package, `pip install vegaml-learn`, which is free for noncommercial use under
 the PolyForm Noncommercial License 1.0.0; commercial use needs a licence from
-[Embedding Space](https://embedding.in). laya itself stays Apache 2.0.
+[Embedding Space](https://embedding.in/licence) (nandakishor@embedding.in). laya itself stays Apache 2.0.
 
 ```python
 from laya import Learner

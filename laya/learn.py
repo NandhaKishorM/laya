@@ -12,14 +12,14 @@ you confirm, on your own machine.
 
 This is vega's learner, from the vegaml-learn package: `pip install vegaml-learn`. It reads with vega (the 0.8B
 reader by default), not with laya's own encoder. vegaml-learn is free for noncommercial use (PolyForm
-Noncommercial 1.0.0); commercial use needs a licence from Embedding Space, https://embedding.in. laya itself,
+Noncommercial 1.0.0); commercial use needs a licence from Embedding Space, https://embedding.in/licence. laya itself,
 including this file, stays Apache 2.0. Full guide: https://github.com/NandhaKishorM/vegaml/blob/main/docs/learn.md
 """
 
 NEEDS = (
     "%s is vega's continuous learning, in the vegaml-learn package: pip install vegaml-learn. "
     "It is free for noncommercial use (PolyForm Noncommercial 1.0.0); commercial use needs a licence from "
-    "Embedding Space, https://embedding.in."
+    "Embedding Space: https://embedding.in/licence or nandakishor@embedding.in."
 )
 
 

@@ -291,7 +291,16 @@ export class HookRegistry {
     const added = normaliseHooks(hookArgs);
     this.hooks = [...this.hooks, ...added];
     const release = (): void => {
-      this.hooks = this.hooks.filter((installed) => !added.includes(installed));
+      const current = [...this.hooks];
+      for (const hook of added) {
+        for (let i = current.length - 1; i >= 0; i--) {
+          if (current[i] === hook) {
+            current.splice(i, 1);
+            break;
+          }
+        }
+      }
+      this.hooks = current;
     };
     let out: T;
     try {

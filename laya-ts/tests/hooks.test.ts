@@ -400,6 +400,53 @@ describe("hook registry and normalisation", () => {
     expect(hits).toEqual(["hit"]);
     expect(router.hooks).toHaveLength(0); // removed after the callback settles
   });
+
+  it("withHooks removes only the copies installed by each scope", async () => {
+    const hook: Hook = { onPredictStart: () => {} };
+
+    const syncReg = new HookRegistry();
+    syncReg.addHook(hook);
+    syncReg.withHooks([hook], () => expect(syncReg.hooks).toEqual([hook, hook]));
+    expect(syncReg.hooks).toEqual([hook]);
+
+    const asyncReg = new HookRegistry();
+    asyncReg.addHook(hook);
+    await asyncReg.withHooks([hook], async () => {
+      await Promise.resolve();
+      expect(asyncReg.hooks).toEqual([hook, hook]);
+    });
+    expect(asyncReg.hooks).toEqual([hook]);
+
+    const insideReg = new HookRegistry();
+    const temporary: Hook = { onPredictEnd: () => {} };
+    const addedInside: Hook = { onError: () => {} };
+    insideReg.withHooks([temporary], () => insideReg.addHook(addedInside));
+    expect(insideReg.hooks).toEqual([addedInside]);
+
+    const overlapReg = new HookRegistry();
+    const original: Hook = { onRoute: () => {} };
+    overlapReg.addHook(original);
+    let finishFirst!: () => void;
+    let finishSecond!: () => void;
+    const first = overlapReg.withHooks([hook], async () => {
+      await new Promise<void>((resolve) => { finishFirst = resolve; });
+    });
+    const second = overlapReg.withHooks([hook], async () => {
+      await new Promise<void>((resolve) => { finishSecond = resolve; });
+    });
+    expect(overlapReg.hooks).toEqual([original, hook, hook]);
+    finishFirst();
+    await first;
+    expect(overlapReg.hooks).toEqual([original, hook]);
+    finishSecond();
+    await second;
+    expect(overlapReg.hooks).toEqual([original]);
+
+    const repeatedReg = new HookRegistry();
+    repeatedReg.addHook(hook);
+    repeatedReg.withHooks([hook, hook], () => expect(repeatedReg.hooks).toEqual([hook, hook, hook]));
+    expect(repeatedReg.hooks).toEqual([hook]);
+  });
 });
 
 describe("BaseHook and process-wide default hooks (py #276 parity)", () => {

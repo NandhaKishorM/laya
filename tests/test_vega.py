@@ -390,7 +390,7 @@ def test_learner_without_vegaml_says_what_to_install(monkeypatch):
     import laya.learn as ll
 
     monkeypatch.setitem(sys.modules, "vegaml.learn", None)
-    with pytest.raises(ImportError, match=r"vegaml 0.17"):
+    with pytest.raises(ImportError, match=r"pip install vegaml-learn\. It is free for noncommercial use.*https://embedding\.in"):
         ll.Learner({"q": {"type": "boolean", "instructions": "x"}})
 
 
@@ -410,7 +410,7 @@ def test_escalator_without_vegaml_says_what_to_install(monkeypatch):
     import laya.learn as ll
 
     monkeypatch.setitem(sys.modules, "vegaml.learn", None)
-    with pytest.raises(ImportError, match=r"vegaml 0.18"):
+    with pytest.raises(ImportError, match=r"pip install vegaml-learn\. It is free for noncommercial use.*https://embedding\.in"):
         ll.Escalator(object(), teacher=lambda text, questions: {})
 
 
@@ -421,7 +421,7 @@ def test_vllm_teacher_is_vegamls_self_hosted_teacher(monkeypatch):
 
     assert "vllm_teacher" in laya.__all__ and laya.vllm_teacher is ll.vllm_teacher
     monkeypatch.setitem(sys.modules, "vegaml.learn", None)
-    with pytest.raises(ImportError, match=r"vegaml 0.18"):
+    with pytest.raises(ImportError, match=r"pip install vegaml-learn\. It is free for noncommercial use.*https://embedding\.in"):
         ll.vllm_teacher("http://localhost:8000/v1")
 
 

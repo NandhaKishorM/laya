@@ -22,14 +22,14 @@
 
 <p align="center"><img src="https://raw.githubusercontent.com/NandhaKishorM/vegaml/main/assets/vega-valleys.svg" width="900" alt="How it decides: a frozen LLM reads the message once, every answer is a valley, and a particle rolls and settles in one. Where it settles is the answer, with its probability, conformal set, abstain and unbound flags." /></p>
 
-**New in 0.5: laya reads images, audio and video, takes 73k tokens, says when it should not decide, and keeps learning.** All open source under Apache 2.0 (`pip install -U laya`).
+**New in 0.5: laya reads images, audio and video, takes 73k tokens, says when it should not decide, and keeps learning.** laya is open source under Apache 2.0 (`pip install -U laya`); continuous learning comes from `pip install vegaml-learn`, free for noncommercial use.
 
 - **Text, images, audio and video.** `agent.predict(...)` with `image=`, `audio=` or `video=` gives the same typed answers as for text.
 - **73,728 tokens of context.** Whole contracts, threads and logs in one read.
 - **Abstain and unbound**, explained below.
 - **Physics, not text generation.** Each candidate answer is a valley; the input is a particle that rolls and settles in one. Deterministic, constant cost, nothing generated.
 - **Any LLM as the reader.** One small decision engine on top of a frozen reader, from 0.8B to 27B.
-- **Continuous learning.** `from laya import Learner`: it answers from day one and learns from every answer your team confirms, on your own machine, in seconds on a CPU with no fine-tuning.
+- **Continuous learning** (`pip install vegaml-learn`, free for noncommercial use). `from laya import Learner`: it answers from day one and learns from every answer your team confirms, on your own machine, in seconds on a CPU with no fine-tuning.
 - **A teacher for what it is unsure of.** `laya.Escalator(learner, teacher)` sends only the records it abstains on, finds unbound or is not yet sure of to your teacher (a review queue, a rules engine, or a model you serve yourself with `laya.vllm_teacher`), serves that answer and learns from it, so the teacher is needed less and less. [Guide](https://github.com/NandhaKishorM/laya/blob/main/docs/vegaml.md#a-teacher-for-what-it-is-unsure-of).
 
 ### How abstain and unbound work
@@ -327,21 +327,16 @@ The shipped checkpoints work zero-shot, but fine-tuning on decisions from your o
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.5.3
+## What's new in 0.5.4
 
-* **A choice label comes back exactly as you wrote it on the new engine.** An int, bool or float label
-  used to return as a string (`1` came back as `"1"`), in `choice`, `prediction_set` and the
-  `probabilities` keys, and `predict_tournament` raised `KeyError` on it (#1519).
-* **Short unaccented Spanish and Portuguese route to the multilingual checkpoint.** Words like `puedo`,
-  `hago`, `despues`, `faco` and `qual` now count, in every SDK's detector; English routing is unchanged
-  (#1526).
-* **laya-ts:** a null or blank per-model revision keeps `Router.revision`, as Python does (#1528).
-* **laya-onnx (Rust):** `ort` is pinned to exactly 2.0.0-rc.13, so a build without this repository's
-  lock file compiles again (#1527). The ONNX export verifier checks against the checkpoint it just
-  exported (#1524).
+* **Continuous learning has its own package and licence.** `laya.Learner`, `laya.Escalator` and
+  `laya.vllm_teacher` now come from `pip install vegaml-learn`, which is free for noncommercial use
+  (PolyForm Noncommercial 1.0.0); commercial use needs a licence from
+  [Embedding Space](https://embedding.in). Your code does not change. Without the package, each one says
+  how to install it. laya itself stays Apache 2.0.
 
-From 0.5.2: `laya.Escalator` sends only what the learner is unsure of to a teacher, and
-`laya.vllm_teacher(...)` is a teacher you serve yourself.
+From 0.5.3: a choice label comes back exactly as you wrote it on the new engine (#1519), and short
+unaccented Spanish and Portuguese route to the multilingual checkpoint (#1526).
 
 ## Where to go next
 
@@ -2088,4 +2083,7 @@ If Laya helps your research or products, consider supporting independent researc
 
 ## License
 
-Apache 2.0. Developed by Convai Innovations.
+Apache 2.0. Developed by Convai Innovations. Continuous learning (`laya.Learner`, `laya.Escalator`,
+`laya.vllm_teacher`) needs the separate vegaml-learn package, which is free for noncommercial use under the
+PolyForm Noncommercial License 1.0.0; commercial use of it needs a licence from
+[Embedding Space](https://embedding.in).

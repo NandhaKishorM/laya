@@ -149,8 +149,12 @@ which measures what the picture itself contributed.
 
 ## Continuous learning
 
-`laya.Learner` is vegaml's open-source continuous learner. It answers from day one and keeps learning
-from every answer you confirm, on the machine it runs on: no fine-tuning, and no GPU needed to learn.
+`laya.Learner` is vega's continuous learner. It answers from day one and keeps learning from every
+answer you confirm, on the machine it runs on: no fine-tuning, and no GPU needed to learn.
+
+It comes from a separate package, `pip install vegaml-learn`, which is free for noncommercial use under
+the PolyForm Noncommercial License 1.0.0; commercial use needs a licence from
+[Embedding Space](https://embedding.in). laya itself stays Apache 2.0.
 
 ```python
 from laya import Learner
@@ -168,7 +172,7 @@ learner.feedback("I was charged twice this month", {"team": "billing"})
 - `learner.undo()` goes back one step. `workdir` keeps the last versions and resumes on the next start;
   `follow=` makes read-only copies that reload the writer's state.
 - `learner.save_bundle("x.zip")` moves what it learned to another machine: `Learner(bundle="x.zip")`.
-- REST API with JWT: `pip install "vegaml[learn]"`, then `python -m vegaml.learn serve --questions q.json`.
+- REST API with JWT: `pip install "vegaml-learn[serve]"`, then `python -m vegaml_learn serve --questions q.json`.
 
 Measured across 14 decision templates: 85% right on day one, 92% after 40 confirmed answers and 96%
 after 120. On 8 CPU threads, 0.72 s an answer, 6.4 GB of RAM, and 34 s to learn from 300 answers.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "laya"
-version = "0.5.3"
+version = "0.5.4"
 description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,9 +32,10 @@ dependencies = [
     "numpy>=1.20.0",
     # vega's engine behind laya's surface, `laya.Agent(vegaml=True)` (laya/vega.py): conformal sets,
     # abstain and unbound flags, heads fitted on your labels, a refit calibration, 73k tokens of context,
-    # images and speech, and continuous learning (`laya.Learner`, vegaml 0.17). A core dependency since
-    # 0.4.23 so a plain `pip install laya` carries it; the module itself is imported only when the argument
-    # is given or Learner is asked for, so `import laya` stays as light as before.
+    # images and speech. A core dependency since 0.4.23 so a plain `pip install laya` carries it; the module
+    # itself is imported only when the argument is given, so `import laya` stays as light as before.
+    # Continuous learning (`laya.Learner`) is the separate vegaml-learn package (noncommercial licence) and is
+    # deliberately not a dependency or an extra: a user installs it by name.
     "vegaml>=0.18.0",
     # Verifies the Ed25519 signature on policies exported from Embedding Studio (laya/policy.py).
     "cryptography>=41",

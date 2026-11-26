@@ -302,6 +302,8 @@ public sealed class LayaEngine : IDisposable, ILayaLongLangPredictor, ILayaBatch
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
         if (aggregate != "auto")
             throw new ArgumentException("predict_long: only aggregate='auto' is supported", nameof(aggregate));
+        // onnx_agent.py:533: validated before the window budget is sized.
+        CheckQuestions(questions);
 
         int budget, step, room;
         int[] stateIds;
@@ -370,6 +372,8 @@ public sealed class LayaEngine : IDisposable, ILayaLongLangPredictor, ILayaBatch
         if (list.Length == 0) return [];
         var call = new CallSettings(options?.Lang, options?.MaxLen, options?.HeadMaxLen);
         if (questions.Count == 0) return PredictStates(list, questions, diagnostics: true, call);
+        // onnx_agent.py:813: every question is validated once, before anything is tokenized.
+        CheckQuestions(questions);
         return BatchPlanning.Execute<EncodedState, LayaResult>(
             list, options?.BatchSize, options?.SortByLength ?? false,
             part => EncodeStates(part, questions, call),
@@ -384,7 +388,17 @@ public sealed class LayaEngine : IDisposable, ILayaLongLangPredictor, ILayaBatch
     {
         if (questions.Count == 0)
             return states.Select(_ => new LayaResult(ModelName, [], new(StringComparer.Ordinal), new Usage(0, 0))).ToArray();
+        CheckQuestions(questions);
         return InferStates(EncodeStates(states, questions, call), questions, diagnostics, call.Lang);
+    }
+
+    /// <summary>
+    /// The part of Python's <c>_check_question</c> a typed question can still fail: its option order,
+    /// checked over the questions in declaration order before any is tokenized (onnx_agent.py:534, :813).
+    /// </summary>
+    private static void CheckQuestions(QuestionSet questions)
+    {
+        foreach (var (id, question) in questions) question.CheckOptionOrder(id);
     }
 
     private IReadOnlyList<EncodedState> EncodeStates(IReadOnlyList<object?> states, QuestionSet questions, CallSettings call)
@@ -507,6 +521,8 @@ public sealed class LayaEngine : IDisposable, ILayaLongLangPredictor, ILayaBatch
                 ? byBucket
                 : langTemperature.Temperature[(int)question.Type];
         var p = Calibration.Probabilities(rowLogits, k, scale);
+        // The row comes back in slot order; everything below indexes by option (onnx_agent.py:751).
+        p = Question.Unpermute(p, question.OptionOrder);
         var answerConfidence = Calibration.AnswerConfidence(p, k);
         if (binningMap is not null && langTemperature is null)
             answerConfidence = CalibrationFile.ApplyBinning(answerConfidence, bucket, binningMap);

@@ -39,6 +39,11 @@ else()
   endif()
   file(COPY "${_ort_deps_dir}/package/build/native/include" DESTINATION "${_ort_deps_dir}/runtime")
   file(COPY "${_ort_runtime_dir}/" DESTINATION "${_ort_deps_dir}/runtime/lib")
+  if(_ort_platform STREQUAL "linux-x86_64")
+    # NuGet ships this ELF with SONAME libonnxruntime.so.1 but no matching link.
+    file(CREATE_LINK "libonnxruntime.so"
+      "${_ort_deps_dir}/runtime/lib/libonnxruntime.so.1" SYMBOLIC)
+  endif()
   file(REMOVE_RECURSE "${_ort_deps_dir}/package")
   file(WRITE "${_ort_deps_dir}/runtime/VERSION_NUMBER" "${LAYA_ORT_VERSION}\n")
   set(_ort_root "${_ort_deps_dir}/runtime")

@@ -717,3 +717,79 @@ LANG_LONG_CASES = [
                + QUICKSTART_STATE),
      "options": {"window": 96, "batch_size": 3, "lang": "ja"}},
 ]
+
+
+# ---------------------------------------------------------------------------------------------
+# Calibration files (`calibration=` / `load_calibration`) and histogram binning.
+#
+# The cases below are SDK-neutral: the Rust SDK keeps a verbatim copy. `calibration` names a file under
+# tools/ (here `calibration_fixture.json`, hand-made: temperatures, per-bucket temperatures and a binning map
+# with several buckets) that `dump_golden.with_calibration` reads through Python's own `load_calibration` on the
+# torch Agent and on every ONNX shim, and the file name and its parsed content are recorded in the case JSON
+# (`"calibration": {"file", "payload"}`), so a port loads the very same file. The file is installed for these
+# cases only, so a port builds one extra engine per checkpoint with it. A binned bucket is a hit, any other
+# (here `choice:2`, `choice:6-10`, `score:3-5`) is a miss that keeps the temperature-scaled value. The map is
+# deliberately not monotone, so binning changes which window `predict_long` picks and whether an answer passes
+# the `min_confidence` gate. Edge values of the lookup (0.0, 1.0, bin edges) are pinned model-free by
+# `routing/calibration_probe.json`.
+# ---------------------------------------------------------------------------------------------
+
+CALIBRATION_FILE = "calibration_fixture.json"
+
+# `system_one` with the file: hit and miss buckets, a language the table holds (temperatures replaced, binning
+# skipped), a language it does not (calibration kept, binned), a null entry (inherits the *checkpoint's*
+# temperature, not the file's), and the abstention gate on binned values.
+CALIBRATION_CASES = [
+    {"name": "calibration_plain", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE},
+    {"name": "calibration_buckets", "state": QUICKSTART_STATE, "questions": LANG_BUCKET_QUESTIONS,
+     "calibration": CALIBRATION_FILE},
+    {"name": "calibration_lang_override_skips_binning", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES, "options": {"lang": "de"}},
+    {"name": "calibration_lang_miss_bins", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES, "options": {"lang": "ja"}},
+    {"name": "calibration_lang_null_entry_inherits_checkpoint", "state": QUICKSTART_STATE,
+     "questions": LANG_QUESTIONS, "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES,
+     "options": {"lang": "fr"}},
+    {"name": "calibration_lang_buckets_skip_binning", "state": QUICKSTART_STATE,
+     "questions": LANG_BUCKET_QUESTIONS, "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES,
+     "options": {"lang": "it"}},
+    {"name": "calibration_table_without_lang", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES},
+    {"name": "calibration_min_confidence", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "options": {"min_confidence": 0.6}},
+    {"name": "calibration_min_confidence_map", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE,
+     "options": {"min_confidence": {"choice:3-5": 0.7, "score:3-5": 0.5, "noul:2": 0.6}}},
+    {"name": "calibration_min_confidence_buckets", "state": QUICKSTART_STATE, "questions": LANG_BUCKET_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "options": {"min_confidence": 0.5}},
+    {"name": "calibration_min_confidence_lang_override", "state": QUICKSTART_STATE, "questions": LANG_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES,
+     "options": {"lang": "de", "min_confidence": 0.6}},
+]
+
+# `predict_batch` with the file: plain, a language it overrides, and the gate.
+CALIBRATION_BATCH_CASES = [
+    {"name": "calibration_batch", "states": BATCH_MIXED_STATES, "questions": BATCH_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "options": {"batch_size": 3, "sort_by_length": True}},
+    {"name": "calibration_batch_lang_override", "states": BATCH_MIXED_STATES[:5], "questions": BATCH_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "lang_temperatures": LANG_TEMPERATURES, "options": {"lang": "pt"}},
+    {"name": "calibration_batch_min_confidence", "states": BATCH_MIXED_STATES[:5], "questions": BATCH_QUESTIONS,
+     "calibration": CALIBRATION_FILE, "options": {"min_confidence": 0.6}},
+]
+
+# `predict_long` with the file: a multi-window scan (the best window is chosen on the binned value), a state that
+# fits one window, and a language that skips the binning.
+CALIBRATION_LONG_CASES = [
+    {"name": "calibration_long_scan", "calibration": CALIBRATION_FILE, "questions": LONG_QUESTIONS,
+     "state": ("The agent checked the account and recorded routine status updates. " * 180
+               + QUICKSTART_STATE),
+     "options": {"window": 96, "batch_size": 3}},
+    {"name": "calibration_long_single_window", "calibration": CALIBRATION_FILE, "questions": LONG_QUESTIONS,
+     "state": QUICKSTART_STATE, "options": {}},
+    {"name": "calibration_long_lang_override", "calibration": CALIBRATION_FILE,
+     "lang_temperatures": LANG_TEMPERATURES, "questions": LONG_QUESTIONS,
+     "state": ("The agent checked the account and recorded routine status updates. " * 180
+               + QUICKSTART_STATE),
+     "options": {"window": 96, "batch_size": 3, "lang": "de"}},
+]

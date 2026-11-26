@@ -51,6 +51,7 @@ from laya.train import (  # noqa: E402
     items_from_rows,
     make_item,
     read_data,
+    resolve_device,
     rows_from_csv,
     rlcd_loss,
     soft_ce_loss,
@@ -1218,6 +1219,113 @@ class OptimizerBudgetTests(unittest.TestCase):
                              optimizer_updates(summary["train_items"], 4, 2, 3))
             self.assertIn("optimizer budget", buf.getvalue())
             self.assertIn("%d optimizer updates" % summary["optimizer_updates"], buf.getvalue())
+
+
+class DeviceSpellingTests(unittest.TestCase):
+    """`laya-train --device` and `finetune(device=)` get the device named, or say so.
+
+    `resolve_device` used to hand the argument straight to `torch.device`, whose parser is
+    case-sensitive and rejects surrounding spaces, reads `""` as a device name rather than as no
+    preference, and on the torch this repo pins keeps only the low 8 bits of an index -- so
+    `--device cuda:258` quietly meant GPU 2 and `--device CUDA:0` was a crash. `LAYA_DEVICE`
+    (`laya/mcp/device.py::env_device`) and `Router(device=...)` (`laya/router.py::check_device`)
+    both normalise and refuse; these arms hold the training entry point to the same contract.
+    """
+
+    def test_unset_spellings_all_resolve_to_the_machine_default(self):
+        # `None` and `auto` have always meant "pick one". Case, padding and an empty string are
+        # what a shell adds around a variable nobody set: `--device "$DEV"` asks for the default.
+        default = resolve_device("auto")
+        for raw in (None, "auto", "AUTO", " auto ", "", "   "):
+            self.assertEqual(resolve_device(raw), default, repr(raw))
+
+    def test_the_device_type_is_normalised_before_torch_sees_it(self):
+        for raw, want in (("CUDA", "cuda"), ("CUDA:0", "cuda:0"), (" cuda:0 ", "cuda:0"),
+                          ("MPS", "mps"), ("mPs:1", "mps:1")):
+            self.assertEqual(resolve_device(raw), torch.device(want), raw)
+
+    def test_a_device_torch_cannot_parse_is_a_ValueError_about_the_device(self):
+        for raw in ("gpu", "cuda:", "cuda: 0", "cuda:xyz"):
+            with self.assertRaises(ValueError, msg=raw) as caught:
+                resolve_device(raw)
+            message = str(caught.exception)
+            self.assertIn("device=%r" % raw, message)
+            self.assertIn("pass a device such as", message)
+
+    def test_accepted_exactly_when_torch_builds_the_device_named(self):
+        # A biconditional, so it stays true on a torch that stops truncating: these six are refused
+        # only while they wrap, and a torch that keeps the index accepts them unchanged.
+        for raw in ("cpu", "cuda:7", "CUDA:0", "mps", "cuda:128", "cuda:256", "cuda:258",
+                    "cuda:300", "cuda:511", "mps:70000"):
+            kind, sep, index = raw.strip().partition(":")
+            named = kind.lower() + sep + index
+            try:
+                builds = str(torch.device(named)) == named
+            except Exception:
+                builds = False
+            if builds:
+                self.assertEqual(resolve_device(raw), torch.device(named), raw)
+            else:
+                with self.assertRaises(ValueError, msg=raw):
+                    resolve_device(raw)
+
+    def test_a_rewritten_index_is_refused_by_name_and_by_torchs_answer(self):
+        rewritten = []
+        for raw in ("cuda:128", "cuda:256", "cuda:258", "cuda:300", "cuda:511", "mps:70000"):
+            try:
+                if str(torch.device(raw)) != raw:
+                    rewritten.append((raw, str(torch.device(raw))))
+            except Exception:
+                pass
+        if not rewritten:
+            self.skipTest("this torch keeps every index here, so there is nothing to refuse")
+        for raw, built in rewritten:
+            with self.assertRaises(ValueError, msg=raw) as caught:
+                resolve_device(raw)
+            message = str(caught.exception)
+            self.assertIn("is not the device torch asks for", message)
+            self.assertIn(repr(built), message)
+
+    def test_a_non_string_reaches_torch_as_it_was_given(self):
+        # An ordinal or a device object is not this function's to normalise. A bare `0` names torch's
+        # *current* accelerator rather than a parsed device type, so the question "what does torch
+        # build here" is asked first and the row drops out on a machine with no accelerator to build
+        # (`mps:0` on this one, `RuntimeError: Cannot access accelerator device when none is
+        # available` on a CPU-only runner). The device objects are the rows that pin pass-through.
+        pinned = 0
+        for raw in (torch.device("cpu"), torch.device("cuda:3"), 0):
+            try:
+                want = torch.device(raw)
+            except Exception:
+                continue
+            pinned += 1
+            self.assertEqual(resolve_device(raw), want, repr(raw))
+        if not pinned:
+            self.skipTest("torch builds none of these device values on this machine")
+
+    def test_finetune_checks_the_device_before_it_opens_anything(self):
+        # The resolver runs at the top of `finetune`, so a mistyped flag costs neither a checkpoint
+        # read or a dataset read. Both paths below are deliberately unreadable.
+        with self.assertRaises(ValueError) as caught:
+            finetune("no-such-dataset.jsonl", "no-such-checkpoint", "no-such-out", device="gpu")
+        self.assertIn("device=", str(caught.exception))
+
+    def test_the_cli_routes_a_bad_device_to_its_error_wording(self):
+        import contextlib
+        import io
+
+        # `laya/train_cli.py::main` answers a `ValueError` with "laya-train: error: ..." and
+        # anything else with "laya-train: unexpected error: ...", which is the bucket for a fault.
+        # A mistyped flag is the caller's mistake, and torch's own parse error used to land in the
+        # fault bucket -- same exit code, wrong sentence, and no `device=` in it.
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            rc = train_cli_main(["--data", "no-such.jsonl", "--out", "no-such-out",
+                                 "--device", "gpu"])
+        printed = buf.getvalue()
+        self.assertEqual(rc, 1)
+        self.assertIn("laya-train: error: device='gpu'", printed)
+        self.assertNotIn("unexpected error", printed)
 
 
 if __name__ == "__main__":

@@ -124,8 +124,8 @@ jobs:
 
   # The ONNX Runtime backend, mirroring go.yml's `onnx` job: real graphs for both shipped checkpoints, goldens
   # recorded by Python's ONNXAgent on those graphs, and a floor on the tests that must run. The
-  # runtime comes from the release archive pinned by sha256 in laya-cpp/cmake/onnxruntime.cmake:
-  # CMake (URL_HASH) verifies it at the moment it is fetched, in every cell. Advisory like `build`,
+  # runtime comes from the official NuGet package pinned by sha512 in laya-cpp/cmake/onnxruntime.cmake:
+  # CMake verifies it at the moment it is fetched, in every cell. Advisory like `build`,
   # and like go.yml's `onnx` job, which is also `continue-on-error`: the MIN_TESTS_ONNX floor blocks
   # nothing until this job and Go's are made blocking together.
   onnx:
@@ -214,7 +214,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: python laya-go/scripts/gen_tables.py --lang cpp --check
 
-      - name: Configure (fetches the pinned ONNX Runtime and verifies its sha256)
+      - name: Configure (fetches the pinned ONNX Runtime and verifies its sha512)
         working-directory: laya-cpp
         run: cmake --preset "${{ matrix.preset }}" -DLAYA_ONNX=ON -DCMAKE_CXX_COMPILER="${{ matrix.compiler }}"
       - name: Build

@@ -367,13 +367,13 @@ fn check_long_case(engine: &LayaEngine, where_case: &str, root: &Value) {
 }
 
 fn run_success_cases(
-    load: fn(LayaCheckpoint) -> Option<LayaEngine>,
+    load: fn(LayaCheckpoint) -> Option<engines::CaseEngines>,
     label: &str,
     unavailable: &str,
 ) {
     let mut checked_any = false;
     for checkpoint in engines::checkpoints() {
-        let Some(engine) = load(checkpoint) else {
+        let Some(mut engines) = load(checkpoint) else {
             continue;
         };
         let golden = CheckpointGoldenData::for_checkpoint(checkpoint.subdir());
@@ -385,7 +385,7 @@ fn run_success_cases(
             checked_any = true;
             let root = golden.load_case(&case);
             check_long_case(
-                &engine,
+                engines.for_case(&root),
                 &format!("{}/{case}{label}", checkpoint.subdir()),
                 &root,
             );
@@ -399,7 +399,7 @@ fn run_success_cases(
 #[test]
 fn reproduces_the_recorded_long_predictions() {
     run_success_cases(
-        engines::load,
+        engines::CaseEngines::fused,
         "",
         "no long golden data + artifacts found for any checkpoint",
     );
@@ -408,7 +408,7 @@ fn reproduces_the_recorded_long_predictions() {
 #[test]
 fn reproduces_the_recorded_long_predictions_for_the_split_layout() {
     run_success_cases(
-        engines::load_split,
+        engines::CaseEngines::split,
         " (split layout)",
         "no split-layout ONNX artifacts + long golden data found for any checkpoint",
     );
@@ -450,6 +450,16 @@ fn rejects_the_same_long_requests_python_rejects() {
             let name = root["name"].as_str().unwrap();
             let right_variant = match name {
                 "long_invalid_aggregate" => matches!(error, LayaError::UnsupportedAggregate(_)),
+                // Python's ValueError text, whole, raised before the window budget is planned.
+                _ if golden_data::is_option_order_error(expected_message) => {
+                    assert_eq!(
+                        expected_message,
+                        actual_message,
+                        "{}/{case}: error message",
+                        checkpoint.subdir()
+                    );
+                    matches!(error, LayaError::InvalidQuestion(_))
+                }
                 _ => matches!(error, LayaError::InvalidWindow(_)),
             };
             assert!(

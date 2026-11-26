@@ -26,6 +26,11 @@ corpus from `laya-rust/tools/routing_cases.py` and writes one JSON file per prob
                                   _map, with the error text), _option_bucket, resolve_min_confidence,
                                   apply_confidence_gate (incl. reused payloads, #910) and jev_confidence.
                                   Non-finite floats are written as "nan"/"inf"/"-inf" strings.
+    calibration_probe.json       laya.calibrate.apply_calibration_payload and apply_binning_map over the synthetic
+                                  inputs of tools/calibration_cases.py: what a payload installs (clamped temperatures,
+                                  binning map) or the exception (type and text), every warning raised (text and
+                                  category), and the recalibrated confidence per lookup (bin edges, 0.0, 1.0, a
+                                  bucket the map lacks). No model.
     lang_temperatures_probe.json laya.common.resolve_lang_temperatures over the synthetic inputs of
                                   tools/lang_temperature_cases.py: the resolved table (key normalisation, last
                                   duplicate wins, inheriting the checkpoint's temperature, clamping) or the
@@ -58,6 +63,7 @@ import json
 import math
 import os
 import sys
+import types
 import warnings
 
 TOOLS = os.path.dirname(os.path.abspath(__file__))
@@ -86,11 +92,13 @@ from routing_cases import (  # noqa: E402
     SHORTLIST_CASES,
 )
 
+import calibration_cases as calc  # noqa: E402
 import confidence_cases as cc  # noqa: E402
 import lang_temperature_cases as ltc  # noqa: E402
 import hashing_embedder  # noqa: E402
 
 from laya import confidence  # noqa: E402
+from laya.calibrate import CALIBRATION_VERSION, apply_binning_map, apply_calibration_payload  # noqa: E402
 from laya.common import TEMP_MAX, TEMP_MIN, resolve_lang_temperatures  # noqa: E402
 from laya.email import clean_email_body, email_state  # noqa: E402
 from laya.lang import analyse, detect_script, latin_profile, script_profile, state_text  # noqa: E402
@@ -338,6 +346,50 @@ def build_lang_temperatures_probe():
             **_resolve_recorded(pairs, base),
         ))
     return {"temp_min": TEMP_MIN, "temp_max": TEMP_MAX, "cases": cases}
+
+
+# ============================================================================ calibration_probe
+def _recorded_warnings(caught):
+    return [{"category": w.category.__name__, "message": str(w.message)} for w in caught]
+
+
+def _apply_recorded(text, identity):
+    """`apply_calibration_payload` on `json.loads(text)` for an agent with `identity`: what it installed, or the error."""
+    agent = types.SimpleNamespace(**identity)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        try:
+            apply_calibration_payload(agent, json.loads(text))
+            outcome = {"result": {
+                "temperature": agent.temperature,
+                "temperature_by_options": agent.temperature_by_options,
+                "binning_map": agent.binning_map,
+            }}
+        except Exception as e:  # ValueError by contract; an OverflowError is a finding, so everything is recorded
+            outcome = {"error_type": type(e).__name__, "error_message": str(e)}
+    outcome["warnings"] = _recorded_warnings(caught)
+    return outcome
+
+
+def _lookup_recorded(binning_map, bucket, confidence_value):
+    try:
+        return {"result": apply_binning_map(confidence_value, bucket, binning_map)}
+    except Exception as e:
+        return {"error_type": type(e).__name__, "error_message": str(e)}
+
+
+def build_calibration_probe():
+    payloads = [
+        dict(label=label, json=text, identity=calc.IDENTITIES[identity], **_apply_recorded(text, calc.IDENTITIES[identity]))
+        for label, text, identity in calc.PAYLOAD_CASES
+    ]
+    lookups = [
+        dict(label=label, map=name, bucket=bucket, confidence=value,
+             **_lookup_recorded(calc.MAPS[name], bucket, value))
+        for label, name, bucket, value in calc.LOOKUP_CASES
+    ]
+    return {"temp_min": TEMP_MIN, "temp_max": TEMP_MAX, "version": CALIBRATION_VERSION,
+            "maps": calc.MAPS, "payloads": payloads, "lookups": lookups}
 
 
 # ============================================================================ router_forwarding_probe
@@ -596,6 +648,7 @@ def main() -> int:
     route_batch_probe = build_route_batch_probe()
     confidence_probe = build_confidence_probe()
     lang_temperatures_probe = build_lang_temperatures_probe()
+    calibration_probe = build_calibration_probe()
     router_forwarding_probe = build_router_forwarding_probe()
     email_probe = build_email_probe()
     shortlist_probe = build_shortlist_probe()
@@ -627,6 +680,8 @@ def main() -> int:
             "confidence_probe_reuse": len(confidence_probe["reuse"]),
             "confidence_probe_jev": len(confidence_probe["jev"]),
             "lang_temperatures_probe": len(lang_temperatures_probe["cases"]),
+            "calibration_probe_payloads": len(calibration_probe["payloads"]),
+            "calibration_probe_lookups": len(calibration_probe["lookups"]),
             "router_forwarding_probe_predict": len(router_forwarding_probe["predict"]),
             "router_forwarding_probe_long": len(router_forwarding_probe["long"]),
             "router_forwarding_probe_batch": len(router_forwarding_probe["batch"]),
@@ -648,6 +703,9 @@ def main() -> int:
     )
     results["lang_temperatures_probe.json"] = dump(
         _encode_floats(lang_temperatures_probe), os.path.join(out_dir, "lang_temperatures_probe.json"), args.force
+    )
+    results["calibration_probe.json"] = dump(
+        _encode_floats(calibration_probe), os.path.join(out_dir, "calibration_probe.json"), args.force
     )
     results["router_forwarding_probe.json"] = dump(
         router_forwarding_probe, os.path.join(out_dir, "router_forwarding_probe.json"), args.force

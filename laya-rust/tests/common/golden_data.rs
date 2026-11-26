@@ -329,10 +329,24 @@ pub fn build_questions(questions: &Value) -> LayaResult<QuestionSet> {
             "noul" => build_noul(instructions, def.get("criteria")),
             other => panic!("question '{id}' has unknown type '{other}'"),
         };
+        // The recorded definition's `option_order`, exactly as the Python call carried it. It is not
+        // validated here: an invalid order must reach the engine, which is what rejects it.
+        let question = match def.get("option_order").and_then(Value::as_array) {
+            Some(order) => question.with_option_order(order.iter().map(|i| {
+                i.as_i64()
+                    .unwrap_or_else(|| panic!("question '{id}': option_order must hold integers"))
+            })),
+            None => question,
+        };
         set.insert(id.clone(), question)
             .unwrap_or_else(|e| panic!("{e}"));
     }
     Ok(set)
+}
+
+/// Whether a recorded Python error is the `option_order` rejection of `Agent._check_question`.
+pub fn is_option_order_error(message: &str) -> bool {
+    message.contains("'option_order' must be a permutation of range(")
 }
 
 fn build_choice(id: &str, instructions: Value, criteria: Option<&Value>) -> Question {

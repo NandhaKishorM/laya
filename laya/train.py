@@ -136,6 +136,14 @@ class TrainConfig:
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise ValueError("%s must be a positive integer, got %r" % (name, value))
+        # `torch.optim.AdamW` rejects a negative or NaN rate but accepts `inf`, and one step at an
+        # infinite rate leaves the parameter non-finite -- a run that trains to completion and saves a
+        # checkpoint of no model. A bool is `1.0` to the optimizer, 40,000x the default encoder rate.
+        for name in ("encoder_lr", "head_lr", "min_lr"):
+            value = getattr(self, name)
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or not math.isfinite(value) or value < 0):
+                raise ValueError("%s must be a finite non-negative number, got %r" % (name, value))
         if not 0.0 <= self.calib_frac < 1.0:
             raise ValueError("calib_frac must be in [0, 1), got %r" % (self.calib_frac,))
         if isinstance(self.label_smoothing, bool) or not (0.0 <= self.label_smoothing < 1.0):

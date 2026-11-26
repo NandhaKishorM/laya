@@ -548,3 +548,37 @@ fn shortlist_probe_matches_every_entry() {
         cases.len()
     );
 }
+
+/// Python's shortlist narrows a choice by re-keying its criteria and keeps every other key of the
+/// question dict, so a `labels` entry on a choice survives and `_check_question` still refuses it
+/// (`'labels' is only supported for noul questions`). The rebuilt choice must keep it too.
+#[test]
+fn narrowing_a_choice_keeps_its_labels_for_the_engine_to_refuse() {
+    struct Capture(std::sync::Mutex<Option<Value>>);
+    impl LayaPredictor for Capture {
+        fn predict(&self, state: Value, questions: &QuestionSet) -> Result<LayaResult> {
+            *self.0.lock().unwrap() = questions.get("intent").unwrap().labels().cloned();
+            FirstLabelPredictor.predict(state, questions)
+        }
+    }
+    let embed = |texts: &[String]| -> Result<Vec<Vec<f64>>> {
+        Ok(texts
+            .iter()
+            .enumerate()
+            .map(|(i, _)| vec![1.0, i as f64])
+            .collect())
+    };
+    let criteria = [("a", Value::Null), ("b", Value::Null), ("c", Value::Null)];
+    let questions = QuestionSet::new()
+        .with(
+            "intent",
+            Question::choice("Pick one", criteria)
+                .unwrap()
+                .with_labels(Value::Null),
+        )
+        .unwrap();
+    let capture = Capture(std::sync::Mutex::new(None));
+    let result = LayaShortlist::predict(&capture, json!("pick me"), &questions, embed, 2).unwrap();
+    assert_eq!(result.shortlist().unwrap()["intent"].labels.len(), 2);
+    assert_eq!(*capture.0.lock().unwrap(), Some(Value::Null));
+}

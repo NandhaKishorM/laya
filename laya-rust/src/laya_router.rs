@@ -45,7 +45,10 @@ use crate::laya_engine::{LayaEngine, refuse_null_states};
 use crate::laya_options::{LayaCheckpoint, LayaOptions};
 use crate::long_prediction::LongOptions;
 use crate::predict_options::PredictOptions;
+use crate::python_json_reader::PyJson;
 use crate::questions::QuestionSet;
+use crate::revisions::digest_map_from_entries;
+use indexmap::IndexMap;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -104,6 +107,13 @@ pub trait LayaPredictor: Send + Sync {
     fn as_batch_predictor(&self) -> Option<&dyn LayaBatchPredictor> {
         None
     }
+
+    /// The Hub revision this predictor was loaded for, if it knows one. The default is `None`;
+    /// [`LayaEngine`] reports the pin it was resolved with. [`LayaRouter::loaded_revisions`] reads
+    /// it, as Python's reads `getattr(agent, "revision", None)`.
+    fn revision(&self) -> Option<String> {
+        None
+    }
 }
 
 /// A [`LayaPredictor`] that can score many states against the same questions in shared forward
@@ -155,6 +165,10 @@ impl LayaPredictor for LayaEngine {
 
     fn as_batch_predictor(&self) -> Option<&dyn LayaBatchPredictor> {
         Some(self)
+    }
+
+    fn revision(&self) -> Option<String> {
+        LayaEngine::revision(self).map(str::to_string)
     }
 }
 
@@ -452,6 +466,18 @@ pub struct LayaRouterOptions {
     /// Build and load every checkpoint immediately, so no request ever pays a cold load. See
     /// [`LayaRouter::preload`].
     pub preload: bool,
+    /// Per-checkpoint Hub revisions (Python's `Router(revisions=)`), keyed by any name
+    /// [`LayaRouter::normalise_name`] accepts. A `None` or blank entry means "no pin of its own":
+    /// the checkpoint inherits `engine_options.revision` (Python's `Router(revision=)`), and with
+    /// neither it falls back to `LAYA_REVISION`.
+    pub revisions: IndexMap<String, Option<String>>,
+    /// Per-checkpoint SHA-256 maps (Python's `Router(sha256_digests=)`), keyed like `revisions`
+    /// and overriding, checkpoint by checkpoint, what a model-keyed `LAYA_SHA256_DIGESTS` seeds. A
+    /// `None` or empty entry loads that checkpoint unverified by this channel and masks a flat
+    /// `LAYA_SHA256_DIGESTS`. `engine_options.expected_sha256` plays the part of Python's
+    /// `agent_kwargs["expected_sha256"]`: it reaches every checkpoint and is merged file by file
+    /// with the per-checkpoint entry, which wins for a file both name.
+    pub sha256_digests: IndexMap<String, Option<IndexMap<String, String>>>,
 }
 
 impl Default for LayaRouterOptions {
@@ -462,8 +488,89 @@ impl Default for LayaRouterOptions {
             default: LayaCheckpoint::Multilingual,
             auto_task_detection: false,
             preload: false,
+            revisions: IndexMap::new(),
+            sha256_digests: IndexMap::new(),
         }
     }
+}
+
+/// The revision `value` asks for, or `None` when it asks for nothing: unset and blank are the same
+/// answer. Ports `_revision_pin`.
+pub fn revision_pin(value: Option<&str>) -> Option<&str> {
+    value.filter(|v| !py_strip(v).is_empty())
+}
+
+/// Turns `LAYA_SHA256_DIGESTS` into per-checkpoint digest maps when it names models. Ports
+/// `_digests_from_env`.
+///
+/// A flat `{artifact: digest}` map is `verify_digests`'s own reading and is returned as an empty
+/// result here, so that path stays untouched. A nested `{model: {artifact: digest}}` map pins each
+/// checkpoint with its own files; a checkpoint in `models` it does not name gets an empty map
+/// ("not covered by this variable", which also keeps `verify_digests` from reading the nested map
+/// as an artifact map). Keys are normalised by [`LayaRouter::normalise_name`], so an unknown name
+/// is an error rather than a checkpoint left quietly unverified. Unset, empty or unparseable
+/// input names nothing: `verify_digests` reports a malformed value in its own words.
+pub fn digests_from_env(
+    models: &[LayaCheckpoint],
+) -> Result<HashMap<LayaCheckpoint, IndexMap<String, String>>> {
+    let raw = std::env::var("LAYA_SHA256_DIGESTS").unwrap_or_default();
+    let raw = py_strip(&raw);
+    if raw.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let Ok(PyJson::Object(data)) = PyJson::parse(raw) else {
+        return Ok(HashMap::new());
+    };
+    if data.is_empty() || data.iter().all(|(_, v)| matches!(v, PyJson::Str(_))) {
+        return Ok(HashMap::new()); // flat: verify_digests already applies it
+    }
+    if !data.iter().all(|(_, v)| matches!(v, PyJson::Object(_))) {
+        let mut keys: Vec<&str> = data.iter().map(|(k, _)| k.as_str()).collect();
+        keys.sort_unstable();
+        let listed: Vec<String> = keys.iter().map(|k| python_repr_str(k)).collect();
+        return Err(LayaError::InvalidDigests(format!(
+            "LAYA_SHA256_DIGESTS must be either {{artifact: digest}} for every checkpoint or \
+             {{model: {{artifact: digest}}}} per checkpoint; [{}] mixes the two or holds a value \
+             that is neither",
+            listed.join(", ")
+        )));
+    }
+    let mut per_model = HashMap::new();
+    for (name, value) in &data {
+        if let PyJson::Object(entries) = value {
+            per_model.insert(
+                LayaRouter::normalise_name(name)?,
+                digest_map_from_entries(entries),
+            );
+        }
+    }
+    for model in models {
+        per_model.entry(*model).or_default();
+    }
+    Ok(per_model)
+}
+
+/// The `expected_sha256` one checkpoint is built with, out of the two channels that pin it: the
+/// `shared` map (`LayaOptions::expected_sha256`, reaching every checkpoint) and the
+/// checkpoint's own entry. Ports `_merge_expected_digests`.
+///
+/// `None` means both channels are silent: pass no map, which leaves `verify_digests` its own
+/// `LAYA_SHA256_DIGESTS` fallback. An empty map is not the same thing: it masks that fallback. The
+/// two are merged file by file, and for a file both name the per-checkpoint entry wins. (Python
+/// also hands a non-mapping straight through to `verify_digests`; the typed maps here cannot be
+/// one.)
+pub fn merge_expected_digests(
+    shared: Option<&IndexMap<String, String>>,
+    per_model: Option<&IndexMap<String, String>>,
+) -> Option<IndexMap<String, String>> {
+    if shared.is_none() && per_model.is_none() {
+        return None;
+    }
+    let mut merged = shared.cloned().unwrap_or_default();
+    for (file, digest) in per_model.into_iter().flatten() {
+        merged.insert(file.clone(), digest.clone());
+    }
+    Some(merged)
 }
 
 /// Builds the [`LayaPredictor`] for one checkpoint. The production path
@@ -494,6 +601,11 @@ pub struct LayaRouter {
     auto_task_detection: bool,
     lang_guess: Option<LangGuess>,
     factory: Factory,
+    /// Per-checkpoint pins, keyed by checkpoint (Python's `Router.revisions`).
+    revisions: HashMap<LayaCheckpoint, Option<String>>,
+    /// Per-checkpoint digest entries (Python's `Router.sha256_digests`): a key present with `None`
+    /// is an entry that names no files.
+    sha256_digests: HashMap<LayaCheckpoint, Option<IndexMap<String, String>>>,
     state: Mutex<RouterState>,
 }
 
@@ -525,7 +637,26 @@ impl LayaRouter {
         + Sync
         + 'static,
     ) -> Result<Self> {
+        let mut revisions = HashMap::new();
+        for (name, revision) in options.revisions {
+            revisions.insert(Self::normalise_name(&name)?, revision);
+        }
+        // Seeded from a model-keyed `LAYA_SHA256_DIGESTS`, then overridden checkpoint by
+        // checkpoint by the argument, keyed and normalised the same way.
+        let mut sha256_digests: HashMap<_, _> = digests_from_env(&[
+            LayaCheckpoint::English,
+            LayaCheckpoint::Multilingual,
+            LayaCheckpoint::TypedDecisions,
+        ])?
+        .into_iter()
+        .map(|(key, map)| (key, Some(map)))
+        .collect();
+        for (name, digests) in options.sha256_digests {
+            sha256_digests.insert(Self::normalise_name(&name)?, digests);
+        }
         let router = Self {
+            revisions,
+            sha256_digests,
             engine_options: options.engine_options,
             default: options.default,
             auto_task_detection: options.auto_task_detection,
@@ -617,11 +748,33 @@ impl LayaRouter {
         }
         // The lock is held across the build itself (see the module docs): a second caller asking
         // for the same checkpoint blocks here rather than racing a duplicate build.
-        let engine = (self.factory)(key, &self.engine_options)?;
+        let engine = (self.factory)(key, &self.options_for(key))?;
         state.loaded.insert(key, Arc::clone(&engine));
         state.order.push(key);
         Self::evict(&mut state);
         Ok(engine)
+    }
+
+    /// The options one checkpoint is built with: the shared template, with this checkpoint's pin
+    /// and merged digests. A blank or missing entry in `revisions` is "no pin of its own", so the
+    /// checkpoint inherits the template's `revision`, and with neither `LAYA_REVISION` applies in
+    /// the loader. The digest entry is read here, per load, as Python reads it.
+    fn options_for(&self, key: LayaCheckpoint) -> LayaOptions {
+        let mut opts = self.engine_options.clone();
+        let own = self.revisions.get(&key).and_then(|r| r.as_deref());
+        opts.revision = revision_pin(own)
+            .or_else(|| revision_pin(self.engine_options.revision.as_deref()))
+            .map(str::to_string);
+        // Python's `_digest_entry`: no entry at all stays `None` (the loader's own env fallback
+        // applies); an entry that is `None` counts as one that names no files.
+        let empty = IndexMap::new();
+        let entry = self
+            .sha256_digests
+            .get(&key)
+            .map(|e| e.as_ref().unwrap_or(&empty));
+        opts.expected_sha256 =
+            merge_expected_digests(self.engine_options.expected_sha256.as_ref(), entry);
+        opts
     }
 
     fn touch(state: &mut RouterState, key: LayaCheckpoint) {
@@ -710,6 +863,19 @@ impl LayaRouter {
             .expect("router state mutex poisoned")
             .order
             .clone()
+    }
+
+    /// The Hub revision each resident checkpoint was loaded for, least-recently-used first: the
+    /// pin it was downloaded with, `None` for a local directory or an unpinned load. Ports
+    /// `loaded_revisions`; Python's snapshot-directory fallback (`snapshot_revision`) has no
+    /// equivalent here.
+    pub fn loaded_revisions(&self) -> Vec<(LayaCheckpoint, Option<String>)> {
+        let state = self.state.lock().expect("router state mutex poisoned");
+        state
+            .order
+            .iter()
+            .map(|key| (*key, state.loaded[key].revision()))
+            .collect()
     }
 
     // ------------------------------------------------------------------ routing

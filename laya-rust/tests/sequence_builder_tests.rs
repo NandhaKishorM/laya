@@ -318,3 +318,35 @@ fn a_huge_head_or_sequence_bound_builds_the_same_sequence_without_panicking() {
         }
     }
 }
+
+#[test]
+fn renders_noul_labels_stripped_before_the_criterion_or_the_default_text() {
+    assert_eq!(
+        vec![
+            "no: no, the statement does not hold".to_string(),
+            "yes: yes, the statement holds".to_string()
+        ],
+        SequenceBuilder::render_options(
+            &Question::noul("h", Value::Null, Value::Null).with_noul_labels(
+                "  no ", "	yes
+"
+            )
+        )
+    );
+    assert_eq!(
+        vec!["ok: all fine".to_string(), "alert: on fire".to_string()],
+        SequenceBuilder::render_options(
+            &Question::noul("h", "all fine", "on fire").with_noul_labels("ok", "alert")
+        )
+    );
+    // A null `labels` is the defaults.
+    assert_eq!(
+        vec![
+            "false: no, the statement does not hold".to_string(),
+            "true: yes, the statement holds".to_string()
+        ],
+        SequenceBuilder::render_options(
+            &Question::noul("h", Value::Null, Value::Null).with_labels(Value::Null)
+        )
+    );
+}

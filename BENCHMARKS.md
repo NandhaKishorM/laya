@@ -6,6 +6,7 @@ Every checkpoint answered **byte-identical questions** in each run (fixed seed).
 |---|---|---|
 | T4 Colab | typed-decisions, MASSIVE (14 langs), XNLI (15 langs), English suites, latency, option-order robustness, calibration repair | `research/results/t4_colab_benchmark.json` |
 | CPU sweep | MASSIVE intent across **all 51 languages**; its typed-decisions part (`part_b`) covers the English checkpoint only | `research/results/cpu_51_language_sweep.json` |
+| English CPU release check | MASSIVE `en`, 100 test rows, 20 options, pinned checkpoint and dataset, per-case predictions | `research/results/massive_en_cpu_release_20261001.json` |
 | Applications | the seven workflow themes + the datasets where Jev numbers exist, all three checkpoints (laya 0.2.1, CPU, 400 cases per task, seed 13, 2026-09-19) | `research/results/app_benchmark_results.json` |
 | NVIDIA capacity | `laya` served with dynamic batching under p99 SLOs on RTX PRO 5000, RTX PRO 6000 and H100 NVL (eager FP16, TensorRT FP16 via ONNX Runtime), backend parity, 24-hour replay | `research/results/nvidia_capacity_20260925.json` |
 
@@ -51,6 +52,20 @@ Headline Laya cells for AG News and DAIR Emotion are the Applications-run number
 ---
 
 ## Languages
+
+### English CPU release check (2026-10-01 UTC)
+
+The [pinned report](research/results/massive_en_cpu_release_20261001.json) measures the English checkpoint on the first 100 MASSIVE `en` test rows, with 20 options and seed 13, on a Windows CPU using laya 0.3.23. It records all 100 decisions and the ordered input fingerprint (`a6363b6c…`). The code revision is `9bf2b51`, checkpoint revision `55cf4c4`, and dataset revision `940fd47`; the full commits and runtime versions are in the JSON.
+
+| metric | committed English baseline | pinned CPU run |
+|---|---:|---:|
+| accuracy | 0.8200 | 0.8200 |
+| macro F1 | 0.7876 | 0.7876 |
+| ECE | 0.1382 | 0.1382 |
+| mean confidence | 0.9582 | 0.9582 |
+| accuracy at 50% coverage | 0.9800 | 0.9800 |
+
+This is the English CPU regression protocol used by the Evals workflow. The historical baseline has no input fingerprint, so matching numbers alone cannot prove that both runs scored identical inputs. This run does not re-measure the T4 headline or the 51-language sweep below.
 
 ### All 51 MASSIVE languages — intent, 20 options (random = 0.050)
 

@@ -60,14 +60,17 @@ and a JSON document with four parts:
 
 | key | contents |
 |---|---|
-| `config` | checkpoint, device, `max_len`, `head_max_len`, dataset, `per_lang`, `n_opts`, seed, the fixed instructions, the temperatures in force, laya version |
-| `report` | per language: `n`, `accuracy`, `macro_f1`, `ece`, `mean_confidence`, `acc_at_50_coverage`, `temperature` |
+| `config` | checkpoint, resolved model revision, requested dataset revision, code revision, UTC run time, device, library versions, `max_len`, `head_max_len`, dataset, `per_lang`, `n_opts`, seed, fixed instructions, temperatures, laya version |
+| `report` | per language: `n`, `accuracy`, `macro_f1`, `ece`, `mean_confidence`, `acc_at_50_coverage`, `temperature`, input SHA-256 |
 | `summary` | macro accuracy / ECE / macro-F1 over the languages that ran |
 | `cases` | every individual decision |
 
-Each case carries `state`, `instructions`, `options`, `gold_index`, `gold_label`,
+Each case carries `state`, `instructions`, ordered option keys (`options`) and
+their criteria descriptions (`option_texts`), `gold_index`, `gold_label`,
 `pred_index`, `pred_label`, `probability`, `p_gold`, `confidence`, `correct` and the
-`temperature` used. That is enough to re-derive every number in `report` from the
+`temperature` used. Probabilities are saved at full precision, so rounding does
+not change ECE bin membership or the confidence ordering used for coverage.
+That is enough to re-derive every number in `report` from the
 file alone, with no model and no network:
 
 ```python
@@ -77,6 +80,52 @@ n = len(d["cases"])
 acc = sum(c["correct"] for c in d["cases"]) / n
 assert abs(acc - d["report"]["en"]["accuracy"]) < 5e-5
 ```
+
+## English release-candidate run
+
+The [Evals workflow](../../.github/workflows/evals.yml) still runs the English CPU
+check weekly and after a release is published. Before publication, use **Run workflow**
+on the candidate code ref, select `release_candidate`, and supply full 40-character
+commits for `convaiinnovations/laya` and `mteb/amazon_massive_intent`. The manual
+candidate path requires no tracked checkout edits, pinned inputs, exactly 100 scored English
+cases and all 100 per-case records. A partial run fails, but its JSON is uploaded
+for diagnosis when one was written.
+
+Candidate validation checks case fields, label/index consistency and finite
+probabilities, then recomputes all five metrics from the saved cases with the
+same functions used by the harness. Missing, non-finite or inconsistent metrics
+fail the candidate rather than entering the numeric comparison as release evidence.
+
+The equivalent local command, from a checkout without tracked edits and with
+`datasets` installed, is:
+
+```bash
+python research/eval/laya_eval.py --model convaiinnovations/laya \
+  --langs en --device cpu --per-lang 100 --n-opts 20 \
+  --model-revision <full-checkpoint-sha> \
+  --dataset-revision <full-dataset-sha> \
+  --require-complete --out report.json
+```
+
+`report.en.input_sha256` identifies the ordered states, instructions, option keys,
+criteria descriptions and gold positions actually scored. The head renders each
+choice from its key and description; `option_texts` stores the description, not
+that combined text or its tokenized, potentially truncated form. The hash excludes predictions
+and timing, so two checkpoint revisions can be compared on the same inputs. The
+resolved checkpoint revision and exact runtime versions remain in `config`.
+With a dataset revision supplied, the harness downloads that revision's
+`test/<language>.json.gz` directly through `huggingface_hub`. This avoids the
+`datasets` offline fallback selecting a different cached revision. Unpinned
+runs keep using the existing dataset loader.
+The existing `check_regression.py` compares numbers with the historical baseline;
+that baseline has no input fingerprint, so a pass there does **not** establish
+identical inputs. Review the new raw JSON before committing it under
+`research/results/` and citing its measured scope from `BENCHMARKS.md`.
+
+The [2026-10-01 English CPU run](../results/massive_en_cpu_release_20261001.json)
+is a committed example with pinned inputs and all 100 decisions. Its accuracy,
+ECE and mean confidence match the existing numeric baseline; the report records
+the exact environment and input fingerprint for future comparisons.
 
 ## Method
 
@@ -166,7 +215,7 @@ forcing 256 or 512 drops it to 0.79.
 checkpoint, no network:
 
 ```bash
-python research/eval/test_laya_eval.py     # 64 passed, 0 failed
+python research/eval/test_laya_eval.py     # 158 passed, 0 failed
 ```
 
 It pins the upstream constants (seed 13, 20 options, the exact instruction string),

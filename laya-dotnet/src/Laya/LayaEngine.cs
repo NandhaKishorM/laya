@@ -444,7 +444,7 @@ public sealed class LayaEngine : IDisposable, ILayaLongLangPredictor, ILayaBatch
         var details = encoded.SelectMany(e => e.Details).ToList();
 
         var batch = Collator.Collate(items, _tokenizer.PadId);
-        var (logits, actLogits) = Run(batch);
+        var (logits, actLogits) = ForwardInterceptor is { } intercept ? intercept(batch, Run) : Run(batch);
 
         // n_act is the act_logits column count, derived from the tensor's dims[1] rather than
         // hardcoded so the code stays correct if the graph is re-exported with a wider action head.
@@ -552,6 +552,15 @@ public sealed class LayaEngine : IDisposable, ILayaLongLangPredictor, ILayaBatch
             }
         }
     }
+
+    /// <summary>
+    /// Test seam: when set, every prediction's forward pass goes through this delegate, which
+    /// receives the collated batch and the real <see cref="Run"/>. Null in production; the parity
+    /// tests use it to run a byte-identical batch through the graph once. Calibration, gating and
+    /// decoding stay downstream of it and run for every call.
+    /// </summary>
+    internal Func<CollatedBatch, Func<CollatedBatch, (float[] Logits, float[] ActLogits)>,
+                  (float[] Logits, float[] ActLogits)>? ForwardInterceptor { get; set; }
 
     /// <summary>One forward pass over a collated batch, returning the raw graph outputs.</summary>
     /// <remarks>

@@ -318,9 +318,13 @@ How to do it, on Kaggle or on Apple Silicon: [Fine-Tuning](#fine-tuning).
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.5.4
+## What's new in 0.5.5
 
-* **Continuous learning has its own package and licence.** `laya.Learner`, `laya.Escalator` and
+* **The paper is cited at the top of this README**, so it shows on PyPI too: *From Laya to Vega: Open
+  Non-Autoregressive Decision Models with Calibrated Probabilities*
+  ([doi:10.20944/preprints202611.0781.v1](https://doi.org/10.20944/preprints202611.0781.v1)). No code changes.
+
+From 0.5.4: **continuous learning has its own package and licence.** `laya.Learner`, `laya.Escalator` and
   `laya.vllm_teacher` now come from `pip install vegaml-learn`, which is free for noncommercial use
   (PolyForm Noncommercial 1.0.0); commercial use needs a [paid licence](https://embedding.in/licence). Your code does not change. Without the package, each one says
   how to install it. laya itself stays Apache 2.0.

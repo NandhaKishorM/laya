@@ -98,6 +98,19 @@ def _schema_of(model: Any) -> Dict[str, Any]:
     raise SchemaError("expected a JSON schema dict or a pydantic model, got %s" % type(model).__name__)
 
 
+def _choice_label(value: Any) -> str:
+    # The option label is the value's JSON spelling, not Python's: a bool is "true"/"false" and
+    # None is "null", exactly as the schema itself writes them and as the TypeScript port
+    # (laya-ts/src/structured.ts) labels the same options. str(True) = "True" asked a different
+    # question here than the port asks there, and an answer written by one side missed the other
+    # side's options on the way back through _project.
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
 def _enum_field(path: str, name: str, values: Sequence[Any], description: Optional[str]) -> _Field:
     # A JSON 'enum' is an array. Reject a bare scalar before len(): a str is iterable, so without
     # this check it silently splits into per-character options instead of erroring (the module
@@ -110,7 +123,7 @@ def _enum_field(path: str, name: str, values: Sequence[Any], description: Option
         raise SchemaError("%s: 'enum' must not be empty" % path)
     if all(isinstance(v, bool) for v in values) and len(set(values)) == 2:
         return _noul_field(path, name, description)
-    options = [(("null" if v is None else str(v)), v) for v in values]
+    options = [(_choice_label(v), v) for v in values]
     if len({label for label, _ in options}) != len(options):
         raise SchemaError("%s: enum values produce duplicate choice labels" % path)
     criteria = {label: None for label, _ in options}

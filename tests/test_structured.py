@@ -81,10 +81,11 @@ for value in (True, False):
         schema = {"type": "object", "properties": {"flag": {"type": "boolean", **constraint}}}
         question = questions_from_json_schema(schema)["flag"]
         case = "boolean singleton %r" % constraint
+        label = "true" if value else "false"   # the JSON spelling, not str(value)
         check("map/%s is a choice" % case, question["type"], "choice")
         check("map/%s has only the allowed option" % case,
-              question.get("criteria"), {str(value): None})
-        projected = answers_to_json({"flag": {"type": "choice", "choice": str(value)}}, schema)
+              question.get("criteria"), {label: None})
+        projected = answers_to_json({"flag": {"type": "choice", "choice": label}}, schema)
         check_true("project/%s preserves its boolean value" % case, projected["flag"] is value)
 
 for options in ([True, False], [False, True]):
@@ -184,7 +185,7 @@ check_raises("reject/too many properties", SchemaError,
              _bad({"type": "object", "properties": {("p%d" % i): {"type": "boolean"} for i in range(33)}}))
 check_raises("reject/too many options", SchemaError,
              _bad({"type": "object", "properties": {"a": {"type": "string", "enum": ["v%d" % i for i in range(33)]}}}))
-for colliding in ([1, "1"], [None, "null"], [True, "True"]):
+for colliding in ([1, "1"], [None, "null"], [True, "true"]):
     check_raises("reject/colliding enum %r" % colliding, SchemaError,
                  _bad({"type": "object", "properties": {"x": {"enum": colliding}}}))
 try:
@@ -642,12 +643,12 @@ try:
 
     literal_questions = questions_from_pydantic(BooleanLiterals)
     check("pydantic/true literal has one option", literal_questions["enabled"].get("criteria"),
-          {"True": None})
+          {"true": None})
     check("pydantic/false literal has one option", literal_questions["disabled"].get("criteria"),
-          {"False": None})
+          {"false": None})
     literals = answer_to_pydantic(BooleanLiterals, {
-        "enabled": {"type": "choice", "choice": "True"},
-        "disabled": {"type": "choice", "choice": "False"},
+        "enabled": {"type": "choice", "choice": "true"},
+        "disabled": {"type": "choice", "choice": "false"},
     })
     check_true("pydantic/boolean literals preserve their values",
                literals.enabled is True and literals.disabled is False)

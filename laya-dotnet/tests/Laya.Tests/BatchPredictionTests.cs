@@ -478,6 +478,52 @@ public sealed class BatchPredictionTests
         Assert.Equal(["b"], calls[1].States);
     }
 
+    [Fact]
+    public void OptionOrderIsPartOfTheGroupingKey()
+    {
+        using var rig = new Rig();
+        QuestionSet WithOrder(params int[]? order) => new()
+        {
+            ["q"] = order is null ? Question.Choice("x", "a", "b") : Question.Choice("x", "a", "b").WithOptionOrder(order),
+        };
+        rig.Router.PredictBatch(
+        [
+            Request("a", WithOrder(1, 0), model: "english"),
+            Request("b", WithOrder(0, 1), model: "english"),
+            Request("c", WithOrder(1, 0), model: "english"),
+            Request("d", WithOrder(null), model: "english"),
+        ]);
+        var calls = rig.Predictors[LayaCheckpoint.English].Calls;
+        Assert.Equal(3, calls.Count);
+        Assert.Equal(["a", "c"], calls[0].States);
+        Assert.Equal(["b"], calls[1].States);
+        Assert.Equal(["d"], calls[2].States);
+    }
+
+    [Fact]
+    public void NoulLabelsArePartOfTheGroupingKey()
+    {
+        using var rig = new Rig();
+        QuestionSet With(string? f, string? t) => new()
+        {
+            ["q"] = f is null ? Question.Noul("x") : Question.Noul("x").WithLabels(f, t),
+        };
+        rig.Router.PredictBatch(
+        [
+            Request("a", With("B", "A"), model: "english"),
+            Request("b", With("A", "B"), model: "english"),
+            Request("c", With("B", "A"), model: "english"),
+            Request("d", With(null, null), model: "english"),
+            Request("e", With(" B", "A"), model: "english"),
+        ]);
+        var calls = rig.Predictors[LayaCheckpoint.English].Calls;
+        Assert.Equal(4, calls.Count);
+        Assert.Equal(["a", "c"], calls[0].States);
+        Assert.Equal(["b"], calls[1].States);
+        Assert.Equal(["d"], calls[2].States);
+        Assert.Equal(["e"], calls[3].States);
+    }
+
     // ── route_batch against the Python recording ──────────────────────────────
 
     public static IEnumerable<object[]> RouteBatchCases()

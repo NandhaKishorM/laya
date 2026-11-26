@@ -42,6 +42,19 @@ corpus from `laya-dotnet/tools/routing_cases.py` and writes one JSON file per pr
                                   token budgets, the batch grouping), from tools/lang_temperature_cases.py. No model.
     hashing_embedder_probe.json  Exact laya-dotnet/tools/hashing_embedder.embed() vectors for a fixed probe
                                   list of strings, including non-ASCII and astral input.
+    tournament_probe.json        predict_tournament (shortlist.py:139-227) over a scripted predictor, model-free: for
+                                  every TOURNAMENT_PROBE_CASES entry the calls it made (the questions and kwargs
+                                  of each round and of the final call), the RuntimeWarnings it raised, and either
+                                  the result (tournament metadata, answers, usage) or the error type and text.
+    cached_embed_probe.json      cached_embed_fn (shortlist.py:287-400) driven through the CACHED_EMBED_SCENARIOS
+                                  call sequences over hashing_embedder.embed / 3.0: per step the texts the embedder
+                                  saw, the float32 rows returned (or the error) and cache_info() afterwards; plus
+                                  the maxsize values it refuses. tournament_probe.json and cached_embed_probe.json
+                                  are not counted in meta.json, so the earlier files stay byte-identical.
+    revision_probe.json          laya.revisions.resolve_revision / verify_digests and the Router's
+                                  _digests_from_env / _merge_expected_digests over the fixture files in
+                                  tools/revision_fixtures/, with the inputs, env values and Python's
+                                  result or exception type and text (corpus: tools/revision_cases.py).
     sample_inputs.json           The combined routing sample's fixed inputs (detection states,
                                   routing-decision examples, support questions/emails, a raw
                                   email, and the banking shortlist demo), plus the
@@ -73,6 +86,8 @@ sys.path.insert(0, REPO)
 sys.path.insert(0, TOOLS)
 
 from routing_cases import (  # noqa: E402
+    CACHED_EMBED_BAD_MAXSIZE,
+    CACHED_EMBED_SCENARIOS,
     EMAIL_CLEAN_CASES,
     EMAIL_STATE_CASES,
     LANG_STATES,
@@ -91,7 +106,9 @@ from routing_cases import (  # noqa: E402
     SAMPLE_SUPPORT_EMAIL_HI,
     SAMPLE_SUPPORT_QUESTIONS,
     SHORTLIST_CASES,
+    TOURNAMENT_PROBE_CASES,
 )
+from revision_cases import build_revision_probe  # noqa: E402
 
 import calibration_cases as calc  # noqa: E402
 import confidence_cases as cc  # noqa: E402
@@ -104,7 +121,12 @@ from laya.common import TEMP_MAX, TEMP_MIN, resolve_lang_temperatures  # noqa: E
 from laya.email import clean_email_body, email_state  # noqa: E402
 from laya.lang import analyse, detect_script, latin_profile, script_profile, state_text  # noqa: E402
 from laya.router import Router  # noqa: E402
-from laya.shortlist import DEFAULT_SHORTLIST_K, shortlist_choice  # noqa: E402
+from laya.shortlist import (  # noqa: E402
+    DEFAULT_SHORTLIST_K,
+    cached_embed_fn,
+    predict_tournament,
+    shortlist_choice,
+)
 
 OUT_DIR_DEFAULT = os.path.join(REPO, "laya-dotnet", "tests", "Laya.Tests", "golden", "routing")
 
@@ -575,6 +597,134 @@ def build_hashing_embedder_probe():
     ]
 
 
+# ============================================================================ tournament_probe
+class _ScriptedAgent:
+    """A model-free predictor for `predict_tournament`: every choice question is answered with the label at
+    index `len(labels) * 2 // 3`, a score with 1.5 and a noul with 0.7, and the usage counts the call
+    (`100 * call_number + len(questions)` input tokens), so the final call's usage is told apart from a
+    round's. `mode` makes it misbehave once, in the first call (see TOURNAMENT_PROBE_CASES)."""
+
+    def __init__(self, mode):
+        self.mode = mode
+        self.calls = []
+
+    def predict(self, state, questions, **kwargs):
+        self.calls.append({"questions": copy.deepcopy(questions), "kwargs": dict(kwargs)})
+        number = len(self.calls)
+        if self.mode == "none":
+            return None
+        answers = {}
+        for qid, qdef in questions.items():
+            if qdef["type"] == "choice":
+                labels = list(qdef["criteria"])
+                pick = labels[len(labels) * 2 // 3]
+                if self.mode == "bad_winner" and number == 1:
+                    pick = "no-such-label"
+                answers[qid] = {"choice": pick}
+            elif qdef["type"] == "score":
+                answers[qid] = {"score": 1.5}
+            else:
+                answers[qid] = {"noul": 0.7}
+        if self.mode == "omit_group" and number == 1:
+            answers.pop("1")
+        if self.mode == "score_group" and number == 1:
+            answers["1"] = {"score": 1.5}
+        return {"model": "scripted", "answers": answers,
+                "usage": {"input_tokens": 100 * number + len(questions), "output_tokens": 0}}
+
+
+def build_tournament_probe():
+    out = []
+    for case in TOURNAMENT_PROBE_CASES:
+        agent = _ScriptedAgent(case["mode"])
+        kwargs = dict(case.get("kwargs") or {})
+        if "group_size" in case:
+            kwargs["group_size"] = case["group_size"]
+        rec = {"name": case["name"], "state": case["state"], "questions": case["questions"], "mode": case["mode"]}
+        if "group_size" in case:
+            rec["group_size"] = case["group_size"]
+        if case.get("kwargs"):
+            rec["kwargs"] = case["kwargs"]
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            try:
+                result = predict_tournament(agent, case["state"], case["questions"], **kwargs)
+                rec["result"] = result
+                rec["error"] = None
+            except Exception as e:  # noqa: BLE001 -- the type and text are what is recorded
+                rec["result"] = None
+                rec["error"] = {"type": type(e).__name__, "message": str(e)}
+        rec["calls"] = agent.calls
+        rec["warnings"] = [{"category": w.category.__name__, "message": str(w.message)} for w in caught]
+        out.append(rec)
+    return out
+
+
+# ============================================================================ cached_embed_probe
+class _SwitchableEmbedder:
+    """`hashing_embedder.embed / 3.0`, with the misbehaviours a cache step can ask for."""
+
+    def __init__(self):
+        self.calls = []
+        self.mode = "normal"
+        self.bad = ()
+
+    def __call__(self, texts):
+        self.calls.append([t for t in texts])
+        if self.mode == "raise":
+            raise RuntimeError("boom")
+        vecs = hashing_embedder.embed(list(texts)) / 3.0
+        if self.mode == "short":
+            return vecs[:-1].tolist()
+        if self.mode == "dim32":
+            vecs = vecs[:, :32]
+        for i, text in enumerate(texts):
+            if text in self.bad:
+                vecs[i, 0] = float("nan")
+                vecs[i, 1] = float("inf")
+                vecs[i, 2] = float("-inf")
+        return vecs
+
+
+def build_cached_embed_probe():
+    scenarios = []
+    for scenario in CACHED_EMBED_SCENARIOS:
+        embedder = _SwitchableEmbedder()
+        cached = cached_embed_fn(embedder, maxsize=scenario["maxsize"])
+        steps = []
+        for step in scenario["steps"]:
+            embedder.calls = []
+            if step["op"] == "clear":
+                cached.cache_clear()
+                steps.append({"op": "clear", "info": cached.cache_info()})
+                continue
+            embedder.mode = step.get("mode", "normal")
+            embedder.bad = tuple(step.get("bad", ()))
+            rec = {"op": "call", "texts": step["texts"], "mode": embedder.mode, "bad": list(embedder.bad)}
+            try:
+                rows = cached(step["texts"])
+                rec["rows"] = [[float(x) for x in row] for row in rows]
+                rec["shape"] = list(rows.shape)
+                rec["dtype"] = str(rows.dtype)
+                rec["error"] = None
+            except Exception as e:  # noqa: BLE001 -- the type and text are what is recorded
+                rec["rows"] = None
+                rec["error"] = {"type": type(e).__name__, "message": str(e)}
+            rec["embed_calls"] = embedder.calls
+            rec["info"] = cached.cache_info()
+            steps.append(rec)
+        scenarios.append({"name": scenario["name"], "maxsize": scenario["maxsize"], "steps": steps})
+    bad_maxsize = []
+    for maxsize in CACHED_EMBED_BAD_MAXSIZE:
+        try:
+            cached_embed_fn(hashing_embedder.embed, maxsize=maxsize)
+        except ValueError as e:
+            bad_maxsize.append({"maxsize": maxsize, "type": "ValueError", "message": str(e)})
+        else:
+            raise SystemExit("cached_embed_fn accepted maxsize=%r" % (maxsize,))
+    return {"scenarios": scenarios, "bad_maxsize": bad_maxsize}
+
+
 # ============================================================================ sample_inputs
 def build_sample_inputs():
     detection = []
@@ -656,6 +806,9 @@ def main() -> int:
     shortlist_probe = build_shortlist_probe()
     hashing_probe = build_hashing_embedder_probe()
     sample_inputs = build_sample_inputs()
+    tournament_probe = build_tournament_probe()
+    cached_embed_probe = build_cached_embed_probe()
+    revision_probe = build_revision_probe()
 
     meta = {
         "generator": "tools/dump_routing_golden.py",
@@ -691,6 +844,10 @@ def main() -> int:
             "email_probe_state": len(email_probe["state"]),
             "shortlist_probe": len(shortlist_probe),
             "hashing_embedder_probe": len(hashing_probe),
+            "revision_probe_resolve": len(revision_probe["resolve"]),
+            "revision_probe_verify": len(revision_probe["verify"]),
+            "revision_probe_digests_from_env": len(revision_probe["digests_from_env"]),
+            "revision_probe_merge": len(revision_probe["merge"]),
         },
     }
 
@@ -717,7 +874,16 @@ def main() -> int:
     results["hashing_embedder_probe.json"] = dump(
         hashing_probe, os.path.join(out_dir, "hashing_embedder_probe.json"), args.force
     )
+    results["revision_probe.json"] = dump(
+        revision_probe, os.path.join(out_dir, "revision_probe.json"), args.force
+    )
     results["sample_inputs.json"] = dump(sample_inputs, os.path.join(out_dir, "sample_inputs.json"), args.force)
+    results["tournament_probe.json"] = dump(
+        tournament_probe, os.path.join(out_dir, "tournament_probe.json"), args.force
+    )
+    results["cached_embed_probe.json"] = dump(
+        cached_embed_probe, os.path.join(out_dir, "cached_embed_probe.json"), args.force
+    )
     results["meta.json"] = dump(meta, os.path.join(out_dir, "meta.json"), args.force)
 
     print("\nrouting golden vectors -> %s" % out_dir)

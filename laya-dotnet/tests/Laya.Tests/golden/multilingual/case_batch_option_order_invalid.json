@@ -1,0 +1,30 @@
+{
+  "name": "batch_option_order_invalid",
+  "states": [
+    "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+    "short"
+  ],
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      },
+      "option_order": [
+        0,
+        1,
+        3
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account."
+    }
+  },
+  "options": {},
+  "error_type": "ValueError",
+  "error_message": "question 'topic': 'option_order' must be a permutation of range(3) -- one slot per option, each option once -- got [0, 1, 3]"
+}

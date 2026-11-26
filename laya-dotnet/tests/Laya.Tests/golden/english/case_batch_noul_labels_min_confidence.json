@@ -1,0 +1,324 @@
+{
+  "name": "batch_noul_labels_min_confidence",
+  "states": [
+    "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account.",
+    {
+      "subject": "Double charged on invoice 88213",
+      "body": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account."
+    },
+    [
+      {
+        "role": "user",
+        "content": "Hi, I need help with my invoice."
+      },
+      {
+        "role": "assistant",
+        "content": "Of course, what is wrong?"
+      },
+      {
+        "role": "user",
+        "content": "Subject: Double charged on invoice 88213\n\nHi, I was billed twice this month for the Pro plan and the second charge has not been refunded. This is the third time I have written in. If it is not fixed today I am cancelling the account."
+      }
+    ],
+    ""
+  ],
+  "questions": {
+    "topic": {
+      "type": "choice",
+      "instructions": "What is the request about?",
+      "criteria": {
+        "refund": "money back, duplicate charge",
+        "technical": "bugs and outages",
+        "other": null
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": [
+        "not urgent",
+        "this week",
+        "today"
+      ]
+    },
+    "cancel": {
+      "type": "noul",
+      "instructions": "The customer threatens to cancel the account.",
+      "labels": {
+        "false": "B",
+        "true": "A"
+      }
+    }
+  },
+  "options": {
+    "min_confidence": {
+      "choice:3-5": 0.9,
+      "score:3-5": 0.5,
+      "noul:2": 0.7
+    }
+  },
+  "state_widths": [
+    91,
+    110,
+    144,
+    34
+  ],
+  "results": [
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.8355,
+            "technical": 0.1139,
+            "other": 0.0506
+          },
+          "confidence": 0.5008,
+          "answer_confidence": 0.8355,
+          "action": {
+            "act_probability": 1.0
+          },
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.9
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.8578,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.0339,
+            "1": 0.0745,
+            "2": 0.8916
+          },
+          "confidence": 0.6264,
+          "answer_confidence": 0.8916,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.5
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.9577,
+          "confidence": 0.9577,
+          "answer_confidence": 0.9577,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.7
+        }
+      },
+      "usage": {
+        "input_tokens": 265,
+        "output_tokens": 0,
+        "state_tokens": 57,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.7826,
+            "technical": 0.1583,
+            "other": 0.0591
+          },
+          "confidence": 0.4076,
+          "answer_confidence": 0.7826,
+          "action": {
+            "act_probability": 1.0
+          },
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.9
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.7512,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.0438,
+            "1": 0.1611,
+            "2": 0.795
+          },
+          "confidence": 0.4415,
+          "answer_confidence": 0.795,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.5
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.8789,
+          "confidence": 0.8789,
+          "answer_confidence": 0.8789,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.7
+        }
+      },
+      "usage": {
+        "input_tokens": 322,
+        "output_tokens": 0,
+        "state_tokens": 76,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.7843,
+            "technical": 0.1543,
+            "other": 0.0614
+          },
+          "confidence": 0.4082,
+          "answer_confidence": 0.7843,
+          "action": {
+            "act_probability": 1.0
+          },
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.9
+        },
+        "urgency": {
+          "type": "score",
+          "score": 1.7074,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.0568,
+            "1": 0.179,
+            "2": 0.7642
+          },
+          "confidence": 0.3843,
+          "answer_confidence": 0.7642,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.5
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.826,
+          "confidence": 0.826,
+          "answer_confidence": 0.826,
+          "action": {
+            "act_probability": 1.0
+          },
+          "abstention": "passed",
+          "abstention_threshold": 0.7
+        }
+      },
+      "usage": {
+        "input_tokens": 424,
+        "output_tokens": 0,
+        "state_tokens": 110,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    },
+    {
+      "model": "laya-rl-agent-onnx",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "refund",
+          "probabilities": {
+            "refund": 0.5445,
+            "technical": 0.2427,
+            "other": 0.2129
+          },
+          "confidence": 0.0861,
+          "answer_confidence": 0.5445,
+          "action": {
+            "act_probability": 1.0
+          },
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.9
+        },
+        "urgency": {
+          "type": "score",
+          "score": 0.6874,
+          "legend": {
+            "0": "not urgent",
+            "1": "this week",
+            "2": "today"
+          },
+          "probabilities": {
+            "0": 0.4819,
+            "1": 0.3488,
+            "2": 0.1693
+          },
+          "confidence": 0.0717,
+          "answer_confidence": 0.4819,
+          "action": {
+            "act_probability": 1.0
+          },
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.5
+        },
+        "cancel": {
+          "type": "noul",
+          "noul": 0.489,
+          "confidence": 0.511,
+          "answer_confidence": 0.511,
+          "action": {
+            "act_probability": 1.0
+          },
+          "low_confidence": true,
+          "abstention": "abstained",
+          "abstention_threshold": 0.7
+        }
+      },
+      "usage": {
+        "input_tokens": 94,
+        "output_tokens": 0,
+        "state_tokens": 0,
+        "state_tokens_dropped": 0,
+        "truncated": false,
+        "truncated_questions": []
+      }
+    }
+  ],
+  "runs": [
+    [
+      12,
+      144
+    ]
+  ]
+}

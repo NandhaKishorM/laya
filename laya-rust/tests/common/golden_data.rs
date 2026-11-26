@@ -329,10 +329,44 @@ pub fn build_questions(questions: &Value) -> LayaResult<QuestionSet> {
             "noul" => build_noul(instructions, def.get("criteria")),
             other => panic!("question '{id}' has unknown type '{other}'"),
         };
+        // The recorded definition's `option_order`, exactly as the Python call carried it. It is not
+        // validated here: an invalid order must reach the engine, which is what rejects it.
+        let question = match def.get("option_order").and_then(Value::as_array) {
+            Some(order) => question.with_option_order(order.iter().map(|i| {
+                i.as_i64()
+                    .unwrap_or_else(|| panic!("question '{id}': option_order must hold integers"))
+            })),
+            None => question,
+        };
+        // The recorded `labels`, exactly as the Python call carried it (a null stays a null). Like
+        // the order, it is not validated here: the engine is what rejects a bad one.
+        let question = match def.get("labels") {
+            Some(labels) => question.with_labels(labels.clone()),
+            None => question,
+        };
         set.insert(id.clone(), question)
             .unwrap_or_else(|e| panic!("{e}"));
     }
     Ok(set)
+}
+
+/// Whether a recorded Python error is the `option_order` rejection of `Agent._check_question`.
+pub fn is_option_order_error(message: &str) -> bool {
+    message.contains("'option_order' must be a permutation of range(")
+}
+
+/// Whether a recorded Python error is a `labels` rejection of `Agent._check_question`
+/// (`_resolve_noul_labels`, or labels on a question that is not a noul).
+pub fn is_labels_error(message: &str) -> bool {
+    message
+        .contains("noul labels must map exactly 'false' and 'true' to distinct non-empty strings")
+        || message.contains("'labels' is only supported for noul questions")
+}
+
+/// Whether a recorded Python error is any per-question rejection of `Agent._check_question` that
+/// the SDK reports as `LayaError::InvalidQuestion`, with Python's text.
+pub fn is_question_check_error(message: &str) -> bool {
+    is_option_order_error(message) || is_labels_error(message)
 }
 
 fn build_choice(id: &str, instructions: Value, criteria: Option<&Value>) -> Question {

@@ -216,7 +216,11 @@ gate and the eval harness both use.
 ## How it maps internally
 
 - Enum and `Literal` become `choice` questions with the values as string labels; the label is
-  mapped back to the original value on the way out, so integers stay integers.
+  mapped back to the original value on the way out, so integers stay integers. Boolean and null
+  options keep their JSON spelling (`true`, `false`, `null`), matching the TypeScript port. An
+  answer naming none of the field's options is dropped from the values rather than passed through,
+  so a `const` field can only ever come back as its one value; `return_details=True` still reports
+  its confidence and probabilities, since a real answer was given.
 - A bounded integer becomes a `score` question with one level per value; the returned value is
   `minimum + argmax`.
 - A boolean becomes a `noul` question; the value is `noul >= 0.5`.

@@ -98,6 +98,19 @@ def _schema_of(model: Any) -> Dict[str, Any]:
     raise SchemaError("expected a JSON schema dict or a pydantic model, got %s" % type(model).__name__)
 
 
+def _choice_label(value: Any) -> str:
+    # The option label is the value's JSON spelling, not Python's: a bool is "true"/"false" and
+    # None is "null", exactly as the schema itself writes them and as the TypeScript port
+    # (laya-ts/src/structured.ts) labels the same options. str(True) = "True" asked a different
+    # question here than the port asks there, and an answer written by one side missed the other
+    # side's options on the way back through _project.
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
 def _enum_field(path: str, name: str, values: Sequence[Any], description: Optional[str]) -> _Field:
     # A JSON 'enum' is an array. Reject a bare scalar before len(): a str is iterable, so without
     # this check it silently splits into per-character options instead of erroring (the module
@@ -110,7 +123,7 @@ def _enum_field(path: str, name: str, values: Sequence[Any], description: Option
         raise SchemaError("%s: 'enum' must not be empty" % path)
     if all(isinstance(v, bool) for v in values) and len(set(values)) == 2:
         return _noul_field(path, name, description)
-    options = [(("null" if v is None else str(v)), v) for v in values]
+    options = [(_choice_label(v), v) for v in values]
     if len({label for label, _ in options}) != len(options):
         raise SchemaError("%s: enum values produce duplicate choice labels" % path)
     criteria = {label: None for label, _ in options}
@@ -305,8 +318,18 @@ def _project(answers: Dict[str, Any], fields: Sequence[_Field]) -> Dict[str, Any
                 idx = int(round(float(answer.get("score", 0.0))))
             values[f.name] = int(f.minimum or 0) + idx
         else:  # choice
-            label = str(answer.get("choice"))
-            values[f.name] = next((value for lbl, value in f.options if lbl == label), label)
+            # An answer naming none of the field's options is no usable answer: the field is
+            # omitted, exactly as a non-dict answer is, rather than the raw label passing
+            # through as the value. That fallback let a {"const": false} field come back as the
+            # string "true" -- a value its schema forbids. `answers_to_json` is public and the
+            # server validates the request, not the answer, so the answers reaching this map
+            # are not guaranteed to have come from a constrained decode.
+            if "choice" in answer:
+                label = _choice_label(answer["choice"])
+                for option_label, option_value in f.options:
+                    if option_label == label:
+                        values[f.name] = option_value
+                        break
     return values
 
 

@@ -324,9 +324,16 @@ function project(answers: Record<string, unknown>, fields: PlannedField[]): Reco
       }
       values[f.name] = (f.minimum ?? 0) + idx;
     } else {
-      const label = String(answer.choice);
-      const hit = (f.options ?? []).find(([l]) => l === label);
-      values[f.name] = hit ? hit[1] : label;
+      // A choice naming none of the field's options is no usable answer: omit the field, as a
+      // non-object answer is omitted (Python parity, laya/structured.py::_project), instead of
+      // passing the raw label through as the value. The passthrough let a `{ const: false }`
+      // field come back as the string "true" -- a value its schema forbids. `answersToJson` is
+      // public, so the answers reaching this map need not have come from a constrained decode.
+      if ("choice" in answer && answer.choice !== undefined) {
+        const label = String(answer.choice);
+        const hit = (f.options ?? []).find(([l]) => l === label);
+        if (hit) values[f.name] = hit[1];
+      }
     }
   }
   return values;

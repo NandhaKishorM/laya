@@ -320,11 +320,20 @@ How to do it, on Kaggle or on Apple Silicon: [Fine-Tuning](#fine-tuning).
 
 **[nandhakishorm.github.io/laya](https://nandhakishorm.github.io/laya/)**: guides for [prediction hooks](https://nandhakishorm.github.io/laya/hooks/), [schema-driven decisions](https://nandhakishorm.github.io/laya/structured/), [Docker](https://nandhakishorm.github.io/laya/docker/) and [LangChain and LangGraph](https://nandhakishorm.github.io/laya/langchain/), plus a full [API reference](https://nandhakishorm.github.io/laya/reference/).
 
-## What's new in 0.5.5
+## What's new in 0.5.6
 
-* **The paper is cited at the top of this README**, so it shows on PyPI too: *From Laya to Vega: Open
-  Non-Autoregressive Decision Models with Calibrated Probabilities*
-  ([doi:10.20944/preprints202611.0781.v1](https://doi.org/10.20944/preprints202611.0781.v1)). No code changes.
+* **Schema answers stay inside the schema** (#1544): a `choice` answer that matches none of a field's
+  options is left out instead of passed through, and booleans are labelled `true`/`false`, the way the
+  TypeScript port already did.
+* **`laya-serve` warns at startup** when it listens beyond loopback with no `LAYA_API_KEY` set (#1542).
+* **TypeScript port matches Python** on pydantic `Enum` fields (#1531), `ctx.skip()` counts (#1532),
+  `onEvict` from `Router.unload` (#1533), lists of predict hooks (#1534) and `withHooks` cleanup (#1540).
+* **Rust:** a caller can pass its own ONNX Runtime environment (#1539). **C++:** ONNX Runtime 1.30.0
+  now comes from Microsoft's NuGet package, checked by SHA-512 (#1541).
+* **Research:** vega's accuracy against where the evidence sits in a long document (#1538).
+
+From 0.5.5: the paper is cited at the top of this README
+([doi:10.20944/preprints202611.0781.v1](https://doi.org/10.20944/preprints202611.0781.v1)).
 
 From 0.5.4: **continuous learning has its own package and licence.** `laya.Learner`, `laya.Escalator` and
   `laya.vllm_teacher` now come from `pip install vegaml-learn`, which is free for noncommercial use

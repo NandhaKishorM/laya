@@ -399,6 +399,23 @@ Set `ORT_DYLIB_PATH` to the ONNX Runtime shared library before the first session
 If it is unset, `ort` loads that filename from the dynamic linker path. `--no-default-features`
 also turns off `download`; list it next to `load-dynamic` if artifact download should stay on.
 
+The Rust SDK requires Rust 1.92 or later and uses ONNX Runtime API 27. Applications that load a
+shared library themselves can pass the resulting environment to each engine.
+
+```rust
+let environment = ort::init_from(runtime_path)?.build()?;
+let engine = LayaEngine::create(LayaOptions {
+    environment: Some(environment.clone()),
+    model_directory: Some(model_dir),
+    ..Default::default()
+})?;
+```
+
+After a failed `init_from`, retry with the corrected path in the same process. If you preload
+the library and leave the builder unbuilt, Laya can build its own default. If you build the
+environment yourself, supply the handle at least once. Laya retains its first environment for
+later calls that omit one, including after an engine is dropped.
+
 ---
 
 ## Async usage

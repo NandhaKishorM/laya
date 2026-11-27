@@ -80,6 +80,12 @@ pub struct LayaOptions {
     pub checkpoint: LayaCheckpoint,
     /// Which hardware back-end to use.
     pub execution_provider: LayaExecutionProvider,
+    /// ONNX Runtime environment for this engine's sessions. An explicit handle takes priority.
+    /// Laya keeps a clone of the first environment it uses as the process default. With
+    /// `None` and no cached handle, it builds an environment using the already-loaded runtime
+    /// library, or the usual runtime lookup. If another caller already built an environment,
+    /// pass it here at least once. Otherwise ort rejects the attempt to build a second one.
+    pub environment: Option<ort::environment::Environment>,
     /// Number of threads used within a single ONNX operator. `None` lets ONNX Runtime choose.
     pub intra_op_threads: Option<u32>,
     /// Number of threads used to run independent ONNX operators in parallel. `None` lets ONNX
@@ -116,6 +122,7 @@ impl std::fmt::Debug for LayaOptions {
             .field("model_directory", &self.model_directory)
             .field("checkpoint", &self.checkpoint)
             .field("execution_provider", &self.execution_provider)
+            .field("environment", &self.environment.is_some())
             .field("intra_op_threads", &self.intra_op_threads)
             .field("inter_op_threads", &self.inter_op_threads)
             .field("allow_download", &self.allow_download)
@@ -138,6 +145,7 @@ impl Default for LayaOptions {
             model_directory: None,
             checkpoint: LayaCheckpoint::default(),
             execution_provider: LayaExecutionProvider::default(),
+            environment: None,
             intra_op_threads: None,
             inter_op_threads: None,
             allow_download: false,

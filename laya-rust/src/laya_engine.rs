@@ -31,6 +31,7 @@ use crate::questions::{Question, QuestionSet};
 use crate::sequence_builder::SequenceBuilder;
 use crate::tokenization::{HfTokenizer, LayaTokenizer};
 use indexmap::IndexMap;
+use ort::environment::Environment;
 use ort::session::Session;
 use ort::session::builder::SessionBuilder;
 use ort::value::{DynValue, Tensor, TensorElementType, ValueType};
@@ -146,16 +147,17 @@ impl LayaEngine {
             )?;
         }
 
+        let environment = session_environment(options.environment.as_ref())?;
         let sessions = match &artifacts.model {
             ModelPaths::Fused { model_path } => {
-                ModelSessions::Fused(build_session(&options, model_path)?)
+                ModelSessions::Fused(build_session(&environment, &options, model_path)?)
             }
             ModelPaths::Split {
                 encoder_path,
                 head_path,
             } => ModelSessions::Split {
-                encoder: build_session(&options, encoder_path)?,
-                head: build_session(&options, head_path)?,
+                encoder: build_session(&environment, &options, encoder_path)?,
+                head: build_session(&environment, &options, head_path)?,
             },
         };
         let tokenizer = HfTokenizer::from_file_with_config(
@@ -998,8 +1000,33 @@ fn validate_encoder(
     Ok(())
 }
 
-fn build_session(options: &LayaOptions, model_path: &Path) -> Result<Session> {
-    let mut builder = Session::builder().map_err(onnx_err)?;
+fn session_environment(supplied: Option<&Environment>) -> Result<Environment> {
+    static DEFAULT_ENVIRONMENT: Mutex<Option<Environment>> = Mutex::new(None);
+    let mut cached = DEFAULT_ENVIRONMENT
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    let environment = match supplied.or(cached.as_ref()) {
+        Some(env) => env.clone(),
+        None => ort::init().build().map_err(|e| {
+            onnx_err(format!(
+                "could not build the default environment: {e}. If you already built one, pass it through LayaOptions::environment"
+            ))
+        })?,
+    };
+    cached.get_or_insert_with(|| environment.clone());
+    Ok(environment)
+}
+
+fn build_session(
+    environment: &Environment,
+    options: &LayaOptions,
+    model_path: &Path,
+) -> Result<Session> {
+    let mut builder = Session::builder(environment).map_err(onnx_err)?;
+    // A caller's environment can have a global pool. Explicit session thread counts need a local pool.
+    if options.intra_op_threads.is_some() || options.inter_op_threads.is_some() {
+        builder = builder.with_independent_thread_pool().map_err(onnx_err)?;
+    }
     if let Some(intra) = options.intra_op_threads {
         builder = builder
             .with_intra_threads(intra as usize)

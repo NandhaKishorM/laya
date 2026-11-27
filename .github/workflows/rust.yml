@@ -180,10 +180,23 @@ jobs:
       - name: No test was skipped
         if: ${{ success() }}
         run: python laya-rust/tools/check_test_skips.py laya-rust/cargo-test.log --min-passed ${{ matrix.min-passed }}
+      - name: Test environment reuse with a dynamically loaded runtime
+        if: matrix.name == 'english'
+        working-directory: laya-rust
+        shell: bash
+        env:
+          LAYA_TEST_CHECKPOINTS: english
+        run: |
+          set -euo pipefail
+          ORT_DYLIB_PATH=$(python -c 'from importlib.metadata import distribution; print(next(distribution("onnxruntime").locate_file("onnxruntime/capi").glob("libonnxruntime.so.*")))')
+          export ORT_DYLIB_PATH
+          cargo test --locked --no-default-features --features load-dynamic --test environment_tests -- --nocapture --test-threads=1 2>&1 | tee environment-test.log
+          python tools/check_test_skips.py environment-test.log --min-passed 2
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() }}
         with:
           name: rust-parity-diagnostics-${{ matrix.name }}
           path: |
             laya-rust/cargo-test.log
+            laya-rust/environment-test.log
             laya-rust/tests/golden

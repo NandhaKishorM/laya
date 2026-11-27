@@ -80,6 +80,10 @@ check("HTTP route snapshot stays outside core exports", "RouteSnapshot" in laya.
 check("HTTP route options stay outside core exports", "RouteOptions" in laya.__all__, False)
 check("core does not import the HTTP SDK", "laya_client" in sys.modules, False)
 
+# Python callers can still construct an ONNX agent with only a checkpoint path.
+check("ONNXAgent accepts a checkpoint alone", list(inspect.signature(ONNXAgent).bind("checkpoint").arguments),
+      ["model_id_or_path"])
+
 for label, fn in (("Agent.__init__", Agent.__init__), ("load", load),
                   ("Router.__init__", Router.__init__), ("ONNXAgent.__init__", ONNXAgent.__init__)):
     for param, default in HOOK_KEYS.items():

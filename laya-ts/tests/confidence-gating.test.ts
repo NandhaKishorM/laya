@@ -109,9 +109,18 @@ describe("optionBucket & resolveMinConfidence", () => {
     expect(optionBucket({ type: "choice", probabilities: eleven })).toBe("choice:11+");
 
     expect(optionBucket({ type: "score", probabilities: { "1": 0.3, "2": 0.3, "3": 0.4 } })).toBe("score:3-5");
+    expect(optionBucket({ type: "choice", probabilities: {} })).toBeNull();
+    expect(optionBucket({ type: "score", probabilities: {} })).toBeNull();
+    expect(optionBucket({ type: "noul", probabilities: {} })).toBe("noul:2");
     expect(optionBucket({ type: "noul" })).toBe("noul:2");
     expect(optionBucket({ type: "text" })).toBeNull();
     expect(optionBucket({ type: "choice" })).toBeNull();
+  });
+
+  it("uses the default threshold for an empty probabilities object", () => {
+    const answer = { type: "choice", probabilities: {}, answer_confidence: 0.5 };
+    flagLowConfidence([{ answers: { q: answer } }] as any, { "choice:2": 0.9, default: 0.1 });
+    expect(answer).not.toHaveProperty("low_confidence");
   });
 
   it("resolves per-bucket thresholds with default and unconfigured fallback", () => {

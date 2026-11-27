@@ -1,0 +1,15 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+# SHA-256 of tokenizer/tokenizer.json in the public convaiinnovations/laya
+# checkpoint at 55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851. The study records this
+# digest as provenance; require both the exact value and its evidence directory.
+description = "Pinned public tokenizer digest in the dedicated-shortlist study"
+condition = "AND"
+regexTarget = "secret"
+regexes = ['''^6c8aaa9a542084f2457eab775d4eeb51f92a70c0fd9de28d5edb0ddec3c08d30$''']
+paths = ['''(^|[/\\])research[/\\]benchmarks[/\\]tournament[/\\]evidence[/\\]2026-10-13[/\\][^/\\]+\.json$''']

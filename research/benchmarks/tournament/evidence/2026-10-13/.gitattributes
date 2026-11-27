@@ -1,0 +1,2 @@
+# Preserve exact report and frozen-metadata hashes across Git checkout platforms.
+*.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

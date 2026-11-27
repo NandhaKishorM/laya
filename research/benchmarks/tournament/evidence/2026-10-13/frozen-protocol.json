@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "quality_test_rows_per_dataset": 500,
+  "latency_rows_per_dataset": 50,
+  "latency_passes": 3,
+  "development_rows": 600,
+  "pilot_prefix_rows": 200,
+  "seed": 0,
+  "latency_seed": 1,
+  "k": 20,
+  "group_size": 16,
+  "device": "cpu",
+  "threads": 4,
+  "runner_sha256": {
+    "compare_embeddings.py": "f7018a2d7c5a25f7f1a41333397391736ff3ed14b6831dfc15833c946404cf77",
+    "diagnostics.py": "3229f100292bbcda2793fdf5afccba9d81fb19d99bddf3c7b43a85b650888568",
+    "embedders.py": "ddd081b52ec9b8441670cd6a72e082ecddb88ade01d1f937287cf6f2f0dd4679",
+    "benchmark.py": "99b0d1d6d846082a684209a3150353ce643248244aa881d1ba80d398337b3edf"
+  },
+  "execution": {
+    "core_tree": "772f948710467beb921da4d14cebddb3340397d7",
+    "python": "3.11.13",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "versions": {
+      "torch": "2.14.0",
+      "transformers": "5.17.0",
+      "numpy": "2.4.6",
+      "pyarrow": "25.0.1",
+      "huggingface-hub": "1.32.0"
+    },
+    "sample_manifest_sha256": "6c2076fae857a34bdd2f3dbe44015a645bd10a9062c68da5a77a486e4ec2832a",
+    "driver_sha256": "879195a26ad3c56ccad46d713caf9c03c3b6ab645b71ddac8aa975cc922f93c7"
+  },
+  "selection": "macro S5 accuracy on three 200-row development pilots; <1pp tie uses dev p95, then peak RSS, then bge/minilm order",
+  "test_scope": "fixed subsets selected before reading any test predictions",
+  "calibration": "record raw/effective temperatures; no fitting on any evaluation rows",
+  "primary": "BANKING77 selected lightweight combined vs shortlist/tournament, 97.5% intervals",
+  "other_comparisons": "95% exploratory intervals",
+  "decision": "No automatic strategy recommendation or GitHub publication from this driver"
+}

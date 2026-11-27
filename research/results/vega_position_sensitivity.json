@@ -1,0 +1,4550 @@
+{
+ "checkpoint": {
+  "vega": "nandakishorm/vega-U",
+  "classic": "convaiinnovations/laya/multilingual"
+ },
+ "device": "cuda",
+ "platform": "Linux-7.0.0-43-generic-x86_64-with-glibc2.39",
+ "torch": "2.11.0+cu128",
+ "cuda": "12.8",
+ "gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+ "transformers": "5.24.0",
+ "laya": "0.5.3",
+ "vegaml": "0.19.0",
+ "classic_limit": 8192,
+ "lengths": [
+  7000,
+  32000,
+  48000
+ ],
+ "classic_lengths": [
+  7000
+ ],
+ "vega_context_tokens": 73728,
+ "tokenizer": "convaiinnovations/laya/multilingual/tokenizer",
+ "filler_tokens_per_rep": 43,
+ "questions": {
+  "department": {
+   "type": "choice",
+   "instructions": "Which department should handle this request?",
+   "criteria": {
+    "billing": "invoices, payments, refunds",
+    "technical": "bugs, outages, system errors",
+    "sales": "pricing, new contracts, plan upgrades",
+    "other": "everything else"
+   }
+  }
+ },
+ "filler": "Thanks for the update on the quarterly planning meeting. We reviewed the roadmap slides, discussed hiring for the design team, agreed on the offsite venue, and noted that the parking garage will be closed next week. ",
+ "label_counts": {
+  "billing": 9,
+  "sales": 4,
+  "technical": 7
+ },
+ "majority_class": 0.45,
+ "run_note": "72k nominal OOMs on the 8GB RTX 4070 Laptop even with flash-linear-attention (6.78 GiB used, 276 MiB short); the committed top cell is 48k nominal (~47k prompt tokens).",
+ "requests": [
+  {
+   "request": "I was charged twice for invoice 4411, please refund the duplicate payment.",
+   "gold": "billing"
+  },
+  {
+   "request": "The dashboard crashes with an error every time I open the reports page.",
+   "gold": "technical"
+  },
+  {
+   "request": "What would an enterprise contract for 200 seats cost per year?",
+   "gold": "sales"
+  },
+  {
+   "request": "Please refund my subscription payment from last month, it was billed by mistake.",
+   "gold": "billing"
+  },
+  {
+   "request": "Our API returns 500 errors since this morning and the service is down.",
+   "gold": "technical"
+  },
+  {
+   "request": "Can you send me pricing for upgrading our plan to the business tier?",
+   "gold": "sales"
+  },
+  {
+   "request": "Me cobraron dos veces la factura de marzo, devuélvanme el cargo duplicado.",
+   "gold": "billing"
+  },
+  {
+   "request": "La aplicación se cierra cada vez que abro la configuración.",
+   "gold": "technical"
+  },
+  {
+   "request": "Quisiera una cotización para un contrato anual de 50 licencias.",
+   "gold": "sales"
+  },
+  {
+   "request": "Fui cobrado duas vezes na fatura de março, quero o reembolso da cobrança duplicada.",
+   "gold": "billing"
+  },
+  {
+   "request": "O sistema cai toda vez que tento gerar o relatório mensal.",
+   "gold": "technical"
+  },
+  {
+   "request": "J'ai été facturé deux fois ce mois-ci, merci de rembourser le doublon.",
+   "gold": "billing"
+  },
+  {
+   "request": "L'application plante dès que j'ouvre la page des paramètres.",
+   "gold": "technical"
+  },
+  {
+   "request": "Ich wurde zweimal belastet, bitte erstatten Sie die doppelte Zahlung.",
+   "gold": "billing"
+  },
+  {
+   "request": "Die Anwendung stürzt jedes Mal ab, wenn ich die Einstellungen öffne.",
+   "gold": "technical"
+  },
+  {
+   "request": "Was kostet ein Jahresvertrag für 100 Nutzer?",
+   "gold": "sales"
+  },
+  {
+   "request": "मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।",
+   "gold": "billing"
+  },
+  {
+   "request": "ऐप हर बार सेटिंग्स खोलते ही बंद हो जाता है।",
+   "gold": "technical"
+  },
+  {
+   "request": "請求書が二重に請求されました。重複分を返金してください。",
+   "gold": "billing"
+  },
+  {
+   "request": "تم خصم المبلغ مرتين من بطاقتي، أرجو استرداد المبلغ المكرر.",
+   "gold": "billing"
+  }
+ ],
+ "note": "Documents reuse the 20 requests, filler, question and delimiter of bench_position_sensitivity.py; the request sits at `needle_position` of the filler, so 1.0 is the cell that script measures. Lengths are filler tokens under the classic tokenizer; the Vega reader's own input_tokens and truncation flag are reported per case. n=20 per cell: intervals are wide and a null is underpowered, not equivalence.",
+ "rows": [
+  {
+   "arm": "vega",
+   "pad_tokens": 7000,
+   "needle_position": 0.0,
+   "n": 20,
+   "correct": 15,
+   "accuracy": 0.75,
+   "wilson_ci95": [
+    0.5313,
+    0.8881
+   ],
+   "majority_class": 0.45,
+   "per_class_recall": {
+    "billing": 0.8889,
+    "sales": 0.0,
+    "technical": 1.0
+   },
+   "modal_prediction_share": 0.6,
+   "abstain_rate": 0.95,
+   "review_rate": 0.95,
+   "truncated_count": 0,
+   "median_latency_s": 0.5857,
+   "median_input_tokens": 6929,
+   "predictions": [
+    {
+     "arm": "vega",
+     "item": 0,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.600492,
+     "correct": true,
+     "abstain": false,
+     "route": "auto",
+     "prediction_set": [
+      "billing"
+     ],
+     "input_tokens": 6930,
+     "truncated": false,
+     "latency_s": 0.6457,
+     "doc_chars": 35302
+    },
+    {
+     "arm": "vega",
+     "item": 1,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.517323,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6926,
+     "truncated": false,
+     "latency_s": 0.6889,
+     "doc_chars": 35299
+    },
+    {
+     "arm": "vega",
+     "item": 2,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.10481,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6927,
+     "truncated": false,
+     "latency_s": 0.5829,
+     "doc_chars": 35290
+    },
+    {
+     "arm": "vega",
+     "item": 3,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.474115,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6927,
+     "truncated": false,
+     "latency_s": 0.5781,
+     "doc_chars": 35308
+    },
+    {
+     "arm": "vega",
+     "item": 4,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.539401,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6929,
+     "truncated": false,
+     "latency_s": 0.6094,
+     "doc_chars": 35298
+    },
+    {
+     "arm": "vega",
+     "item": 5,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.180083,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6926,
+     "truncated": false,
+     "latency_s": 0.5756,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "vega",
+     "item": 6,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.391048,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6933,
+     "truncated": false,
+     "latency_s": 0.6141,
+     "doc_chars": 35302
+    },
+    {
+     "arm": "vega",
+     "item": 7,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.44562,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6925,
+     "truncated": false,
+     "latency_s": 0.6016,
+     "doc_chars": 35287
+    },
+    {
+     "arm": "vega",
+     "item": 8,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.110096,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6929,
+     "truncated": false,
+     "latency_s": 0.5911,
+     "doc_chars": 35291
+    },
+    {
+     "arm": "vega",
+     "item": 9,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.47174,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6932,
+     "truncated": false,
+     "latency_s": 0.6003,
+     "doc_chars": 35311
+    },
+    {
+     "arm": "vega",
+     "item": 10,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.44607,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6924,
+     "truncated": false,
+     "latency_s": 0.5886,
+     "doc_chars": 35286
+    },
+    {
+     "arm": "vega",
+     "item": 11,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.468964,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6932,
+     "truncated": false,
+     "latency_s": 0.6055,
+     "doc_chars": 35298
+    },
+    {
+     "arm": "vega",
+     "item": 12,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.441618,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6926,
+     "truncated": false,
+     "latency_s": 0.5586,
+     "doc_chars": 35288
+    },
+    {
+     "arm": "vega",
+     "item": 13,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.369678,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6929,
+     "truncated": false,
+     "latency_s": 0.5615,
+     "doc_chars": 35297
+    },
+    {
+     "arm": "vega",
+     "item": 14,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.518275,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6927,
+     "truncated": false,
+     "latency_s": 0.548,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "vega",
+     "item": 15,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.10697,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6924,
+     "truncated": false,
+     "latency_s": 0.5613,
+     "doc_chars": 35272
+    },
+    {
+     "arm": "vega",
+     "item": 16,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.413349,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6943,
+     "truncated": false,
+     "latency_s": 0.5674,
+     "doc_chars": 35298
+    },
+    {
+     "arm": "vega",
+     "item": 17,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.440893,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6930,
+     "truncated": false,
+     "latency_s": 0.5929,
+     "doc_chars": 35271
+    },
+    {
+     "arm": "vega",
+     "item": 18,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.325335,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6929,
+     "truncated": false,
+     "latency_s": 0.5422,
+     "doc_chars": 35256
+    },
+    {
+     "arm": "vega",
+     "item": 19,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.381842,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6934,
+     "truncated": false,
+     "latency_s": 0.546,
+     "doc_chars": 35286
+    }
+   ]
+  },
+  {
+   "arm": "vega",
+   "pad_tokens": 7000,
+   "needle_position": 0.5,
+   "n": 20,
+   "correct": 9,
+   "accuracy": 0.45,
+   "wilson_ci95": [
+    0.2582,
+    0.6579
+   ],
+   "majority_class": 0.45,
+   "per_class_recall": {
+    "billing": 0.2222,
+    "sales": 0.0,
+    "technical": 1.0
+   },
+   "modal_prediction_share": 0.9,
+   "abstain_rate": 1.0,
+   "review_rate": 1.0,
+   "truncated_count": 0,
+   "median_latency_s": 0.5606,
+   "median_input_tokens": 6929,
+   "predictions": [
+    {
+     "arm": "vega",
+     "item": 0,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.42826,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6930,
+     "truncated": false,
+     "latency_s": 0.5426,
+     "doc_chars": 35302
+    },
+    {
+     "arm": "vega",
+     "item": 1,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.507041,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6926,
+     "truncated": false,
+     "latency_s": 0.5405,
+     "doc_chars": 35299
+    },
+    {
+     "arm": "vega",
+     "item": 2,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.127479,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6927,
+     "truncated": false,
+     "latency_s": 0.5393,
+     "doc_chars": 35290
+    },
+    {
+     "arm": "vega",
+     "item": 3,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.372367,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6927,
+     "truncated": false,
+     "latency_s": 0.5791,
+     "doc_chars": 35308
+    },
+    {
+     "arm": "vega",
+     "item": 4,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.514338,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6929,
+     "truncated": false,
+     "latency_s": 0.5435,
+     "doc_chars": 35298
+    },
+    {
+     "arm": "vega",
+     "item": 5,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.19162,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6926,
+     "truncated": false,
+     "latency_s": 0.5392,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "vega",
+     "item": 6,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.298456,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6933,
+     "truncated": false,
+     "latency_s": 0.5873,
+     "doc_chars": 35302
+    },
+    {
+     "arm": "vega",
+     "item": 7,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.4315,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6925,
+     "truncated": false,
+     "latency_s": 0.5661,
+     "doc_chars": 35287
+    },
+    {
+     "arm": "vega",
+     "item": 8,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.13646,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6929,
+     "truncated": false,
+     "latency_s": 0.5552,
+     "doc_chars": 35291
+    },
+    {
+     "arm": "vega",
+     "item": 9,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.338742,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6932,
+     "truncated": false,
+     "latency_s": 0.555,
+     "doc_chars": 35311
+    },
+    {
+     "arm": "vega",
+     "item": 10,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.394683,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical",
+      "other"
+     ],
+     "input_tokens": 6924,
+     "truncated": false,
+     "latency_s": 0.5627,
+     "doc_chars": 35286
+    },
+    {
+     "arm": "vega",
+     "item": 11,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.31833,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6932,
+     "truncated": false,
+     "latency_s": 0.5586,
+     "doc_chars": 35298
+    },
+    {
+     "arm": "vega",
+     "item": 12,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.416344,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical",
+      "other"
+     ],
+     "input_tokens": 6926,
+     "truncated": false,
+     "latency_s": 0.5875,
+     "doc_chars": 35288
+    },
+    {
+     "arm": "vega",
+     "item": 13,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.301348,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6929,
+     "truncated": false,
+     "latency_s": 0.5657,
+     "doc_chars": 35297
+    },
+    {
+     "arm": "vega",
+     "item": 14,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.486772,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6927,
+     "truncated": false,
+     "latency_s": 0.5532,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "vega",
+     "item": 15,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.12317,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6924,
+     "truncated": false,
+     "latency_s": 0.5635,
+     "doc_chars": 35272
+    },
+    {
+     "arm": "vega",
+     "item": 16,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.274195,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6943,
+     "truncated": false,
+     "latency_s": 0.5648,
+     "doc_chars": 35298
+    },
+    {
+     "arm": "vega",
+     "item": 17,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.453696,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6930,
+     "truncated": false,
+     "latency_s": 0.5574,
+     "doc_chars": 35271
+    },
+    {
+     "arm": "vega",
+     "item": 18,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.263461,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6929,
+     "truncated": false,
+     "latency_s": 0.5795,
+     "doc_chars": 35256
+    },
+    {
+     "arm": "vega",
+     "item": 19,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.272536,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6934,
+     "truncated": false,
+     "latency_s": 0.6042,
+     "doc_chars": 35286
+    }
+   ]
+  },
+  {
+   "arm": "vega",
+   "pad_tokens": 7000,
+   "needle_position": 1.0,
+   "n": 20,
+   "correct": 15,
+   "accuracy": 0.75,
+   "wilson_ci95": [
+    0.5313,
+    0.8881
+   ],
+   "majority_class": 0.45,
+   "per_class_recall": {
+    "billing": 0.8889,
+    "sales": 0.0,
+    "technical": 1.0
+   },
+   "modal_prediction_share": 0.55,
+   "abstain_rate": 0.95,
+   "review_rate": 0.95,
+   "truncated_count": 0,
+   "median_latency_s": 0.5565,
+   "median_input_tokens": 6927,
+   "predictions": [
+    {
+     "arm": "vega",
+     "item": 0,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.668687,
+     "correct": true,
+     "abstain": false,
+     "route": "auto",
+     "prediction_set": [
+      "billing"
+     ],
+     "input_tokens": 6928,
+     "truncated": false,
+     "latency_s": 0.5718,
+     "doc_chars": 35300
+    },
+    {
+     "arm": "vega",
+     "item": 1,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.539349,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6924,
+     "truncated": false,
+     "latency_s": 0.5471,
+     "doc_chars": 35297
+    },
+    {
+     "arm": "vega",
+     "item": 2,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.180585,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6925,
+     "truncated": false,
+     "latency_s": 0.5636,
+     "doc_chars": 35288
+    },
+    {
+     "arm": "vega",
+     "item": 3,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.583993,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing"
+     ],
+     "input_tokens": 6925,
+     "truncated": false,
+     "latency_s": 0.5514,
+     "doc_chars": 35306
+    },
+    {
+     "arm": "vega",
+     "item": 4,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.561487,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6927,
+     "truncated": false,
+     "latency_s": 0.5637,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "vega",
+     "item": 5,
+     "gold": "sales",
+     "choice": "billing",
+     "p_gold": 0.234084,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6924,
+     "truncated": false,
+     "latency_s": 0.5654,
+     "doc_chars": 35294
+    },
+    {
+     "arm": "vega",
+     "item": 6,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.436992,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6931,
+     "truncated": false,
+     "latency_s": 0.5632,
+     "doc_chars": 35300
+    },
+    {
+     "arm": "vega",
+     "item": 7,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.44679,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6923,
+     "truncated": false,
+     "latency_s": 0.5533,
+     "doc_chars": 35285
+    },
+    {
+     "arm": "vega",
+     "item": 8,
+     "gold": "sales",
+     "choice": "billing",
+     "p_gold": 0.177154,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6927,
+     "truncated": false,
+     "latency_s": 0.5527,
+     "doc_chars": 35289
+    },
+    {
+     "arm": "vega",
+     "item": 9,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.504967,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6930,
+     "truncated": false,
+     "latency_s": 0.5593,
+     "doc_chars": 35309
+    },
+    {
+     "arm": "vega",
+     "item": 10,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.373924,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical",
+      "other"
+     ],
+     "input_tokens": 6922,
+     "truncated": false,
+     "latency_s": 0.5499,
+     "doc_chars": 35284
+    },
+    {
+     "arm": "vega",
+     "item": 11,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.484013,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6930,
+     "truncated": false,
+     "latency_s": 0.5527,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "vega",
+     "item": 12,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.421797,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6924,
+     "truncated": false,
+     "latency_s": 0.5619,
+     "doc_chars": 35286
+    },
+    {
+     "arm": "vega",
+     "item": 13,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.377517,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6927,
+     "truncated": false,
+     "latency_s": 0.5559,
+     "doc_chars": 35295
+    },
+    {
+     "arm": "vega",
+     "item": 14,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.505753,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6925,
+     "truncated": false,
+     "latency_s": 0.5565,
+     "doc_chars": 35294
+    },
+    {
+     "arm": "vega",
+     "item": 15,
+     "gold": "sales",
+     "choice": "billing",
+     "p_gold": 0.176097,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6922,
+     "truncated": false,
+     "latency_s": 0.5558,
+     "doc_chars": 35270
+    },
+    {
+     "arm": "vega",
+     "item": 16,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.385661,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6941,
+     "truncated": false,
+     "latency_s": 0.5566,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "vega",
+     "item": 17,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.464662,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 6928,
+     "truncated": false,
+     "latency_s": 0.5497,
+     "doc_chars": 35269
+    },
+    {
+     "arm": "vega",
+     "item": 18,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.306373,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6927,
+     "truncated": false,
+     "latency_s": 0.6065,
+     "doc_chars": 35254
+    },
+    {
+     "arm": "vega",
+     "item": 19,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.419993,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 6932,
+     "truncated": false,
+     "latency_s": 0.5674,
+     "doc_chars": 35284
+    }
+   ]
+  },
+  {
+   "arm": "vega",
+   "pad_tokens": 32000,
+   "needle_position": 0.0,
+   "n": 20,
+   "correct": 11,
+   "accuracy": 0.55,
+   "wilson_ci95": [
+    0.3421,
+    0.7418
+   ],
+   "majority_class": 0.45,
+   "per_class_recall": {
+    "billing": 0.4444,
+    "sales": 0.0,
+    "technical": 1.0
+   },
+   "modal_prediction_share": 0.8,
+   "abstain_rate": 1.0,
+   "review_rate": 1.0,
+   "truncated_count": 0,
+   "median_latency_s": 3.2391,
+   "median_input_tokens": 31331,
+   "predictions": [
+    {
+     "arm": "vega",
+     "item": 0,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.499623,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31332,
+     "truncated": false,
+     "latency_s": 10.1596,
+     "doc_chars": 160798
+    },
+    {
+     "arm": "vega",
+     "item": 1,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.536433,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31328,
+     "truncated": false,
+     "latency_s": 3.2117,
+     "doc_chars": 160795
+    },
+    {
+     "arm": "vega",
+     "item": 2,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.087787,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31329,
+     "truncated": false,
+     "latency_s": 3.2482,
+     "doc_chars": 160786
+    },
+    {
+     "arm": "vega",
+     "item": 3,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.390577,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31329,
+     "truncated": false,
+     "latency_s": 3.247,
+     "doc_chars": 160804
+    },
+    {
+     "arm": "vega",
+     "item": 4,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.562278,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31331,
+     "truncated": false,
+     "latency_s": 3.2459,
+     "doc_chars": 160794
+    },
+    {
+     "arm": "vega",
+     "item": 5,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.159477,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31328,
+     "truncated": false,
+     "latency_s": 3.1085,
+     "doc_chars": 160792
+    },
+    {
+     "arm": "vega",
+     "item": 6,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.32823,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31335,
+     "truncated": false,
+     "latency_s": 3.0877,
+     "doc_chars": 160798
+    },
+    {
+     "arm": "vega",
+     "item": 7,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.46506,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31327,
+     "truncated": false,
+     "latency_s": 3.1943,
+     "doc_chars": 160783
+    },
+    {
+     "arm": "vega",
+     "item": 8,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.098809,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31331,
+     "truncated": false,
+     "latency_s": 3.1733,
+     "doc_chars": 160787
+    },
+    {
+     "arm": "vega",
+     "item": 9,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.392574,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31334,
+     "truncated": false,
+     "latency_s": 3.2968,
+     "doc_chars": 160807
+    },
+    {
+     "arm": "vega",
+     "item": 10,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.47815,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31326,
+     "truncated": false,
+     "latency_s": 3.2491,
+     "doc_chars": 160782
+    },
+    {
+     "arm": "vega",
+     "item": 11,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.381018,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31334,
+     "truncated": false,
+     "latency_s": 3.2248,
+     "doc_chars": 160794
+    },
+    {
+     "arm": "vega",
+     "item": 12,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.472436,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31328,
+     "truncated": false,
+     "latency_s": 3.1637,
+     "doc_chars": 160784
+    },
+    {
+     "arm": "vega",
+     "item": 13,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.323452,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31331,
+     "truncated": false,
+     "latency_s": 3.2865,
+     "doc_chars": 160793
+    },
+    {
+     "arm": "vega",
+     "item": 14,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.534792,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31329,
+     "truncated": false,
+     "latency_s": 3.2272,
+     "doc_chars": 160792
+    },
+    {
+     "arm": "vega",
+     "item": 15,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.08918,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31326,
+     "truncated": false,
+     "latency_s": 3.1776,
+     "doc_chars": 160768
+    },
+    {
+     "arm": "vega",
+     "item": 16,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.319385,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31345,
+     "truncated": false,
+     "latency_s": 3.2641,
+     "doc_chars": 160794
+    },
+    {
+     "arm": "vega",
+     "item": 17,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.472333,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31332,
+     "truncated": false,
+     "latency_s": 3.2323,
+     "doc_chars": 160767
+    },
+    {
+     "arm": "vega",
+     "item": 18,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.26978,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31331,
+     "truncated": false,
+     "latency_s": 3.4284,
+     "doc_chars": 160752
+    },
+    {
+     "arm": "vega",
+     "item": 19,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.306353,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31336,
+     "truncated": false,
+     "latency_s": 3.3083,
+     "doc_chars": 160782
+    }
+   ]
+  },
+  {
+   "arm": "vega",
+   "pad_tokens": 32000,
+   "needle_position": 0.5,
+   "n": 20,
+   "correct": 8,
+   "accuracy": 0.4,
+   "wilson_ci95": [
+    0.2188,
+    0.6134
+   ],
+   "majority_class": 0.45,
+   "per_class_recall": {
+    "billing": 0.1111,
+    "sales": 0.0,
+    "technical": 1.0
+   },
+   "modal_prediction_share": 0.95,
+   "abstain_rate": 1.0,
+   "review_rate": 1.0,
+   "truncated_count": 0,
+   "median_latency_s": 3.3467,
+   "median_input_tokens": 31331,
+   "predictions": [
+    {
+     "arm": "vega",
+     "item": 0,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.385468,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31332,
+     "truncated": false,
+     "latency_s": 3.3152,
+     "doc_chars": 160798
+    },
+    {
+     "arm": "vega",
+     "item": 1,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.554719,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31328,
+     "truncated": false,
+     "latency_s": 3.226,
+     "doc_chars": 160795
+    },
+    {
+     "arm": "vega",
+     "item": 2,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.109687,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31329,
+     "truncated": false,
+     "latency_s": 3.4544,
+     "doc_chars": 160786
+    },
+    {
+     "arm": "vega",
+     "item": 3,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.337856,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31329,
+     "truncated": false,
+     "latency_s": 3.5211,
+     "doc_chars": 160804
+    },
+    {
+     "arm": "vega",
+     "item": 4,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.570281,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31331,
+     "truncated": false,
+     "latency_s": 3.4765,
+     "doc_chars": 160794
+    },
+    {
+     "arm": "vega",
+     "item": 5,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.17321,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31328,
+     "truncated": false,
+     "latency_s": 3.4186,
+     "doc_chars": 160792
+    },
+    {
+     "arm": "vega",
+     "item": 6,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.285004,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31335,
+     "truncated": false,
+     "latency_s": 3.3238,
+     "doc_chars": 160798
+    },
+    {
+     "arm": "vega",
+     "item": 7,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.474401,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31327,
+     "truncated": false,
+     "latency_s": 3.2955,
+     "doc_chars": 160783
+    },
+    {
+     "arm": "vega",
+     "item": 8,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.118643,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31331,
+     "truncated": false,
+     "latency_s": 3.2833,
+     "doc_chars": 160787
+    },
+    {
+     "arm": "vega",
+     "item": 9,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.316775,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31334,
+     "truncated": false,
+     "latency_s": 3.3128,
+     "doc_chars": 160807
+    },
+    {
+     "arm": "vega",
+     "item": 10,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.444511,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical",
+      "other"
+     ],
+     "input_tokens": 31326,
+     "truncated": false,
+     "latency_s": 3.4032,
+     "doc_chars": 160782
+    },
+    {
+     "arm": "vega",
+     "item": 11,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.320216,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31334,
+     "truncated": false,
+     "latency_s": 3.3529,
+     "doc_chars": 160794
+    },
+    {
+     "arm": "vega",
+     "item": 12,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.466503,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31328,
+     "truncated": false,
+     "latency_s": 3.3405,
+     "doc_chars": 160784
+    },
+    {
+     "arm": "vega",
+     "item": 13,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.276205,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31331,
+     "truncated": false,
+     "latency_s": 3.2992,
+     "doc_chars": 160793
+    },
+    {
+     "arm": "vega",
+     "item": 14,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.562261,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31329,
+     "truncated": false,
+     "latency_s": 3.4227,
+     "doc_chars": 160792
+    },
+    {
+     "arm": "vega",
+     "item": 15,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.097518,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31326,
+     "truncated": false,
+     "latency_s": 3.3019,
+     "doc_chars": 160768
+    },
+    {
+     "arm": "vega",
+     "item": 16,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.261831,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31345,
+     "truncated": false,
+     "latency_s": 3.2819,
+     "doc_chars": 160794
+    },
+    {
+     "arm": "vega",
+     "item": 17,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.496534,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31332,
+     "truncated": false,
+     "latency_s": 3.5584,
+     "doc_chars": 160767
+    },
+    {
+     "arm": "vega",
+     "item": 18,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.238183,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31331,
+     "truncated": false,
+     "latency_s": 3.5274,
+     "doc_chars": 160752
+    },
+    {
+     "arm": "vega",
+     "item": 19,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.261445,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31336,
+     "truncated": false,
+     "latency_s": 3.3641,
+     "doc_chars": 160782
+    }
+   ]
+  },
+  {
+   "arm": "vega",
+   "pad_tokens": 32000,
+   "needle_position": 1.0,
+   "n": 20,
+   "correct": 15,
+   "accuracy": 0.75,
+   "wilson_ci95": [
+    0.5313,
+    0.8881
+   ],
+   "majority_class": 0.45,
+   "per_class_recall": {
+    "billing": 0.8889,
+    "sales": 0.0,
+    "technical": 1.0
+   },
+   "modal_prediction_share": 0.55,
+   "abstain_rate": 0.85,
+   "review_rate": 0.85,
+   "truncated_count": 0,
+   "median_latency_s": 3.3468,
+   "median_input_tokens": 31329,
+   "predictions": [
+    {
+     "arm": "vega",
+     "item": 0,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.688065,
+     "correct": true,
+     "abstain": false,
+     "route": "auto",
+     "prediction_set": [
+      "billing"
+     ],
+     "input_tokens": 31330,
+     "truncated": false,
+     "latency_s": 3.2966,
+     "doc_chars": 160796
+    },
+    {
+     "arm": "vega",
+     "item": 1,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.575977,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31326,
+     "truncated": false,
+     "latency_s": 3.4285,
+     "doc_chars": 160793
+    },
+    {
+     "arm": "vega",
+     "item": 2,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.157545,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31327,
+     "truncated": false,
+     "latency_s": 3.5575,
+     "doc_chars": 160784
+    },
+    {
+     "arm": "vega",
+     "item": 3,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.60517,
+     "correct": true,
+     "abstain": false,
+     "route": "auto",
+     "prediction_set": [
+      "billing"
+     ],
+     "input_tokens": 31327,
+     "truncated": false,
+     "latency_s": 3.4768,
+     "doc_chars": 160802
+    },
+    {
+     "arm": "vega",
+     "item": 4,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.622296,
+     "correct": true,
+     "abstain": false,
+     "route": "auto",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31329,
+     "truncated": false,
+     "latency_s": 3.5354,
+     "doc_chars": 160792
+    },
+    {
+     "arm": "vega",
+     "item": 5,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.210174,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31326,
+     "truncated": false,
+     "latency_s": 3.5588,
+     "doc_chars": 160790
+    },
+    {
+     "arm": "vega",
+     "item": 6,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.472708,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31333,
+     "truncated": false,
+     "latency_s": 3.4576,
+     "doc_chars": 160796
+    },
+    {
+     "arm": "vega",
+     "item": 7,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.486036,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31325,
+     "truncated": false,
+     "latency_s": 3.4843,
+     "doc_chars": 160781
+    },
+    {
+     "arm": "vega",
+     "item": 8,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.153129,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31329,
+     "truncated": false,
+     "latency_s": 3.2651,
+     "doc_chars": 160785
+    },
+    {
+     "arm": "vega",
+     "item": 9,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.555443,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing"
+     ],
+     "input_tokens": 31332,
+     "truncated": false,
+     "latency_s": 3.2282,
+     "doc_chars": 160805
+    },
+    {
+     "arm": "vega",
+     "item": 10,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.409673,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical",
+      "other"
+     ],
+     "input_tokens": 31324,
+     "truncated": false,
+     "latency_s": 3.2492,
+     "doc_chars": 160780
+    },
+    {
+     "arm": "vega",
+     "item": 11,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.51352,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31332,
+     "truncated": false,
+     "latency_s": 3.2896,
+     "doc_chars": 160792
+    },
+    {
+     "arm": "vega",
+     "item": 12,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.453047,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31326,
+     "truncated": false,
+     "latency_s": 3.2905,
+     "doc_chars": 160782
+    },
+    {
+     "arm": "vega",
+     "item": 13,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.402704,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31329,
+     "truncated": false,
+     "latency_s": 3.3424,
+     "doc_chars": 160791
+    },
+    {
+     "arm": "vega",
+     "item": 14,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.554641,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31327,
+     "truncated": false,
+     "latency_s": 3.4845,
+     "doc_chars": 160790
+    },
+    {
+     "arm": "vega",
+     "item": 15,
+     "gold": "sales",
+     "choice": "billing",
+     "p_gold": 0.144562,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31324,
+     "truncated": false,
+     "latency_s": 3.2347,
+     "doc_chars": 160766
+    },
+    {
+     "arm": "vega",
+     "item": 16,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.397185,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31343,
+     "truncated": false,
+     "latency_s": 3.19,
+     "doc_chars": 160792
+    },
+    {
+     "arm": "vega",
+     "item": 17,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.504169,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 31330,
+     "truncated": false,
+     "latency_s": 3.3513,
+     "doc_chars": 160765
+    },
+    {
+     "arm": "vega",
+     "item": 18,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.313985,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31329,
+     "truncated": false,
+     "latency_s": 3.3263,
+     "doc_chars": 160750
+    },
+    {
+     "arm": "vega",
+     "item": 19,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.455201,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 31334,
+     "truncated": false,
+     "latency_s": 3.3774,
+     "doc_chars": 160780
+    }
+   ]
+  },
+  {
+   "arm": "vega",
+   "pad_tokens": 48000,
+   "needle_position": 0.0,
+   "n": 20,
+   "correct": 9,
+   "accuracy": 0.45,
+   "wilson_ci95": [
+    0.2582,
+    0.6579
+   ],
+   "majority_class": 0.45,
+   "per_class_recall": {
+    "billing": 0.2222,
+    "sales": 0.0,
+    "technical": 1.0
+   },
+   "modal_prediction_share": 0.9,
+   "abstain_rate": 1.0,
+   "review_rate": 1.0,
+   "truncated_count": 0,
+   "median_latency_s": 5.5246,
+   "median_input_tokens": 46955,
+   "predictions": [
+    {
+     "arm": "vega",
+     "item": 0,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.461606,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46956,
+     "truncated": false,
+     "latency_s": 5.4626,
+     "doc_chars": 241150
+    },
+    {
+     "arm": "vega",
+     "item": 1,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.544216,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46952,
+     "truncated": false,
+     "latency_s": 5.5649,
+     "doc_chars": 241147
+    },
+    {
+     "arm": "vega",
+     "item": 2,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.082401,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46953,
+     "truncated": false,
+     "latency_s": 5.7019,
+     "doc_chars": 241138
+    },
+    {
+     "arm": "vega",
+     "item": 3,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.385327,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46953,
+     "truncated": false,
+     "latency_s": 5.5617,
+     "doc_chars": 241156
+    },
+    {
+     "arm": "vega",
+     "item": 4,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.577343,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46955,
+     "truncated": false,
+     "latency_s": 5.5087,
+     "doc_chars": 241146
+    },
+    {
+     "arm": "vega",
+     "item": 5,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.149331,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46952,
+     "truncated": false,
+     "latency_s": 5.3739,
+     "doc_chars": 241144
+    },
+    {
+     "arm": "vega",
+     "item": 6,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.323598,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46959,
+     "truncated": false,
+     "latency_s": 5.5104,
+     "doc_chars": 241150
+    },
+    {
+     "arm": "vega",
+     "item": 7,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.480424,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical",
+      "other"
+     ],
+     "input_tokens": 46951,
+     "truncated": false,
+     "latency_s": 5.5528,
+     "doc_chars": 241135
+    },
+    {
+     "arm": "vega",
+     "item": 8,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.090402,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46955,
+     "truncated": false,
+     "latency_s": 5.4685,
+     "doc_chars": 241139
+    },
+    {
+     "arm": "vega",
+     "item": 9,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.379265,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46958,
+     "truncated": false,
+     "latency_s": 5.5177,
+     "doc_chars": 241159
+    },
+    {
+     "arm": "vega",
+     "item": 10,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.49213,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46950,
+     "truncated": false,
+     "latency_s": 5.6228,
+     "doc_chars": 241134
+    },
+    {
+     "arm": "vega",
+     "item": 11,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.374112,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46958,
+     "truncated": false,
+     "latency_s": 5.5502,
+     "doc_chars": 241146
+    },
+    {
+     "arm": "vega",
+     "item": 12,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.485141,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46952,
+     "truncated": false,
+     "latency_s": 5.4483,
+     "doc_chars": 241136
+    },
+    {
+     "arm": "vega",
+     "item": 13,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.314496,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46955,
+     "truncated": false,
+     "latency_s": 5.4911,
+     "doc_chars": 241145
+    },
+    {
+     "arm": "vega",
+     "item": 14,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.533856,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46953,
+     "truncated": false,
+     "latency_s": 5.5651,
+     "doc_chars": 241144
+    },
+    {
+     "arm": "vega",
+     "item": 15,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.078341,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46950,
+     "truncated": false,
+     "latency_s": 5.5315,
+     "doc_chars": 241120
+    },
+    {
+     "arm": "vega",
+     "item": 16,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.294562,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46969,
+     "truncated": false,
+     "latency_s": 5.4975,
+     "doc_chars": 241146
+    },
+    {
+     "arm": "vega",
+     "item": 17,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.486152,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46956,
+     "truncated": false,
+     "latency_s": 5.7253,
+     "doc_chars": 241119
+    },
+    {
+     "arm": "vega",
+     "item": 18,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.258327,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46955,
+     "truncated": false,
+     "latency_s": 5.621,
+     "doc_chars": 241104
+    },
+    {
+     "arm": "vega",
+     "item": 19,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.294856,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46960,
+     "truncated": false,
+     "latency_s": 5.5128,
+     "doc_chars": 241134
+    }
+   ]
+  },
+  {
+   "arm": "vega",
+   "pad_tokens": 48000,
+   "needle_position": 0.5,
+   "n": 20,
+   "correct": 7,
+   "accuracy": 0.35,
+   "wilson_ci95": [
+    0.1812,
+    0.5671
+   ],
+   "majority_class": 0.45,
+   "per_class_recall": {
+    "billing": 0.0,
+    "sales": 0.0,
+    "technical": 1.0
+   },
+   "modal_prediction_share": 1.0,
+   "abstain_rate": 1.0,
+   "review_rate": 1.0,
+   "truncated_count": 0,
+   "median_latency_s": 5.5206,
+   "median_input_tokens": 46955,
+   "predictions": [
+    {
+     "arm": "vega",
+     "item": 0,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.340634,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46956,
+     "truncated": false,
+     "latency_s": 5.5718,
+     "doc_chars": 241150
+    },
+    {
+     "arm": "vega",
+     "item": 1,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.550686,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46952,
+     "truncated": false,
+     "latency_s": 5.6091,
+     "doc_chars": 241147
+    },
+    {
+     "arm": "vega",
+     "item": 2,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.092828,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46953,
+     "truncated": false,
+     "latency_s": 5.5202,
+     "doc_chars": 241138
+    },
+    {
+     "arm": "vega",
+     "item": 3,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.319811,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46953,
+     "truncated": false,
+     "latency_s": 5.4274,
+     "doc_chars": 241156
+    },
+    {
+     "arm": "vega",
+     "item": 4,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.591251,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46955,
+     "truncated": false,
+     "latency_s": 5.5121,
+     "doc_chars": 241146
+    },
+    {
+     "arm": "vega",
+     "item": 5,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.164921,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46952,
+     "truncated": false,
+     "latency_s": 5.4911,
+     "doc_chars": 241144
+    },
+    {
+     "arm": "vega",
+     "item": 6,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.266066,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46959,
+     "truncated": false,
+     "latency_s": 5.5107,
+     "doc_chars": 241150
+    },
+    {
+     "arm": "vega",
+     "item": 7,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.489659,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46951,
+     "truncated": false,
+     "latency_s": 5.5092,
+     "doc_chars": 241135
+    },
+    {
+     "arm": "vega",
+     "item": 8,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.108731,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46955,
+     "truncated": false,
+     "latency_s": 5.4708,
+     "doc_chars": 241139
+    },
+    {
+     "arm": "vega",
+     "item": 9,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.275274,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46958,
+     "truncated": false,
+     "latency_s": 5.5278,
+     "doc_chars": 241159
+    },
+    {
+     "arm": "vega",
+     "item": 10,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.460365,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical",
+      "other"
+     ],
+     "input_tokens": 46950,
+     "truncated": false,
+     "latency_s": 5.45,
+     "doc_chars": 241134
+    },
+    {
+     "arm": "vega",
+     "item": 11,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.287481,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46958,
+     "truncated": false,
+     "latency_s": 5.5105,
+     "doc_chars": 241146
+    },
+    {
+     "arm": "vega",
+     "item": 12,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.477902,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46952,
+     "truncated": false,
+     "latency_s": 5.5816,
+     "doc_chars": 241136
+    },
+    {
+     "arm": "vega",
+     "item": 13,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.246924,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46955,
+     "truncated": false,
+     "latency_s": 5.5209,
+     "doc_chars": 241145
+    },
+    {
+     "arm": "vega",
+     "item": 14,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.56347,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46953,
+     "truncated": false,
+     "latency_s": 5.5173,
+     "doc_chars": 241144
+    },
+    {
+     "arm": "vega",
+     "item": 15,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.087383,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46950,
+     "truncated": false,
+     "latency_s": 5.5457,
+     "doc_chars": 241120
+    },
+    {
+     "arm": "vega",
+     "item": 16,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.241791,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46969,
+     "truncated": false,
+     "latency_s": 5.6946,
+     "doc_chars": 241146
+    },
+    {
+     "arm": "vega",
+     "item": 17,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.513174,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46956,
+     "truncated": false,
+     "latency_s": 5.5638,
+     "doc_chars": 241119
+    },
+    {
+     "arm": "vega",
+     "item": 18,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.220462,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46955,
+     "truncated": false,
+     "latency_s": 5.7595,
+     "doc_chars": 241104
+    },
+    {
+     "arm": "vega",
+     "item": 19,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.23479,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46960,
+     "truncated": false,
+     "latency_s": 5.6574,
+     "doc_chars": 241134
+    }
+   ]
+  },
+  {
+   "arm": "vega",
+   "pad_tokens": 48000,
+   "needle_position": 1.0,
+   "n": 20,
+   "correct": 15,
+   "accuracy": 0.75,
+   "wilson_ci95": [
+    0.5313,
+    0.8881
+   ],
+   "majority_class": 0.45,
+   "per_class_recall": {
+    "billing": 0.8889,
+    "sales": 0.0,
+    "technical": 1.0
+   },
+   "modal_prediction_share": 0.6,
+   "abstain_rate": 0.85,
+   "review_rate": 0.85,
+   "truncated_count": 0,
+   "median_latency_s": 5.698,
+   "median_input_tokens": 46953,
+   "predictions": [
+    {
+     "arm": "vega",
+     "item": 0,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.674435,
+     "correct": true,
+     "abstain": false,
+     "route": "auto",
+     "prediction_set": [
+      "billing"
+     ],
+     "input_tokens": 46954,
+     "truncated": false,
+     "latency_s": 5.5999,
+     "doc_chars": 241148
+    },
+    {
+     "arm": "vega",
+     "item": 1,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.590158,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46950,
+     "truncated": false,
+     "latency_s": 5.5692,
+     "doc_chars": 241145
+    },
+    {
+     "arm": "vega",
+     "item": 2,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.151382,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46951,
+     "truncated": false,
+     "latency_s": 5.5345,
+     "doc_chars": 241136
+    },
+    {
+     "arm": "vega",
+     "item": 3,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.60715,
+     "correct": true,
+     "abstain": false,
+     "route": "auto",
+     "prediction_set": [
+      "billing"
+     ],
+     "input_tokens": 46951,
+     "truncated": false,
+     "latency_s": 5.5532,
+     "doc_chars": 241154
+    },
+    {
+     "arm": "vega",
+     "item": 4,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.650882,
+     "correct": true,
+     "abstain": false,
+     "route": "auto",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46953,
+     "truncated": false,
+     "latency_s": 5.4934,
+     "doc_chars": 241144
+    },
+    {
+     "arm": "vega",
+     "item": 5,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.212532,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46950,
+     "truncated": false,
+     "latency_s": 5.5378,
+     "doc_chars": 241142
+    },
+    {
+     "arm": "vega",
+     "item": 6,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.459419,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46957,
+     "truncated": false,
+     "latency_s": 5.4694,
+     "doc_chars": 241148
+    },
+    {
+     "arm": "vega",
+     "item": 7,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.508894,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46949,
+     "truncated": false,
+     "latency_s": 5.4585,
+     "doc_chars": 241133
+    },
+    {
+     "arm": "vega",
+     "item": 8,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.149125,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46953,
+     "truncated": false,
+     "latency_s": 5.5167,
+     "doc_chars": 241137
+    },
+    {
+     "arm": "vega",
+     "item": 9,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.558922,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing"
+     ],
+     "input_tokens": 46956,
+     "truncated": false,
+     "latency_s": 5.6417,
+     "doc_chars": 241157
+    },
+    {
+     "arm": "vega",
+     "item": 10,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.436974,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical",
+      "other"
+     ],
+     "input_tokens": 46948,
+     "truncated": false,
+     "latency_s": 5.8223,
+     "doc_chars": 241132
+    },
+    {
+     "arm": "vega",
+     "item": 11,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.511846,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46956,
+     "truncated": false,
+     "latency_s": 5.8771,
+     "doc_chars": 241144
+    },
+    {
+     "arm": "vega",
+     "item": 12,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.470957,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46950,
+     "truncated": false,
+     "latency_s": 5.8653,
+     "doc_chars": 241134
+    },
+    {
+     "arm": "vega",
+     "item": 13,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.385323,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46953,
+     "truncated": false,
+     "latency_s": 5.8401,
+     "doc_chars": 241143
+    },
+    {
+     "arm": "vega",
+     "item": 14,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.580856,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46951,
+     "truncated": false,
+     "latency_s": 5.8311,
+     "doc_chars": 241142
+    },
+    {
+     "arm": "vega",
+     "item": 15,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.138424,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46948,
+     "truncated": false,
+     "latency_s": 5.9365,
+     "doc_chars": 241118
+    },
+    {
+     "arm": "vega",
+     "item": 16,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.388638,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46967,
+     "truncated": false,
+     "latency_s": 5.8156,
+     "doc_chars": 241144
+    },
+    {
+     "arm": "vega",
+     "item": 17,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.529474,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "technical"
+     ],
+     "input_tokens": 46954,
+     "truncated": false,
+     "latency_s": 5.7992,
+     "doc_chars": 241117
+    },
+    {
+     "arm": "vega",
+     "item": 18,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.297549,
+     "correct": false,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46953,
+     "truncated": false,
+     "latency_s": 5.9501,
+     "doc_chars": 241102
+    },
+    {
+     "arm": "vega",
+     "item": 19,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.441721,
+     "correct": true,
+     "abstain": true,
+     "route": "review",
+     "prediction_set": [
+      "billing",
+      "technical"
+     ],
+     "input_tokens": 46958,
+     "truncated": false,
+     "latency_s": 5.7543,
+     "doc_chars": 241132
+    }
+   ]
+  },
+  {
+   "arm": "classic",
+   "pad_tokens": 7000,
+   "needle_position": 0.0,
+   "n": 20,
+   "correct": 17,
+   "accuracy": 0.85,
+   "wilson_ci95": [
+    0.6396,
+    0.9476
+   ],
+   "majority_class": 0.45,
+   "per_class_recall": {
+    "billing": 1.0,
+    "sales": 0.25,
+    "technical": 1.0
+   },
+   "modal_prediction_share": 0.6,
+   "abstain_rate": 0.0,
+   "review_rate": 0.0,
+   "truncated_count": 0,
+   "median_latency_s": 0.3403,
+   "median_input_tokens": 6913,
+   "predictions": [
+    {
+     "arm": "classic",
+     "item": 0,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 1.0,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6916,
+     "truncated": false,
+     "latency_s": 0.3285,
+     "doc_chars": 35302
+    },
+    {
+     "arm": "classic",
+     "item": 1,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.9738,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6912,
+     "truncated": false,
+     "latency_s": 0.3167,
+     "doc_chars": 35299
+    },
+    {
+     "arm": "classic",
+     "item": 2,
+     "gold": "sales",
+     "choice": "billing",
+     "p_gold": 0.2172,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6913,
+     "truncated": false,
+     "latency_s": 0.3401,
+     "doc_chars": 35290
+    },
+    {
+     "arm": "classic",
+     "item": 3,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 1.0,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6913,
+     "truncated": false,
+     "latency_s": 0.364,
+     "doc_chars": 35308
+    },
+    {
+     "arm": "classic",
+     "item": 4,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.71,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6915,
+     "truncated": false,
+     "latency_s": 0.3863,
+     "doc_chars": 35298
+    },
+    {
+     "arm": "classic",
+     "item": 5,
+     "gold": "sales",
+     "choice": "sales",
+     "p_gold": 0.6595,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6912,
+     "truncated": false,
+     "latency_s": 0.346,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "classic",
+     "item": 6,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 1.0,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6918,
+     "truncated": false,
+     "latency_s": 0.3439,
+     "doc_chars": 35302
+    },
+    {
+     "arm": "classic",
+     "item": 7,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.7244,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6910,
+     "truncated": false,
+     "latency_s": 0.3694,
+     "doc_chars": 35287
+    },
+    {
+     "arm": "classic",
+     "item": 8,
+     "gold": "sales",
+     "choice": "billing",
+     "p_gold": 0.0735,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6913,
+     "truncated": false,
+     "latency_s": 0.3874,
+     "doc_chars": 35291
+    },
+    {
+     "arm": "classic",
+     "item": 9,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.998,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6920,
+     "truncated": false,
+     "latency_s": 0.3159,
+     "doc_chars": 35311
+    },
+    {
+     "arm": "classic",
+     "item": 10,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.7875,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6911,
+     "truncated": false,
+     "latency_s": 0.3224,
+     "doc_chars": 35286
+    },
+    {
+     "arm": "classic",
+     "item": 11,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.9912,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6919,
+     "truncated": false,
+     "latency_s": 0.3419,
+     "doc_chars": 35298
+    },
+    {
+     "arm": "classic",
+     "item": 12,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.6436,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6912,
+     "truncated": false,
+     "latency_s": 0.3269,
+     "doc_chars": 35288
+    },
+    {
+     "arm": "classic",
+     "item": 13,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.9962,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6913,
+     "truncated": false,
+     "latency_s": 0.3369,
+     "doc_chars": 35297
+    },
+    {
+     "arm": "classic",
+     "item": 14,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.6665,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6913,
+     "truncated": false,
+     "latency_s": 0.3392,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "classic",
+     "item": 15,
+     "gold": "sales",
+     "choice": "billing",
+     "p_gold": 0.0258,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6910,
+     "truncated": false,
+     "latency_s": 0.3673,
+     "doc_chars": 35272
+    },
+    {
+     "arm": "classic",
+     "item": 16,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.9782,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6923,
+     "truncated": false,
+     "latency_s": 0.3645,
+     "doc_chars": 35298
+    },
+    {
+     "arm": "classic",
+     "item": 17,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.7984,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6914,
+     "truncated": false,
+     "latency_s": 0.3405,
+     "doc_chars": 35271
+    },
+    {
+     "arm": "classic",
+     "item": 18,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.9803,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6914,
+     "truncated": false,
+     "latency_s": 0.3392,
+     "doc_chars": 35256
+    },
+    {
+     "arm": "classic",
+     "item": 19,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.9587,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6922,
+     "truncated": false,
+     "latency_s": 0.3344,
+     "doc_chars": 35286
+    }
+   ]
+  },
+  {
+   "arm": "classic",
+   "pad_tokens": 7000,
+   "needle_position": 0.5,
+   "n": 20,
+   "correct": 10,
+   "accuracy": 0.5,
+   "wilson_ci95": [
+    0.2993,
+    0.7007
+   ],
+   "majority_class": 0.45,
+   "per_class_recall": {
+    "billing": 0.3333,
+    "sales": 0.0,
+    "technical": 1.0
+   },
+   "modal_prediction_share": 0.75,
+   "abstain_rate": 0.0,
+   "review_rate": 0.0,
+   "truncated_count": 0,
+   "median_latency_s": 0.3392,
+   "median_input_tokens": 6914,
+   "predictions": [
+    {
+     "arm": "classic",
+     "item": 0,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.2583,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6917,
+     "truncated": false,
+     "latency_s": 0.3416,
+     "doc_chars": 35302
+    },
+    {
+     "arm": "classic",
+     "item": 1,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.6386,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6913,
+     "truncated": false,
+     "latency_s": 0.3383,
+     "doc_chars": 35299
+    },
+    {
+     "arm": "classic",
+     "item": 2,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.2001,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6914,
+     "truncated": false,
+     "latency_s": 0.3322,
+     "doc_chars": 35290
+    },
+    {
+     "arm": "classic",
+     "item": 3,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.3046,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6914,
+     "truncated": false,
+     "latency_s": 0.3321,
+     "doc_chars": 35308
+    },
+    {
+     "arm": "classic",
+     "item": 4,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.6476,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6916,
+     "truncated": false,
+     "latency_s": 0.3508,
+     "doc_chars": 35298
+    },
+    {
+     "arm": "classic",
+     "item": 5,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.2001,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6913,
+     "truncated": false,
+     "latency_s": 0.3398,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "classic",
+     "item": 6,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.3785,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6919,
+     "truncated": false,
+     "latency_s": 0.3443,
+     "doc_chars": 35302
+    },
+    {
+     "arm": "classic",
+     "item": 7,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.6382,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6911,
+     "truncated": false,
+     "latency_s": 0.3299,
+     "doc_chars": 35287
+    },
+    {
+     "arm": "classic",
+     "item": 8,
+     "gold": "sales",
+     "choice": "billing",
+     "p_gold": 0.2801,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6914,
+     "truncated": false,
+     "latency_s": 0.3407,
+     "doc_chars": 35291
+    },
+    {
+     "arm": "classic",
+     "item": 9,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.7711,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6921,
+     "truncated": false,
+     "latency_s": 0.3452,
+     "doc_chars": 35311
+    },
+    {
+     "arm": "classic",
+     "item": 10,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.6666,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6912,
+     "truncated": false,
+     "latency_s": 0.3124,
+     "doc_chars": 35286
+    },
+    {
+     "arm": "classic",
+     "item": 11,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.2244,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6920,
+     "truncated": false,
+     "latency_s": 0.3185,
+     "doc_chars": 35298
+    },
+    {
+     "arm": "classic",
+     "item": 12,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.6416,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6913,
+     "truncated": false,
+     "latency_s": 0.3454,
+     "doc_chars": 35288
+    },
+    {
+     "arm": "classic",
+     "item": 13,
+     "gold": "billing",
+     "choice": "billing",
+     "p_gold": 0.5549,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6914,
+     "truncated": false,
+     "latency_s": 0.3364,
+     "doc_chars": 35297
+    },
+    {
+     "arm": "classic",
+     "item": 14,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.6205,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6914,
+     "truncated": false,
+     "latency_s": 0.3428,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "classic",
+     "item": 15,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.2348,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6911,
+     "truncated": false,
+     "latency_s": 0.3329,
+     "doc_chars": 35272
+    },
+    {
+     "arm": "classic",
+     "item": 16,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.3593,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6924,
+     "truncated": false,
+     "latency_s": 0.3384,
+     "doc_chars": 35298
+    },
+    {
+     "arm": "classic",
+     "item": 17,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.7471,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6915,
+     "truncated": false,
+     "latency_s": 0.3428,
+     "doc_chars": 35271
+    },
+    {
+     "arm": "classic",
+     "item": 18,
+     "gold": "billing",
+     "choice": "sales",
+     "p_gold": 0.3557,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6915,
+     "truncated": false,
+     "latency_s": 0.3482,
+     "doc_chars": 35256
+    },
+    {
+     "arm": "classic",
+     "item": 19,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.153,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6923,
+     "truncated": false,
+     "latency_s": 0.3387,
+     "doc_chars": 35286
+    }
+   ]
+  },
+  {
+   "arm": "classic",
+   "pad_tokens": 7000,
+   "needle_position": 1.0,
+   "n": 20,
+   "correct": 8,
+   "accuracy": 0.4,
+   "wilson_ci95": [
+    0.2188,
+    0.6134
+   ],
+   "majority_class": 0.45,
+   "per_class_recall": {
+    "billing": 0.0,
+    "sales": 0.25,
+    "technical": 1.0
+   },
+   "modal_prediction_share": 0.8,
+   "abstain_rate": 0.0,
+   "review_rate": 0.0,
+   "truncated_count": 0,
+   "median_latency_s": 0.3435,
+   "median_input_tokens": 6912,
+   "predictions": [
+    {
+     "arm": "classic",
+     "item": 0,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.2571,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6915,
+     "truncated": false,
+     "latency_s": 0.344,
+     "doc_chars": 35300
+    },
+    {
+     "arm": "classic",
+     "item": 1,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.8108,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6911,
+     "truncated": false,
+     "latency_s": 0.3427,
+     "doc_chars": 35297
+    },
+    {
+     "arm": "classic",
+     "item": 2,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.2254,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6912,
+     "truncated": false,
+     "latency_s": 0.3176,
+     "doc_chars": 35288
+    },
+    {
+     "arm": "classic",
+     "item": 3,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.2528,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6912,
+     "truncated": false,
+     "latency_s": 0.323,
+     "doc_chars": 35306
+    },
+    {
+     "arm": "classic",
+     "item": 4,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.5563,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6914,
+     "truncated": false,
+     "latency_s": 0.3468,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "classic",
+     "item": 5,
+     "gold": "sales",
+     "choice": "sales",
+     "p_gold": 0.4993,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6911,
+     "truncated": false,
+     "latency_s": 0.3354,
+     "doc_chars": 35294
+    },
+    {
+     "arm": "classic",
+     "item": 6,
+     "gold": "billing",
+     "choice": "sales",
+     "p_gold": 0.1273,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6917,
+     "truncated": false,
+     "latency_s": 0.3463,
+     "doc_chars": 35300
+    },
+    {
+     "arm": "classic",
+     "item": 7,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.5099,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6909,
+     "truncated": false,
+     "latency_s": 0.3447,
+     "doc_chars": 35285
+    },
+    {
+     "arm": "classic",
+     "item": 8,
+     "gold": "sales",
+     "choice": "technical",
+     "p_gold": 0.352,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6912,
+     "truncated": false,
+     "latency_s": 0.3183,
+     "doc_chars": 35289
+    },
+    {
+     "arm": "classic",
+     "item": 9,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.1728,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6919,
+     "truncated": false,
+     "latency_s": 0.3522,
+     "doc_chars": 35309
+    },
+    {
+     "arm": "classic",
+     "item": 10,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.5826,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6910,
+     "truncated": false,
+     "latency_s": 0.329,
+     "doc_chars": 35284
+    },
+    {
+     "arm": "classic",
+     "item": 11,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.1126,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6918,
+     "truncated": false,
+     "latency_s": 0.3432,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "classic",
+     "item": 12,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.5254,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6911,
+     "truncated": false,
+     "latency_s": 0.3458,
+     "doc_chars": 35286
+    },
+    {
+     "arm": "classic",
+     "item": 13,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.1707,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6912,
+     "truncated": false,
+     "latency_s": 0.3213,
+     "doc_chars": 35295
+    },
+    {
+     "arm": "classic",
+     "item": 14,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.6319,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6912,
+     "truncated": false,
+     "latency_s": 0.3155,
+     "doc_chars": 35294
+    },
+    {
+     "arm": "classic",
+     "item": 15,
+     "gold": "sales",
+     "choice": "other",
+     "p_gold": 0.1885,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6909,
+     "truncated": false,
+     "latency_s": 0.3437,
+     "doc_chars": 35270
+    },
+    {
+     "arm": "classic",
+     "item": 16,
+     "gold": "billing",
+     "choice": "sales",
+     "p_gold": 0.2806,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6922,
+     "truncated": false,
+     "latency_s": 0.3495,
+     "doc_chars": 35296
+    },
+    {
+     "arm": "classic",
+     "item": 17,
+     "gold": "technical",
+     "choice": "technical",
+     "p_gold": 0.4734,
+     "correct": true,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6913,
+     "truncated": false,
+     "latency_s": 0.3551,
+     "doc_chars": 35269
+    },
+    {
+     "arm": "classic",
+     "item": 18,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.1,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6913,
+     "truncated": false,
+     "latency_s": 0.3538,
+     "doc_chars": 35254
+    },
+    {
+     "arm": "classic",
+     "item": 19,
+     "gold": "billing",
+     "choice": "technical",
+     "p_gold": 0.1069,
+     "correct": false,
+     "abstain": null,
+     "route": null,
+     "prediction_set": null,
+     "input_tokens": 6921,
+     "truncated": false,
+     "latency_s": 0.3335,
+     "doc_chars": 35284
+    }
+   ]
+  }
+ ],
+ "comparisons": [
+  {
+   "arm": "vega",
+   "axis": "position",
+   "pad_tokens": 48000,
+   "low": 0.0,
+   "high": 0.5,
+   "n_paired": 20,
+   "low_only_correct": 2,
+   "high_only_correct": 0,
+   "p_exact_mcnemar": 0.5,
+   "pre_specified": true
+  },
+  {
+   "arm": "vega",
+   "axis": "position",
+   "pad_tokens": 48000,
+   "low": 0.5,
+   "high": 1.0,
+   "n_paired": 20,
+   "low_only_correct": 0,
+   "high_only_correct": 8,
+   "p_exact_mcnemar": 0.007812,
+   "pre_specified": true
+  },
+  {
+   "arm": "vega",
+   "axis": "length",
+   "needle_position": 1.0,
+   "low": 7000,
+   "high": 32000,
+   "n_paired": 20,
+   "low_only_correct": 0,
+   "high_only_correct": 0,
+   "p_exact_mcnemar": 1.0,
+   "pre_specified": true
+  },
+  {
+   "arm": "vega",
+   "axis": "length",
+   "needle_position": 1.0,
+   "low": 32000,
+   "high": 48000,
+   "n_paired": 20,
+   "low_only_correct": 0,
+   "high_only_correct": 0,
+   "p_exact_mcnemar": 1.0,
+   "pre_specified": true
+  }
+ ]
+}

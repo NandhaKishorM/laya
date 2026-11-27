@@ -74,7 +74,7 @@ function optionTexts(items: [string, unknown][]): string[] {
 function queryText(state: unknown, instructions?: unknown): string {
   const body = serializeState(state);
   if (instructions === null || instructions === undefined || instructions === "") return body;
-  if (typeof instructions !== "string") return `${JSON.stringify(instructions)}\n${body}`;
+  if (typeof instructions !== "string") return `${serializeState(instructions)}\n${body}`;
   return `${instructions}\n${body}`;
 }
 

@@ -17,6 +17,20 @@ describe("shortlist", () => {
     await shortlistChoice("x", { a: "1" }, (async (t: string[]) => { called = true; return t.map(() => [1]); }) as any, 5);
     expect(called).toBe(false);
   });
+
+  it("serializes structured instructions like Python", async () => {
+    const calls: string[][] = [];
+    const recordingEmbed = async (texts: string[]) => {
+      calls.push([...texts]);
+      return texts.map(() => [1]);
+    };
+
+    await shortlistChoice("<state>", { a: "one", b: "two" }, recordingEmbed, 1,
+      { topic: "billing", tags: ["a", 1.5, true, null, "é"], max: 1e16, min: 0.00005 });
+    expect(calls[0][0]).toBe(
+      '{"topic": "billing", "tags": ["a", 1.5, true, null, "é"], "max": 1e+16, "min": 5e-05}\n<state>',
+    );
+  });
 });
 
 describe("cached embedder", () => {

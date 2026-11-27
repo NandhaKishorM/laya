@@ -44,8 +44,20 @@ export class PredictContext {
     }
   }
 
-  /** Set cached results from a start hook; inference is skipped, end hooks still run. */
+  /** Set cached results from a start hook; inference is skipped, end hooks still run.
+   *
+   * `results` replaces the whole call: one entry per state in `ctx.states`, in order, or a
+   * single entry for the whole call (what `predictLong` takes as the document's answer). Any
+   * other count throws here, under the caller's `hooksRaise` policy, instead of `systemOne`
+   * returning `undefined` or `predictBatch` returning fewer results than it was given states.
+   */
   skip(results: Record<string, unknown>[]): void {
+    const states = this.states;
+    if (Array.isArray(states) && Array.isArray(results) && results.length !== 1 && results.length !== states.length) {
+      throw new Error(
+        `ctx.skip() takes one result for the whole call or one per state in ctx.states (${states.length}); got ${results.length}`,
+      );
+    }
     this.results = results;
   }
 

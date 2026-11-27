@@ -43,6 +43,11 @@ else()
     # NuGet ships this ELF with SONAME libonnxruntime.so.1 but no matching link.
     file(CREATE_LINK "libonnxruntime.so"
       "${_ort_deps_dir}/runtime/lib/libonnxruntime.so.1" SYMBOLIC)
+  else()
+    # NuGet ships this dylib with install name @rpath/libonnxruntime.1.dylib but no file by that
+    # name, so anything linked against it fails to load at run time without this link.
+    file(CREATE_LINK "libonnxruntime.dylib"
+      "${_ort_deps_dir}/runtime/lib/libonnxruntime.1.dylib" SYMBOLIC)
   endif()
   file(REMOVE_RECURSE "${_ort_deps_dir}/package")
   file(WRITE "${_ort_deps_dir}/runtime/VERSION_NUMBER" "${LAYA_ORT_VERSION}\n")

@@ -1,0 +1,448 @@
+{
+  "model": "convaiinnovations/laya multilingual",
+  "model_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+  "model_file_sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+  "prompt": "laya.guard_questions(lang); compare English vs Swedish questions on identical manually labeled Swedish prompts",
+  "dataset_note": "12 manually authored examples for a focused qualitative smoke benchmark; not a representative evaluation set",
+  "summary": {
+    "en": {
+      "all_accuracy": 0.5,
+      "support_recall": 0.375,
+      "support_precision": 1.0,
+      "support_cases": 8,
+      "other_cases": 4,
+      "errors": [
+        "technical_login",
+        "outage",
+        "plan_information",
+        "cancellation",
+        "security_account",
+        "factual"
+      ]
+    },
+    "sv": {
+      "all_accuracy": 0.5833333333333334,
+      "support_recall": 0.5,
+      "support_precision": 1.0,
+      "support_cases": 8,
+      "other_cases": 4,
+      "errors": [
+        "technical_login",
+        "outage",
+        "plan_information",
+        "security_account",
+        "factual"
+      ]
+    }
+  },
+  "rows": [
+    {
+      "case_id": "billing_refund",
+      "input_language": "sv",
+      "prompt_language": "en",
+      "gold": "product_support",
+      "predicted": "product_support",
+      "correct": true,
+      "confidence": 0.9967,
+      "probabilities": {
+        "product_support": 0.9994,
+        "coding": 0.0,
+        "general_knowledge": 0.0001,
+        "personal_advice": 0.0002,
+        "security_testing": 0.0,
+        "other": 0.0002
+      }
+    },
+    {
+      "case_id": "technical_login",
+      "input_language": "sv",
+      "prompt_language": "en",
+      "gold": "product_support",
+      "predicted": "coding",
+      "correct": false,
+      "confidence": 0.6522,
+      "probabilities": {
+        "product_support": 0.0056,
+        "coding": 0.7735,
+        "general_knowledge": 0.0036,
+        "personal_advice": 0.004,
+        "security_testing": 0.2083,
+        "other": 0.0049
+      }
+    },
+    {
+      "case_id": "outage",
+      "input_language": "sv",
+      "prompt_language": "en",
+      "gold": "product_support",
+      "predicted": "security_testing",
+      "correct": false,
+      "confidence": 0.8955,
+      "probabilities": {
+        "product_support": 0.0139,
+        "coding": 0.0093,
+        "general_knowledge": 0.001,
+        "personal_advice": 0.0061,
+        "security_testing": 0.9674,
+        "other": 0.0024
+      }
+    },
+    {
+      "case_id": "plan_information",
+      "input_language": "sv",
+      "prompt_language": "en",
+      "gold": "product_support",
+      "predicted": "coding",
+      "correct": false,
+      "confidence": 0.4785,
+      "probabilities": {
+        "product_support": 0.0428,
+        "coding": 0.6952,
+        "general_knowledge": 0.1554,
+        "personal_advice": 0.0024,
+        "security_testing": 0.0014,
+        "other": 0.1028
+      }
+    },
+    {
+      "case_id": "cancellation",
+      "input_language": "sv",
+      "prompt_language": "en",
+      "gold": "product_support",
+      "predicted": "security_testing",
+      "correct": false,
+      "confidence": 0.8453,
+      "probabilities": {
+        "product_support": 0.0454,
+        "coding": 0.001,
+        "general_knowledge": 0.0004,
+        "personal_advice": 0.0141,
+        "security_testing": 0.9381,
+        "other": 0.001
+      }
+    },
+    {
+      "case_id": "integration",
+      "input_language": "sv",
+      "prompt_language": "en",
+      "gold": "product_support",
+      "predicted": "product_support",
+      "correct": true,
+      "confidence": 0.4773,
+      "probabilities": {
+        "product_support": 0.6921,
+        "coding": 0.1651,
+        "general_knowledge": 0.0048,
+        "personal_advice": 0.0114,
+        "security_testing": 0.1115,
+        "other": 0.0151
+      }
+    },
+    {
+      "case_id": "billing_question",
+      "input_language": "sv",
+      "prompt_language": "en",
+      "gold": "product_support",
+      "predicted": "product_support",
+      "correct": true,
+      "confidence": 0.5814,
+      "probabilities": {
+        "product_support": 0.7953,
+        "coding": 0.003,
+        "general_knowledge": 0.0153,
+        "personal_advice": 0.0242,
+        "security_testing": 0.0517,
+        "other": 0.1105
+      }
+    },
+    {
+      "case_id": "security_account",
+      "input_language": "sv",
+      "prompt_language": "en",
+      "gold": "product_support",
+      "predicted": "security_testing",
+      "correct": false,
+      "confidence": 0.9375,
+      "probabilities": {
+        "product_support": 0.0007,
+        "coding": 0.0189,
+        "general_knowledge": 0.0002,
+        "personal_advice": 0.001,
+        "security_testing": 0.9789,
+        "other": 0.0003
+      }
+    },
+    {
+      "case_id": "coding",
+      "input_language": "sv",
+      "prompt_language": "en",
+      "gold": "coding",
+      "predicted": "coding",
+      "correct": true,
+      "confidence": 0.9906,
+      "probabilities": {
+        "product_support": 0.0006,
+        "coding": 0.998,
+        "general_knowledge": 0.0007,
+        "personal_advice": 0.0002,
+        "security_testing": 0.0,
+        "other": 0.0004
+      }
+    },
+    {
+      "case_id": "factual",
+      "input_language": "sv",
+      "prompt_language": "en",
+      "gold": "general_knowledge",
+      "predicted": "other",
+      "correct": false,
+      "confidence": 0.4068,
+      "probabilities": {
+        "product_support": 0.0489,
+        "coding": 0.0123,
+        "general_knowledge": 0.0997,
+        "personal_advice": 0.0431,
+        "security_testing": 0.107,
+        "other": 0.689
+      }
+    },
+    {
+      "case_id": "personal_advice",
+      "input_language": "sv",
+      "prompt_language": "en",
+      "gold": "personal_advice",
+      "predicted": "personal_advice",
+      "correct": true,
+      "confidence": 0.728,
+      "probabilities": {
+        "product_support": 0.0054,
+        "coding": 0.003,
+        "general_knowledge": 0.0223,
+        "personal_advice": 0.886,
+        "security_testing": 0.0171,
+        "other": 0.0661
+      }
+    },
+    {
+      "case_id": "security_testing",
+      "input_language": "sv",
+      "prompt_language": "en",
+      "gold": "security_testing",
+      "predicted": "security_testing",
+      "correct": true,
+      "confidence": 0.9596,
+      "probabilities": {
+        "product_support": 0.0008,
+        "coding": 0.0109,
+        "general_knowledge": 0.0002,
+        "personal_advice": 0.0001,
+        "security_testing": 0.9877,
+        "other": 0.0004
+      }
+    },
+    {
+      "case_id": "billing_refund",
+      "input_language": "sv",
+      "prompt_language": "sv",
+      "gold": "product_support",
+      "predicted": "product_support",
+      "correct": true,
+      "confidence": 0.5186,
+      "probabilities": {
+        "product_support": 0.5913,
+        "coding": 0.0077,
+        "general_knowledge": 0.0069,
+        "personal_advice": 0.0091,
+        "security_testing": 0.017,
+        "other": 0.368
+      }
+    },
+    {
+      "case_id": "technical_login",
+      "input_language": "sv",
+      "prompt_language": "sv",
+      "gold": "product_support",
+      "predicted": "security_testing",
+      "correct": false,
+      "confidence": 0.3067,
+      "probabilities": {
+        "product_support": 0.1234,
+        "coding": 0.3549,
+        "general_knowledge": 0.0157,
+        "personal_advice": 0.0214,
+        "security_testing": 0.4526,
+        "other": 0.032
+      }
+    },
+    {
+      "case_id": "outage",
+      "input_language": "sv",
+      "prompt_language": "sv",
+      "gold": "product_support",
+      "predicted": "security_testing",
+      "correct": false,
+      "confidence": 0.9512,
+      "probabilities": {
+        "product_support": 0.0074,
+        "coding": 0.0021,
+        "general_knowledge": 0.0013,
+        "personal_advice": 0.0009,
+        "security_testing": 0.9867,
+        "other": 0.0016
+      }
+    },
+    {
+      "case_id": "plan_information",
+      "input_language": "sv",
+      "prompt_language": "sv",
+      "gold": "product_support",
+      "predicted": "other",
+      "correct": false,
+      "confidence": 0.4781,
+      "probabilities": {
+        "product_support": 0.0498,
+        "coding": 0.1277,
+        "general_knowledge": 0.1059,
+        "personal_advice": 0.0042,
+        "security_testing": 0.0033,
+        "other": 0.7092
+      }
+    },
+    {
+      "case_id": "cancellation",
+      "input_language": "sv",
+      "prompt_language": "sv",
+      "gold": "product_support",
+      "predicted": "product_support",
+      "correct": true,
+      "confidence": 0.6034,
+      "probabilities": {
+        "product_support": 0.8186,
+        "coding": 0.0458,
+        "general_knowledge": 0.0048,
+        "personal_advice": 0.0273,
+        "security_testing": 0.0174,
+        "other": 0.0861
+      }
+    },
+    {
+      "case_id": "integration",
+      "input_language": "sv",
+      "prompt_language": "sv",
+      "gold": "product_support",
+      "predicted": "product_support",
+      "correct": true,
+      "confidence": 0.361,
+      "probabilities": {
+        "product_support": 0.5841,
+        "coding": 0.0669,
+        "general_knowledge": 0.0057,
+        "personal_advice": 0.004,
+        "security_testing": 0.1457,
+        "other": 0.1937
+      }
+    },
+    {
+      "case_id": "billing_question",
+      "input_language": "sv",
+      "prompt_language": "sv",
+      "gold": "product_support",
+      "predicted": "product_support",
+      "correct": true,
+      "confidence": 0.9385,
+      "probabilities": {
+        "product_support": 0.9814,
+        "coding": 0.0007,
+        "general_knowledge": 0.0006,
+        "personal_advice": 0.0036,
+        "security_testing": 0.0009,
+        "other": 0.0129
+      }
+    },
+    {
+      "case_id": "security_account",
+      "input_language": "sv",
+      "prompt_language": "sv",
+      "gold": "product_support",
+      "predicted": "security_testing",
+      "correct": false,
+      "confidence": 0.9865,
+      "probabilities": {
+        "product_support": 0.0005,
+        "coding": 0.0009,
+        "general_knowledge": 0.0001,
+        "personal_advice": 0.0005,
+        "security_testing": 0.9971,
+        "other": 0.0009
+      }
+    },
+    {
+      "case_id": "coding",
+      "input_language": "sv",
+      "prompt_language": "sv",
+      "gold": "coding",
+      "predicted": "coding",
+      "correct": true,
+      "confidence": 0.9986,
+      "probabilities": {
+        "product_support": 0.0,
+        "coding": 0.9998,
+        "general_knowledge": 0.0001,
+        "personal_advice": 0.0,
+        "security_testing": 0.0,
+        "other": 0.0001
+      }
+    },
+    {
+      "case_id": "factual",
+      "input_language": "sv",
+      "prompt_language": "sv",
+      "gold": "general_knowledge",
+      "predicted": "other",
+      "correct": false,
+      "confidence": 0.9653,
+      "probabilities": {
+        "product_support": 0.001,
+        "coding": 0.0005,
+        "general_knowledge": 0.0042,
+        "personal_advice": 0.0004,
+        "security_testing": 0.0028,
+        "other": 0.9911
+      }
+    },
+    {
+      "case_id": "personal_advice",
+      "input_language": "sv",
+      "prompt_language": "sv",
+      "gold": "personal_advice",
+      "predicted": "personal_advice",
+      "correct": true,
+      "confidence": 0.684,
+      "probabilities": {
+        "product_support": 0.006,
+        "coding": 0.0044,
+        "general_knowledge": 0.0112,
+        "personal_advice": 0.8458,
+        "security_testing": 0.0176,
+        "other": 0.1149
+      }
+    },
+    {
+      "case_id": "security_testing",
+      "input_language": "sv",
+      "prompt_language": "sv",
+      "gold": "security_testing",
+      "predicted": "security_testing",
+      "correct": true,
+      "confidence": 0.9859,
+      "probabilities": {
+        "product_support": 0.0001,
+        "coding": 0.0027,
+        "general_knowledge": 0.0001,
+        "personal_advice": 0.0,
+        "security_testing": 0.9966,
+        "other": 0.0004
+      }
+    }
+  ]
+}

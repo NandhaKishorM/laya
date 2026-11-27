@@ -1,29 +1,52 @@
 # The ONNX Runtime used by laya_onnx: LAYA_ONNXRUNTIME_ROOT (an unpacked release) or the pinned
-# release archive, verified by sha256 at the moment of download. Defines the imported target laya_ort.
+# NuGet package, verified by SHA-512 at download. The upstream GitHub release assets are currently
+# unavailable; the official Microsoft NuGet package contains the same headers and native libraries.
+# Defines the imported target laya_ort.
 set(LAYA_ORT_VERSION "1.30.0")
-include(FetchContent)
 
 if(LAYA_ONNXRUNTIME_ROOT)
   set(_ort_root "${LAYA_ONNXRUNTIME_ROOT}")
 else()
-  set(_ort_base "https://github.com/microsoft/onnxruntime/releases/download/v${LAYA_ORT_VERSION}")
   string(TOLOWER "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}" _ort_platform)
   if(_ort_platform STREQUAL "linux-x86_64")
-    set(_ort_asset "onnxruntime-linux-x64-${LAYA_ORT_VERSION}.tgz")
-    set(_ort_sha256 "a5ed5a3cac51fbb2e90da632ae43d19212faaa20e76484e62bcb7c23ddb3b3fd")
+    set(_ort_runtime_subdir "linux-x64")
   elseif(_ort_platform STREQUAL "darwin-arm64")
-    set(_ort_asset "onnxruntime-osx-arm64-${LAYA_ORT_VERSION}.tgz")
-    set(_ort_sha256 "6ebb5062a934537c352937821f9fe9718e7de1a2db1122a93dd363ffd53a7012")
+    set(_ort_runtime_subdir "osx-arm64")
   else()
     message(FATAL_ERROR "No pinned ONNX Runtime for ${_ort_platform}; unpack a ${LAYA_ORT_VERSION} release and pass -DLAYA_ONNXRUNTIME_ROOT=<dir>")
   endif()
-  # URL_HASH makes CMake verify the archive before it is extracted; a mismatch is a configure error.
-  FetchContent_Declare(onnxruntime
-    URL "${_ort_base}/${_ort_asset}"
-    URL_HASH SHA256=${_ort_sha256}
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
-  FetchContent_MakeAvailable(onnxruntime)
-  set(_ort_root "${onnxruntime_SOURCE_DIR}")
+  set(_ort_package_url "https://api.nuget.org/v3-flatcontainer/microsoft.ml.onnxruntime/${LAYA_ORT_VERSION}/microsoft.ml.onnxruntime.${LAYA_ORT_VERSION}.nupkg")
+  # SHA-512 published by NuGet's catalog for Microsoft.ML.OnnxRuntime 1.30.0.
+  set(_ort_package_sha512 "c53828f8fd96588d41aca41bf75f86f18475b3f4851f4ef166e738da47604b623a18b18e00a9cc56116a0a4ee799c7ba2fa6a3868f3001caa2c58022c1f13bf6")
+  set(_ort_deps_dir "${CMAKE_BINARY_DIR}/_deps/onnxruntime")
+  set(_ort_package "${CMAKE_BINARY_DIR}/_deps/microsoft.ml.onnxruntime.${LAYA_ORT_VERSION}.nupkg")
+  file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_deps")
+  file(DOWNLOAD "${_ort_package_url}" "${_ort_package}"
+    EXPECTED_HASH "SHA512=${_ort_package_sha512}"
+    TLS_VERIFY ON
+    STATUS _ort_download_status)
+  list(GET _ort_download_status 0 _ort_download_code)
+  if(NOT _ort_download_code EQUAL 0)
+    list(GET _ort_download_status 1 _ort_download_message)
+    message(FATAL_ERROR "Could not download the pinned ONNX Runtime NuGet package: ${_ort_download_message}")
+  endif()
+  file(REMOVE_RECURSE "${_ort_deps_dir}")
+  file(MAKE_DIRECTORY "${_ort_deps_dir}/package" "${_ort_deps_dir}/runtime")
+  file(ARCHIVE_EXTRACT INPUT "${_ort_package}" DESTINATION "${_ort_deps_dir}/package")
+  set(_ort_runtime_dir "${_ort_deps_dir}/package/runtimes/${_ort_runtime_subdir}/native")
+  if(NOT EXISTS "${_ort_runtime_dir}")
+    message(FATAL_ERROR "The pinned ONNX Runtime NuGet package has no native runtime for ${_ort_platform}")
+  endif()
+  file(COPY "${_ort_deps_dir}/package/build/native/include" DESTINATION "${_ort_deps_dir}/runtime")
+  file(COPY "${_ort_runtime_dir}/" DESTINATION "${_ort_deps_dir}/runtime/lib")
+  if(_ort_platform STREQUAL "linux-x86_64")
+    # NuGet ships this ELF with SONAME libonnxruntime.so.1 but no matching link.
+    file(CREATE_LINK "libonnxruntime.so"
+      "${_ort_deps_dir}/runtime/lib/libonnxruntime.so.1" SYMBOLIC)
+  endif()
+  file(REMOVE_RECURSE "${_ort_deps_dir}/package")
+  file(WRITE "${_ort_deps_dir}/runtime/VERSION_NUMBER" "${LAYA_ORT_VERSION}\n")
+  set(_ort_root "${_ort_deps_dir}/runtime")
 endif()
 
 if(NOT EXISTS "${_ort_root}/include/onnxruntime_cxx_api.h")

@@ -980,6 +980,79 @@ check_true(
 )
 
 
+# A sign-off line in the middle of a message is not the start of a signature: what follows it is the
+# sender's own text, and the cut used to delete it before the model saw it (first case: the urgent
+# double-charge request vanished after "Thanks!"). A real signature still goes, with or without a
+# disclaimer under it, and a later signature is still found past an earlier mid-body sign-off.
+for _name, _body in [
+    ('thanks-then-second-request',
+     'Hi,\nCan you resend my invoice for March?\nThanks!\n\nAlso, my card ending 4242 was charged twice on the 3rd. Please refund one charge urgently.\nOrder #8841.'),
+    ('short-thanks-then-request',
+     'Hi team,\nThanks,\nbut my order #123 never arrived and I want a refund today.\nPlease escalate.'),
+    ('regards-then-request',
+     'Hello\nRegards,\nthe invoice total is wrong: charged 500 instead of 50.\nPlease fix.'),
+    ('device-footer-then-request',
+     'Hi\nSent from my iPhone\nPlease unlock my account, I cannot log in at all.'),
+]:
+    check("signoff/mid-body %s keeps the text after it" % _name, clean_email_body(_body), _body)
+check("signoff/a short signature block still goes",
+      clean_email_body("Please refund order 8841.\nThanks!\nJohn Smith\nACME Ltd"),
+      "Please refund order 8841.")
+check("signoff/a signature followed by a disclaimer still goes",
+      clean_email_body("Please refund order 8841.\nRegards,\nJohn\n\n"
+                       "This email is confidential and intended solely for the addressee."),
+      "Please refund order 8841.")
+check("signoff/a later signature is found past a mid-body sign-off",
+      clean_email_body("Hi,\nThanks!\nAlso please refund order 8841, it was charged twice this week.\n"
+                       "Cheers,\nJohn"),
+      "Hi,\nThanks!\nAlso please refund order 8841, it was charged twice this week.")
+
+
+# Boundaries of the guards `_is_signature_tail` applies, one value on each side of every constant,
+# so a guard that is loosened, tightened or dropped fails here by name.
+for _name, _body, _want in [
+    ('tail of 10 short lines is still a signature',
+     'Please refund order 8841.\nDetail 1\nDetail 2\nDetail 3\nDetail 4\nDetail 5\nDetail 6\nDetail 7\nDetail 8\nDetail 9\nDetail 10\nDetail 11\nDetail 12\nDetail 13\nDetail 14\nDetail 15\nDetail 16\nDetail 17\nDetail 18\nDetail 19\nThanks!\nA0\nA1\nA2\nA3\nA4\nA5\nA6\nA7\nA8\nA9',
+     'Please refund order 8841.\nDetail 1\nDetail 2\nDetail 3\nDetail 4\nDetail 5\nDetail 6\nDetail 7\nDetail 8\nDetail 9\nDetail 10\nDetail 11\nDetail 12\nDetail 13\nDetail 14\nDetail 15\nDetail 16\nDetail 17\nDetail 18\nDetail 19'),
+    ('tail of 11 short lines is text',
+     'Please refund order 8841.\nDetail 1\nDetail 2\nDetail 3\nDetail 4\nDetail 5\nDetail 6\nDetail 7\nDetail 8\nDetail 9\nDetail 10\nDetail 11\nDetail 12\nDetail 13\nDetail 14\nDetail 15\nDetail 16\nDetail 17\nDetail 18\nDetail 19\nThanks!\nA0\nA1\nA2\nA3\nA4\nA5\nA6\nA7\nA8\nA9\nA10',
+     'Please refund order 8841.\nDetail 1\nDetail 2\nDetail 3\nDetail 4\nDetail 5\nDetail 6\nDetail 7\nDetail 8\nDetail 9\nDetail 10\nDetail 11\nDetail 12\nDetail 13\nDetail 14\nDetail 15\nDetail 16\nDetail 17\nDetail 18\nDetail 19\nThanks!\nA0\nA1\nA2\nA3\nA4\nA5\nA6\nA7\nA8\nA9\nA10'),
+    ('a 60-character tail line is still a signature',
+     'Please refund order 8841.\n--\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+     'Please refund order 8841.'),
+    ('a 61-character tail line is text',
+     'Please refund order 8841.\n--\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+     'Please refund order 8841.\n--\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'),
+    ("mid-body '--' followed by a sentence keeps it",
+     'Config issue:\n--\nPlease check the server, it crashes on login.',
+     'Config issue:\n--\nPlease check the server, it crashes on login.'),
+    ('a three-word request after the marker is a sentence',
+     'Hi,\nThanks!\nPlease refund immediately.',
+     'Hi,\nThanks!\nPlease refund immediately.'),
+    ('a two-word line after the marker is not read as a sentence (known limit)',
+     'Please refund order 8841.\nThanks!\nRefund please.',
+     'Please refund order 8841.'),
+    ('a device footer ending in a full stop is still part of a signature',
+     'Please refund order 8841.\nBest,\nJohn\nSent from my iPhone using Gmail.',
+     'Please refund order 8841.'),
+    ('a capitalised signature line ending in an abbreviation is not a sentence',
+     'Please refund order 8841.\nThanks,\nJohn Smith\nVP Operations, ACME Inc.',
+     'Please refund order 8841.'),
+    ('a lowercase connective in a title does not make it a sentence',
+     'Please refund order 8841.\nThanks,\nJohn Smith\nHead of Sales, ACME Inc.',
+     'Please refund order 8841.'),
+    ('a punctuated signature goes',
+     'Please refund order 8841.\nBest regards,\nDr. John Smith\nVP Operations, ACME Inc.\n123 Main St., Suite 400\nTel: +1 555 0100',
+     'Please refund order 8841.'),
+    ('a punctuated signature sharing a paragraph with a disclaimer goes',
+     'Please refund order 8841.\nBest regards,\nDr. John Smith\nVP Operations, ACME Inc.\n123 Main St., Suite 400\nThis email is confidential and intended solely for the addressee.',
+     'Please refund order 8841.'),
+    ('a lowercase line after the marker in another script is a sentence',
+     'Hi,\nThanks!\nПожалуйста верните деньги за заказ.',
+     'Hi,\nThanks!\nПожалуйста верните деньги за заказ.'),
+]:
+    check("signoff/boundary %s" % _name, clean_email_body(_body), _want)
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAIL " + f)

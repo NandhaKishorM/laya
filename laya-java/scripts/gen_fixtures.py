@@ -2615,6 +2615,11 @@ def email_clean():
     from laya import email as email_mod
 
     q = "I cannot log in and need a password reset."
+
+    def sig(i, marker_at):
+        """A body of `q` lines with a sign-off at `marker_at` and a short name line after it."""
+        return "Regards, Ana" if i == marker_at else ("Ana" if i > marker_at else q)
+
     cases = [
         # -- nothing to do
         ("empty", ""),
@@ -2756,11 +2761,14 @@ def email_clean():
         # the smallest inputs under 60 lines on which each mutant's window reaches a different
         # line from the real one -- found by searching, not derived, because deriving them by
         # hand gets the `min` the wrong way round.
+        # The marker is only a signature when a short, sentence-free tail follows it (a mid-body
+        # "Regards, Ana" followed by the sender's own sentences is text, not a signature), so the
+        # lines after it are a short name line, not `q`; the window arithmetic is what these probe.
         ("window-floor-of-one", "\n".join(["Regards, Ana" if i == 1 else q for i in range(2)])),
-        ("window-offset-dominates", "\n".join(["Regards, Ana" if i == 1 else q for i in range(4)])),
-        ("window-offset-excludes", "\n".join(["Regards, Ana" if i == 1 else q for i in range(10)])),
-        ("window-ratio-excludes", "\n".join(["Regards, Ana" if i == 9 else q for i in range(18)])),
-        ("window-ratio-includes", "\n".join(["Regards, Ana" if i == 12 else q for i in range(21)])),
+        ("window-offset-dominates", "\n".join([sig(i, 1) for i in range(4)])),
+        ("window-offset-excludes", "\n".join([sig(i, 1) for i in range(10)])),
+        ("window-ratio-excludes", "\n".join([sig(i, 9) for i in range(18)])),
+        ("window-ratio-includes", "\n".join([sig(i, 12) for i in range(21)])),
 
         # -- the device-footer width gate, 60 code points against the sign-off's 40. Both
         # directions, because a review found `<= 60` mutable to 41 and to 200 with nothing

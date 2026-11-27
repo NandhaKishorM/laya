@@ -228,6 +228,59 @@ def _strip_disclaimer(paragraph: str) -> str:
     return " ".join(p for p in pieces if not _DISCLAIMER.search(p))
 
 
+# A sentence: three or more words, ending in sentence punctuation, with at least one lowercase word
+# in it ("Please refund immediately."). A signature line that ends in an abbreviation stays a
+# signature because its words are capitalised ("VP Operations, ACME Inc.", "123 Main St.",
+# "Financeiro - ACME Ltda."). A lowercase connective inside a title ("Head of Sales, ACME Inc.")
+# does not count as one.
+_PROSE_END = re.compile(r"^\S+(?:\s+\S+){2,}[.!?]$")
+_NAME_CONNECTIVES = frozenset(("of", "and", "the", "for", "de", "da", "do", "das", "dos", "del", "la", "el",
+                               "von", "van", "der", "du", "et", "y", "e"))
+_WORD_EDGE = ".,;:!?\"'()[]"
+
+
+def _is_prose_line(line: str) -> bool:
+    if _PROSE_END.match(line) is None:
+        return False
+    for word in line.split():
+        word = word.strip(_WORD_EDGE)
+        if word.isalpha() and word.islower() and word not in _NAME_CONNECTIVES:
+            return True
+    return False
+
+
+_SIGNATURE_TAIL_LINES = 10
+_SIGNATURE_TAIL_WIDTH = 60
+
+
+def _is_signature_tail(rest: List[str]) -> bool:
+    """Whether what follows a sign-off marker still reads like a signature block.
+
+    A marker such as ``Thanks!`` or ``--`` closes a message only when a name, title, phone number or
+    address follows: a few short lines. A marker in the middle of a message ("Thanks!", a blank line,
+    then "Also, my card was charged twice ...") is followed by the sender's own sentences, and cutting
+    there deleted them before the model ever saw them. So the cut is made only when at most
+    `_SIGNATURE_TAIL_LINES` non-blank lines follow, none wider than `_SIGNATURE_TAIL_WIDTH`
+    characters (the width a device footer may run to) and none reading as a sentence
+    (`_is_prose_line`). A disclaimer footer is left out of that count. Otherwise the marker is read as
+    text and the scan goes on, so a real signature further down still goes.
+    """
+    # A disclaimer footer is long boilerplate that `_strip_disclaimer` removes anyway, so it does not
+    # count against the tail. `_strip_disclaimer` also joins what it keeps into one line, which would
+    # turn a signature that shares a paragraph with the footer into a single wide line, so the
+    # tail is read line by line: a line stays when the stripped paragraph still holds it.
+    tail = []
+    for paragraph in re.split(r"\n\s*\n", "\n".join(rest)):
+        lines = [ln.strip() for ln in paragraph.split("\n") if ln.strip()]
+        if _DISCLAIMER.search(paragraph):
+            kept = " ".join(_strip_disclaimer(paragraph).split())
+            lines = [ln for ln in lines if " ".join(ln.split()) in kept]
+        tail.extend(lines)
+    return len(tail) <= _SIGNATURE_TAIL_LINES and not any(
+        len(ln) > _SIGNATURE_TAIL_WIDTH or (_is_prose_line(ln) and not _DEVICE_FOOTER.match(ln))
+        for ln in tail)
+
+
 def clean_email_body(body: str, max_chars: int = 3000) -> str:
     """Remove quoted email history, signatures and disclaimers to keep input focused.
 
@@ -271,8 +324,8 @@ def clean_email_body(body: str, max_chars: int = 3000) -> str:
     cut = len(lines)
     for i in range(max(1, min(int(len(lines) * 0.6), len(lines) - 8)), len(lines)):
         n = len(lines[i].strip())
-        if (n <= 40 and any(_marker_matches(p, lines[i]) for p in _SIGNATURE_MARKERS)) or (
-                n <= 60 and _DEVICE_FOOTER.match(lines[i])):
+        if ((n <= 40 and any(_marker_matches(p, lines[i]) for p in _SIGNATURE_MARKERS)) or (
+                n <= 60 and _DEVICE_FOOTER.match(lines[i]))) and _is_signature_tail(lines[i + 1:]):
             cut = i
             break
     lines = lines[:cut]

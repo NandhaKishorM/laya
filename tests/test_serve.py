@@ -5128,21 +5128,34 @@ def _serve_logs(caplog):
 
 def test_non_loopback_bind_without_a_key_warns_at_startup(monkeypatch, caplog):
     """The default bind is 0.0.0.0 and `_authorized` answers True when no key is set, so say so."""
+    import uvicorn
+
     from laya import serve
 
-    for key in (None, ""):  # a blank LAYA_API_KEY is "not set", the same reading create_app gives it
-        if key is None:
-            monkeypatch.delenv("LAYA_API_KEY", raising=False)
+    captured = {}
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kwargs: captured.update(kwargs))
+    monkeypatch.setattr(serve, "create_app", lambda: None)
+    # an unset LAYA_HOST binds 0.0.0.0, and any other name can resolve to a routable address
+    for host, bound in ((None, "0.0.0.0"), ("laya-host", "laya-host")):
+        if host is None:
+            monkeypatch.delenv("LAYA_HOST", raising=False)
         else:
-            monkeypatch.setenv("LAYA_API_KEY", key)
-        caplog.clear()
-        with caplog.at_level(logging.WARNING, logger="laya.serve"):
-            serve._warn_if_open_bind("0.0.0.0")
-        logs = _serve_logs(caplog)
-        assert len(logs) == 1, (key, [r.getMessage() for r in caplog.records])
-        message = logs[0].getMessage()
-        assert "0.0.0.0" in message and "LAYA_API_KEY" in message
-        assert "\n" not in message
+            monkeypatch.setenv("LAYA_HOST", host)
+        for key in (None, ""):  # a blank LAYA_API_KEY is "not set", the same reading create_app gives it
+            if key is None:
+                monkeypatch.delenv("LAYA_API_KEY", raising=False)
+            else:
+                monkeypatch.setenv("LAYA_API_KEY", key)
+            caplog.clear()
+            captured.clear()
+            with caplog.at_level(logging.WARNING, logger="laya.serve"):
+                serve.main()
+            logs = _serve_logs(caplog)
+            assert len(logs) == 1, (host, key, [r.getMessage() for r in caplog.records])
+            message = logs[0].getMessage()
+            assert bound in message and "LAYA_API_KEY" in message
+            assert "\n" not in message
+            assert captured["host"] == bound
 
 
 def test_loopback_bind_without_a_key_does_not_warn(monkeypatch, caplog):
@@ -5160,7 +5173,7 @@ def test_non_loopback_bind_with_a_key_does_not_warn_and_never_logs_it(monkeypatc
     from laya import serve
 
     monkeypatch.setenv("LAYA_API_KEY", "test-key-value")
-    with caplog.at_level(logging.WARNING, logger="laya.serve"):
+    with caplog.at_level(logging.DEBUG, logger="laya.serve"):
         serve._warn_if_open_bind("0.0.0.0")
     assert _serve_logs(caplog) == []
     assert "test-key-value" not in caplog.text

@@ -10,9 +10,9 @@ Security patches and vulnerability remediation are prioritized for the current a
 
 | Version | Supported          | Status |
 | :--- | :---: | :--- |
-| **0.3.x** | :white_check_mark: | Current active release line |
-| **0.2.x** | :white_check_mark: | Critical security patches only |
-| **< 0.2.0** | :x: | End of life; please upgrade to 0.3.x |
+| **0.5.x** | :white_check_mark: | Current active release line |
+| **0.4.x** | :white_check_mark: | Critical security patches only |
+| **< 0.4.0** | :x: | End of life; please upgrade to 0.5.x |
 
 ---
 

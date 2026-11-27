@@ -99,6 +99,11 @@ type PredictContext struct {
 	Results []schema.Prediction
 	Model   string
 	Agent   *Agent
+	// Decision and Router are set when a Router runs the call: Decision is its router.Decision and
+	// Router its *router.Router. They are nil for a call made on an Agent directly. They are typed
+	// any because package router imports this one.
+	Decision any
+	Router   any
 	// MaxLen and HeadMaxLen override the checkpoint's budgets for this call when above 0.
 	MaxLen, HeadMaxLen int
 	// Usage is summed over Results; set before OnPredictEnd.
@@ -439,7 +444,8 @@ func (a *Agent) inferStates(ctx context.Context, states []any, qs schema.Questio
 }
 
 func (a *Agent) predictHooked(ctx context.Context, states []any, qs schema.Questions, c call, g *gate, hooks []Hook) ([]schema.Prediction, error) {
-	pc := &PredictContext{States: states, Questions: qs, RunID: newRunID(), Model: schema.Model, Agent: a, StartedAt: time.Now()}
+	pc := &PredictContext{States: states, Questions: qs, RunID: newRunID(), Model: schema.Model, Agent: a, StartedAt: time.Now(),
+		MaxLen: c.maxLen, HeadMaxLen: c.headMaxLen}
 	err := a.dispatch(ctx, evStart, hooks, pc)
 	if err == nil && pc.Results == nil {
 		c.maxLen, c.headMaxLen = pc.MaxLen, pc.HeadMaxLen

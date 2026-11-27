@@ -143,6 +143,70 @@ describe("structured/projection", () => {
     expect(answersToJson({ department: 5, urgency: "x" } as any, SCHEMA)).toEqual({});
   });
 
+  // Mirrors the off-option block in tests/test_structured.py. A choice naming none of the field's
+  // options is no usable answer: the field is omitted, like a non-object answer, instead of the
+  // raw label passing through as the value -- the passthrough let a `{ const: false }` schema
+  // return the string "true", a value the schema forbids.
+  const CONST_SCHEMA = { type: "object", properties: { flag: { const: false } } };
+  it("omits an off-option choice instead of passing the label through", () => {
+    expect(answersToJson({ flag: { type: "choice", choice: "true" } } as any, CONST_SCHEMA)).toEqual({});
+    expect(answersToJson({ flag: { type: "choice", choice: "false" } } as any, CONST_SCHEMA))
+      .toEqual({ flag: false });
+  });
+  it("omits an off-option choice and still projects the fields beside it", () => {
+    const values = answersToJson({ ...ANSWERS, department: { type: "choice", choice: "marketing" } } as any, SCHEMA);
+    expect(Object.prototype.hasOwnProperty.call(values, "department")).toBe(false);
+    expect(values.priority).toBe(2);
+  });
+  it("omits a choice answer without a choice key", () => {
+    expect(answersToJson({ flag: { type: "choice" } } as any, CONST_SCHEMA)).toEqual({});
+  });
+  // The missing-key guard must discriminate: without it, String(undefined) is "undefined" and
+  // String(null) is "null", so a missing key or an unset optional property would select an option
+  // that happens to carry one of those spellings. A missing key and an explicit undefined must
+  // stay omitted, while an explicit "null" -- the wire spelling of a selected null option -- or a
+  // JSON null still matches the null option (Python parity, tests/test_structured.py).
+  const UNDEF_SCHEMA = { type: "object", properties: { x: { enum: ["undefined", "a"] } } };
+  it("omits a choice answer without a usable choice key even if 'undefined' is an option", () => {
+    expect(answersToJson({ x: { type: "choice" } } as any, UNDEF_SCHEMA)).toEqual({});
+    expect(answersToJson({ x: { type: "choice", choice: undefined } } as any, UNDEF_SCHEMA)).toEqual({});
+  });
+  it("still matches the null option for an explicit null choice", () => {
+    const NULLABLE = { type: "object", properties: { x: { enum: ["a", null] } } };
+    expect(answersToJson({ x: { type: "choice", choice: "null" } } as any, NULLABLE)).toEqual({ x: null });
+    expect(answersToJson({ x: { type: "choice", choice: null } } as any, NULLABLE)).toEqual({ x: null });
+  });
+  it("matches a boolean choice value against the JSON-spelled label", () => {
+    expect(answersToJson({ flag: { type: "choice", choice: true } } as any,
+      { type: "object", properties: { flag: { const: true } } })).toEqual({ flag: true });
+  });
+
+  // Python parity (tests/test_structured.py, the decide/off-option block): an off-option choice
+  // is omitted from the projected values but kept in the detail maps -- unlike a non-object entry
+  // (omitted from all four), it is a real answer the model gave, and its confidence and
+  // probabilities are what diagnose the mismatch.
+  it("returnDetails omits an off-option choice from values but keeps its detail maps", async () => {
+    const runner = {
+      async predict() {
+        return {
+          answers: {
+            flag: { type: "choice", choice: "true", confidence: 0.9, answer_confidence: 0.9,
+                    probabilities: { false: 0.1, true: 0.9 } },
+            dept: { type: "choice", choice: "billing", confidence: 0.8, answer_confidence: 0.8,
+                    probabilities: { billing: 0.8, sales: 0.2 } },
+          },
+        };
+      },
+    };
+    const det = await decide(runner as any, "s",
+      { type: "object", properties: { flag: { const: false }, dept: { enum: ["billing", "sales"] } } },
+      { returnDetails: true });
+    expect(det.values).toEqual({ dept: "billing" });
+    expect(det.confidence.flag).toBe(0.9);
+    expect(det.answerConfidence.flag).toBe(0.9);
+    expect(det.probabilities.flag).toEqual({ false: 0.1, true: 0.9 });
+  });
+
   // The same entry reaches `decide` through a runner, not only through answersToJson, and
   // `returnDetails` walks it a second time to build the per-field maps. Python omits it from all
   // four (`values`, `confidence`, `answer_confidence`, `probabilities`); the unguarded loop added a

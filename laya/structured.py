@@ -318,8 +318,18 @@ def _project(answers: Dict[str, Any], fields: Sequence[_Field]) -> Dict[str, Any
                 idx = int(round(float(answer.get("score", 0.0))))
             values[f.name] = int(f.minimum or 0) + idx
         else:  # choice
-            label = str(answer.get("choice"))
-            values[f.name] = next((value for lbl, value in f.options if lbl == label), label)
+            # An answer naming none of the field's options is no usable answer: the field is
+            # omitted, exactly as a non-dict answer is, rather than the raw label passing
+            # through as the value. That fallback let a {"const": false} field come back as the
+            # string "true" -- a value its schema forbids. `answers_to_json` is public and the
+            # server validates the request, not the answer, so the answers reaching this map
+            # are not guaranteed to have come from a constrained decode.
+            if "choice" in answer:
+                label = _choice_label(answer["choice"])
+                for option_label, option_value in f.options:
+                    if option_label == label:
+                        values[f.name] = option_value
+                        break
     return values
 
 

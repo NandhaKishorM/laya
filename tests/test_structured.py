@@ -141,6 +141,38 @@ check("project/valid fields still project beside a non-dict one", partial["prior
 check("project/all answers non-dict yields no values",
       answers_to_json({"department": 5, "urgency": "x"}, SCHEMA), {})
 
+# A choice naming none of the field's options is no usable answer either: the field is omitted,
+# like a non-dict answer, instead of the raw label passing through as the value. The passthrough
+# let a {"const": false} schema return the string "true" -- a value the schema forbids.
+CONST_SCHEMA = {"type": "object", "properties": {"flag": {"const": False}}}
+check("project/off-option choice is omitted, not passed through",
+      answers_to_json({"flag": {"type": "choice", "choice": "true"}}, CONST_SCHEMA), {})
+check("project/off-option choice beside a valid one",
+      answers_to_json({"flag": {"type": "choice", "choice": "true"}, **ANSWERS},
+                      {"type": "object", "properties": {**SCHEMA["properties"], "flag": {"const": False}}}),
+      values)
+check("project/choice answer without a choice key is omitted",
+      answers_to_json({"flag": {"type": "choice"}}, CONST_SCHEMA), {})
+check_true("project/on-option const choice still projects its value",
+           answers_to_json({"flag": {"type": "choice", "choice": "false"}}, CONST_SCHEMA)["flag"] is False)
+check_true("project/boolean choice value matches the JSON-spelled label",
+           answers_to_json({"flag": {"type": "choice", "choice": True}},
+                           {"type": "object", "properties": {"flag": {"const": True}}})["flag"] is True)
+
+# The missing-key guard must discriminate: without it, _choice_label(answer.get("choice")) reads a
+# missing key as None and produces "null", so a malformed answer would select the null option of a
+# nullable enum. A missing key must stay omitted while an explicit "null" -- the wire spelling of a
+# selected null option, since the engine only ever emits a criteria key as a string -- still
+# matches, and a JSON null choice (hand-written answers only; the server never emits one) matches
+# the same option, exactly as the TS port's String(null) has always done.
+NULLABLE_SCHEMA = {"type": "object", "properties": {"x": {"enum": ["a", None]}}}
+check("project/choice answer without a choice key does not match the null option",
+      answers_to_json({"x": {"type": "choice"}}, NULLABLE_SCHEMA), {})
+check_true("project/explicit 'null' choice still matches the null option",
+           answers_to_json({"x": {"type": "choice", "choice": "null"}}, NULLABLE_SCHEMA)["x"] is None)
+check_true("project/JSON null choice matches the null option",
+           answers_to_json({"x": {"type": "choice", "choice": None}}, NULLABLE_SCHEMA)["x"] is None)
+
 
 # --------------------------------------------------------------- rejections
 def _bad(schema):
@@ -264,6 +296,24 @@ check_true("decide/details a non-dict answer reports no confidence",
            "department" not in details.confidence and "department" not in details.probabilities)
 check("decide/details valid answers still report confidence beside it",
        details.confidence["needs_human"], 0.8)
+
+# An off-option choice is omitted from the projected VALUES but kept in the detail maps: unlike a
+# non-dict entry (omitted from all four), it is a real answer the model gave, and its confidence
+# and probabilities are what diagnose the mismatch. The TS port's detailsOf does the same.
+OFF_OPTION = {
+    "flag": {"type": "choice", "choice": "true", "confidence": 0.9, "answer_confidence": 0.9,
+             "probabilities": {"false": 0.1, "true": 0.9}},
+    "dept": {"type": "choice", "choice": "billing", "confidence": 0.8, "answer_confidence": 0.8,
+             "probabilities": {"billing": 0.8, "sales": 0.2}},
+}
+OFF_OPTION_SCHEMA = {"type": "object", "properties": {
+    "flag": {"const": False}, "dept": {"enum": ["billing", "sales"]}}}
+off_det = decide(FakeRunner(OFF_OPTION), "s", schema=OFF_OPTION_SCHEMA, return_details=True)
+check("decide/off-option choice omitted from values", off_det.values, {"dept": "billing"})
+check("decide/off-option choice keeps confidence", off_det.confidence["flag"], 0.9)
+check("decide/off-option choice keeps answer_confidence", off_det.answer_confidence["flag"], 0.9)
+check("decide/off-option choice keeps probabilities",
+      off_det.probabilities["flag"], {"false": 0.1, "true": 0.9})
 
 runner = FakeRunner({"a": {"type": "noul", "noul": 0.9, "confidence": 0.9}})
 out = decide(runner, "s", questions={"a": {"type": "noul", "instructions": "?"}})

@@ -445,7 +445,7 @@ export function optionBucket(answer: Record<string, unknown>): string | null {
   if (qt !== "choice" && qt !== "score" && qt !== "noul") return null;
   const probs = answer.probabilities;
   let k: number;
-  if (probs && typeof probs === "object" && !Array.isArray(probs)) {
+  if (probs && typeof probs === "object" && !Array.isArray(probs) && Object.keys(probs).length > 0) {
     k = Object.keys(probs).length;
   } else if (qt === "noul") {
     k = 2;

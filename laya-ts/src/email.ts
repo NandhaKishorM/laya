@@ -40,6 +40,53 @@ function width(text: string): number {
   return count;
 }
 
+// A sentence: three or more words, ending in sentence punctuation, with at least one lowercase word
+// in it (`_is_prose_line` in laya/email.py). A signature line that ends in an abbreviation stays a
+// signature because its words are capitalised ("VP Operations, ACME Inc.", "123 Main St.").
+const PROSE_END = new RegExp(`^${NOT_SP}+(?:${SP}+${NOT_SP}+){2,}[.!?]$`, "u");
+const NAME_CONNECTIVES = new Set(
+  ["of", "and", "the", "for", "de", "da", "do", "das", "dos", "del", "la", "el", "von", "van", "der", "du", "et", "y", "e"],
+);
+const WORD_EDGE = /^[.,;:!?"'()[\]]+|[.,;:!?"'()[\]]+$/gu;
+const LOWER_WORD = /^\p{Ll}+$/u;
+const WS_RUN = new RegExp(`${SP}+`, "u");
+const PARAGRAPH_BREAK = new RegExp(`\\n${SP}*\\n`, "u");
+const SIGNATURE_TAIL_LINES = 10;
+const SIGNATURE_TAIL_WIDTH = 60;
+
+function isProseLine(line: string): boolean {
+  if (!PROSE_END.test(line)) return false;
+  return line
+    .split(WS_RUN)
+    .some((w) => {
+      const word = w.replace(WORD_EDGE, "");
+      return LOWER_WORD.test(word) && !NAME_CONNECTIVES.has(word);
+    });
+}
+
+/**
+ * Whether what follows a sign-off marker still reads like a signature block (`_is_signature_tail`
+ * in laya/email.py). A marker such as `Thanks!` or `--` closes a message only when a few short
+ * lines follow it; in the middle of a message it is followed by the sender's own sentences, and
+ * cutting there deleted them. A disclaimer footer is left out of the count, line by line, because
+ * `stripDisclaimer` joins what it keeps into one line.
+ */
+function isSignatureTail(rest: string[]): boolean {
+  const tail: string[] = [];
+  for (const paragraph of rest.join("\n").split(PARAGRAPH_BREAK)) {
+    let lines = paragraph.split("\n").map(trimPy).filter(Boolean);
+    if (DISCLAIMER.test(paragraph)) {
+      const kept = trimPy(stripDisclaimer(paragraph)).split(WS_RUN).join(" ");
+      lines = lines.filter((ln) => kept.includes(ln.split(WS_RUN).join(" ")));
+    }
+    tail.push(...lines);
+  }
+  return (
+    tail.length <= SIGNATURE_TAIL_LINES &&
+    !tail.some((ln) => width(ln) > SIGNATURE_TAIL_WIDTH || (isProseLine(ln) && !DEVICE_FOOTER.test(ln)))
+  );
+}
+
 /** Python's `text[:count]`, cutting at code points so a surrogate pair is never split in half. */
 function cutCodePoints(text: string, count: number): string {
   const chars = Array.from(text);
@@ -224,8 +271,9 @@ export function cleanEmailBody(body: string, maxChars = 3000): string {
   for (let i = start; i < lines.length; i++) {
     const n = width(trimPy(lines[i]));
     if (
-      (n <= 40 && SIGNATURE_MARKERS.some((p) => p(lines[i]))) ||
-      (n <= 60 && DEVICE_FOOTER.test(lines[i]))
+      ((n <= 40 && SIGNATURE_MARKERS.some((p) => p(lines[i]))) ||
+        (n <= 60 && DEVICE_FOOTER.test(lines[i]))) &&
+      isSignatureTail(lines.slice(i + 1))
     ) {
       cut = i;
       break;

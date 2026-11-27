@@ -966,7 +966,7 @@ def _warn_if_open_bind(host: str) -> None:
     default stays: the Docker image and the compose files rely on it. A blank key is "not set", the
     reading `create_app` gives it. Only whether a key exists is read here, never its value.
     """
-    if os.environ.get("LAYA_API_KEY"):
+    if os.environ.get("LAYA_API_KEY", ""):
         return
     if host.lower() == "localhost":
         return

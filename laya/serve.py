@@ -74,6 +74,7 @@ deferred into the functions that need them, so ``import laya.serve`` stays cheap
 and touches no GPU -- which is what keeps the Nix ``pythonImportsCheck`` honest.
 """
 import hmac
+import ipaddress
 import json
 import logging
 import math
@@ -955,6 +956,27 @@ def _resolve_log_level() -> str:
         raise SystemExit("invalid LAYA_LOG_LEVEL %r: must be one of %s"
                          % (raw.strip(), ", ".join(sorted(LOG_LEVELS))))
     return level
+
+
+def _warn_if_open_bind(host: str) -> None:
+    """Warn once at startup when listening beyond loopback with no LAYA_API_KEY.
+
+    `_authorized` in `create_app` answers True for every request when no key is set, and the bind
+    defaults to 0.0.0.0, so a bare `laya-serve` is open to anyone who can reach the machine. The
+    default stays: the Docker image and the compose files rely on it. A blank key is "not set", the
+    reading `create_app` gives it. Only whether a key exists is read here, never its value.
+    """
+    if os.environ.get("LAYA_API_KEY"):
+        return
+    if host.lower() == "localhost":
+        return
+    try:
+        if ipaddress.ip_address(host).is_loopback:
+            return
+    except ValueError:
+        pass  # any other name can resolve to a routable address
+    _log.warning("listening on %s (not loopback) and LAYA_API_KEY is not set; "
+                 "requests are accepted without authentication", host)
 
 
 #: Values the walk in `_state_length_lower_bound_over` will examine before giving up. This bounds the
@@ -1866,9 +1888,11 @@ def main() -> None:
                     pass  # a latency hint, never a reason to drop the connection
             super().connection_made(transport)
 
+    host = os.environ.get("LAYA_HOST", "0.0.0.0")
+    _warn_if_open_bind(host)
     uvicorn.run(
         create_app(),
-        host=os.environ.get("LAYA_HOST", "0.0.0.0"),
+        host=host,
         port=_resolve_port(),
         log_level=_resolve_log_level(),
         http=NoDelayHTTPProtocol,

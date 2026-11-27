@@ -1,0 +1,329 @@
+{
+  "backend": {
+    "backend": "laya",
+    "checkpoint": "english",
+    "source": "convaiinnovations/laya",
+    "subfolder": null,
+    "revision_requested": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+    "laya_version": "0.3.21",
+    "device": "cpu",
+    "dtype": "torch.float32"
+  },
+  "normalize": false,
+  "modes": {
+    "choice_fa": {
+      "mode": "choice_fa",
+      "repeat": 0,
+      "n": 64,
+      "correct": 21,
+      "accuracy": 0.328125,
+      "macro_f1": 0.2613272311212815,
+      "failures": 0,
+      "false_cancel": 38,
+      "missed_cancel": 1,
+      "by_family": {
+        "formal": {
+          "correct": 3,
+          "n": 8
+        },
+        "colloquial": {
+          "correct": 2,
+          "n": 8
+        },
+        "finglish": {
+          "correct": 4,
+          "n": 8
+        },
+        "orthography": {
+          "correct": 2,
+          "n": 8
+        },
+        "code_mixed": {
+          "correct": 2,
+          "n": 8
+        },
+        "negation": {
+          "correct": 2,
+          "n": 8
+        },
+        "sarcasm_taarof": {
+          "correct": 3,
+          "n": 8
+        },
+        "digits": {
+          "correct": 3,
+          "n": 8
+        }
+      },
+      "by_label": {
+        "billing": {
+          "correct": 3,
+          "n": 16
+        },
+        "technical": {
+          "correct": 1,
+          "n": 16
+        },
+        "cancel": {
+          "correct": 15,
+          "n": 16
+        },
+        "other": {
+          "correct": 2,
+          "n": 16
+        }
+      },
+      "by_trap": {
+        "account_word_not_cancel": {
+          "correct": 0,
+          "n": 1
+        },
+        "arabic_yeh_kaf": {
+          "correct": 1,
+          "n": 4
+        },
+        "billing_word_not_billing": {
+          "correct": 0,
+          "n": 1
+        },
+        "genuine_thanks_control": {
+          "correct": 0,
+          "n": 1
+        },
+        "latin_digits": {
+          "correct": 0,
+          "n": 2
+        },
+        "mixed_digits": {
+          "correct": 1,
+          "n": 2
+        },
+        "negated_billing": {
+          "correct": 0,
+          "n": 1
+        },
+        "negated_billing_technical": {
+          "correct": 0,
+          "n": 1
+        },
+        "negated_cancel": {
+          "correct": 0,
+          "n": 3
+        },
+        "negated_technical": {
+          "correct": 0,
+          "n": 1
+        },
+        "negative_verb_true_cancel": {
+          "correct": 2,
+          "n": 2
+        },
+        "persian_digits": {
+          "correct": 2,
+          "n": 3
+        },
+        "sarcastic_praise": {
+          "correct": 0,
+          "n": 2
+        },
+        "sarcastic_thanks": {
+          "correct": 1,
+          "n": 3
+        },
+        "space_instead_of_zwnj": {
+          "correct": 1,
+          "n": 4
+        },
+        "taarof": {
+          "correct": 2,
+          "n": 2
+        }
+      },
+      "confusion": {
+        "billing": {
+          "billing": 3,
+          "cancel": 12,
+          "technical": 1
+        },
+        "technical": {
+          "cancel": 13,
+          "other": 1,
+          "billing": 1,
+          "technical": 1
+        },
+        "cancel": {
+          "cancel": 15,
+          "technical": 1
+        },
+        "other": {
+          "cancel": 13,
+          "other": 2,
+          "technical": 1
+        }
+      },
+      "mean_answer_confidence": 0.4107859375,
+      "ece": 0.10526406250000005,
+      "latency_ms_p50": 602.8875,
+      "latency_ms_p90": 2526.6238,
+      "repeat_agreement": 1.0
+    },
+    "choice_en": {
+      "mode": "choice_en",
+      "repeat": 0,
+      "n": 64,
+      "correct": 29,
+      "accuracy": 0.453125,
+      "macro_f1": 0.39643975615957533,
+      "failures": 0,
+      "false_cancel": 16,
+      "missed_cancel": 3,
+      "by_family": {
+        "formal": {
+          "correct": 4,
+          "n": 8
+        },
+        "colloquial": {
+          "correct": 3,
+          "n": 8
+        },
+        "finglish": {
+          "correct": 5,
+          "n": 8
+        },
+        "orthography": {
+          "correct": 4,
+          "n": 8
+        },
+        "code_mixed": {
+          "correct": 5,
+          "n": 8
+        },
+        "negation": {
+          "correct": 2,
+          "n": 8
+        },
+        "sarcasm_taarof": {
+          "correct": 2,
+          "n": 8
+        },
+        "digits": {
+          "correct": 4,
+          "n": 8
+        }
+      },
+      "by_label": {
+        "billing": {
+          "correct": 11,
+          "n": 16
+        },
+        "technical": {
+          "correct": 3,
+          "n": 16
+        },
+        "cancel": {
+          "correct": 13,
+          "n": 16
+        },
+        "other": {
+          "correct": 2,
+          "n": 16
+        }
+      },
+      "by_trap": {
+        "account_word_not_cancel": {
+          "correct": 0,
+          "n": 1
+        },
+        "arabic_yeh_kaf": {
+          "correct": 2,
+          "n": 4
+        },
+        "billing_word_not_billing": {
+          "correct": 0,
+          "n": 1
+        },
+        "genuine_thanks_control": {
+          "correct": 0,
+          "n": 1
+        },
+        "latin_digits": {
+          "correct": 2,
+          "n": 2
+        },
+        "mixed_digits": {
+          "correct": 0,
+          "n": 2
+        },
+        "negated_billing": {
+          "correct": 0,
+          "n": 1
+        },
+        "negated_billing_technical": {
+          "correct": 0,
+          "n": 1
+        },
+        "negated_cancel": {
+          "correct": 0,
+          "n": 3
+        },
+        "negated_technical": {
+          "correct": 1,
+          "n": 1
+        },
+        "negative_verb_true_cancel": {
+          "correct": 1,
+          "n": 2
+        },
+        "persian_digits": {
+          "correct": 2,
+          "n": 3
+        },
+        "sarcastic_praise": {
+          "correct": 0,
+          "n": 2
+        },
+        "sarcastic_thanks": {
+          "correct": 1,
+          "n": 3
+        },
+        "space_instead_of_zwnj": {
+          "correct": 2,
+          "n": 4
+        },
+        "taarof": {
+          "correct": 1,
+          "n": 2
+        }
+      },
+      "confusion": {
+        "billing": {
+          "billing": 11,
+          "cancel": 2,
+          "other": 1,
+          "technical": 2
+        },
+        "technical": {
+          "billing": 5,
+          "cancel": 8,
+          "technical": 3
+        },
+        "cancel": {
+          "cancel": 13,
+          "technical": 1,
+          "billing": 2
+        },
+        "other": {
+          "billing": 7,
+          "cancel": 6,
+          "other": 2,
+          "technical": 1
+        }
+      },
+      "mean_answer_confidence": 0.4711921874999999,
+      "ece": 0.08373593750000004,
+      "latency_ms_p50": 1467.228,
+      "latency_ms_p90": 1706.2701000000002,
+      "repeat_agreement": 1.0
+    }
+  }
+}

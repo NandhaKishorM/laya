@@ -176,23 +176,24 @@ export function normaliseHooks(
     out.push(item as Hook);
   };
   append(hooks);
-  if (onPredictStart !== null && onPredictStart !== undefined) {
-    if (typeof onPredictStart !== "function") {
-      throw new TypeError(`onPredictStart must be callable, got ${typeName(onPredictStart)}`);
+  // `PredictHookArg` is one callable or a list of them, as Python's `_as_sequence` reads it.
+  const asList = (arg: PredictHookArg): unknown[] =>
+    arg === null || arg === undefined ? [] : Array.isArray(arg) ? arg : [arg];
+  const starts = asList(onPredictStart);
+  const ends = asList(onPredictEnd);
+  for (const fn of starts) {
+    if (typeof fn !== "function") {
+      throw new TypeError(`onPredictStart must be callable, got ${typeName(fn)}`);
     }
-    out.push({ onPredictStart });
+    out.push({ onPredictStart: fn as PredictHook });
   }
-  if (onPredictEnd !== null && onPredictEnd !== undefined) {
-    if (typeof onPredictEnd !== "function") {
-      throw new TypeError(`onPredictEnd must be callable, got ${typeName(onPredictEnd)}`);
+  for (const fn of ends) {
+    if (typeof fn !== "function") {
+      throw new TypeError(`onPredictEnd must be callable, got ${typeName(fn)}`);
     }
-    out.push({ onPredictEnd });
+    out.push({ onPredictEnd: fn as PredictHook });
   }
-  if (
-    onPredictStart !== null &&
-    onPredictStart !== undefined &&
-    onPredictStart === (onPredictEnd as unknown)
-  ) {
+  if (starts.some((fn) => ends.includes(fn))) {
     throw new TypeError(
       "onPredictStart and onPredictEnd must be different callables; one callable cannot serve both events",
     );

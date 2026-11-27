@@ -15,7 +15,7 @@ import {
   validateHooksTimeout,
   type Hook,
   type HookArg,
-  type PredictHook,
+  type PredictHookArg,
 } from "./hooks.js";
 
 export const BUNDLE_REPO = "convaiinnovations/laya";
@@ -159,8 +159,8 @@ export interface RouterOptions {
   /** Python-parity snake_case alias for `sha256Digests`. */
   sha256_digests?: Record<string, Record<string, string> | null> | null;
   hooks?: HookArg;
-  onPredictStart?: PredictHook;
-  onPredictEnd?: PredictHook;
+  onPredictStart?: PredictHookArg;
+  onPredictEnd?: PredictHookArg;
   hooksRaise?: boolean;
   /**
    * Per-hook time limit in seconds, applied to every hook this Router waits for; null or absent
@@ -196,8 +196,8 @@ export interface RouteOptions {
  */
 export interface PredictBatchOptions {
   hooks?: HookArg;
-  onPredictStart?: PredictHook;
-  onPredictEnd?: PredictHook;
+  onPredictStart?: PredictHookArg;
+  onPredictEnd?: PredictHookArg;
   hooksRaise?: boolean;
   minConfidence?: PredictOptions["minConfidence"];
   /** Python parity alias for minConfidence. */

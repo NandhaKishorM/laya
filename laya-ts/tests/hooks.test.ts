@@ -431,6 +431,21 @@ describe("hook registry and normalisation", () => {
   it("rejects the same callable for both start and end", () => {
     const fn = () => {};
     expect(() => normaliseHooks(undefined, fn, fn)).toThrow(/different callables/);
+    expect(() => normaliseHooks(undefined, [fn], [() => {}, fn])).toThrow(/different callables/);
+  });
+
+  // `PredictHookArg` declares a list, and tests/test_hooks.py ("sequence/runs in order") runs one.
+  it("runs a list of onPredictStart/onPredictEnd callables in order, as Python does", async () => {
+    const seq: string[] = [];
+    const agent = makeAgent([], {
+      onPredictStart: [() => seq.push("start1"), () => seq.push("start2")],
+      onPredictEnd: [() => seq.push("end1")],
+    });
+    await agent.predictBatch(["s0"], QUESTIONS, {
+      onPredictStart: [() => seq.push("percall1"), () => seq.push("percall2")],
+    });
+    expect(seq).toEqual(["start1", "start2", "percall1", "percall2", "end1"]);
+    expect(() => normaliseHooks(undefined, [() => {}, 42 as never])).toThrow(/onPredictStart must be callable, got/);
   });
 
   it("rejects objects with no hook methods and non-callable onPredictStart", () => {

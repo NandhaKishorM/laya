@@ -120,6 +120,7 @@ class TrainConfig:
     question_id: str = "label"
     instructions: Optional[str] = None
     eval_data: Optional[str] = None
+    delimiter: Optional[str] = None
     target_error: float = 0.10
     min_abstain_n: int = 10
 
@@ -364,26 +365,30 @@ def items_from_rows(tok, rows: Iterable[Dict[str, Any]], max_len: int,
 
 def rows_from_csv(path: str, text_column: str = "text", label_column: str = "label",
                   question_id: str = "label",
-                  instructions: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Read a CSV file with one labelled column per row into `{state, questions, expected}` rows.
+                  instructions: Optional[str] = None,
+                  delimiter: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Read a CSV or TSV file with one labelled column per row into `{state, questions, expected}` rows.
 
     Discovers distinct labels in `label_column` (preserving order of appearance) and
     builds a choice question with those labels as a list of criteria to render each option once.
     Uses `utf-8-sig` encoding so UTF-8 BOM headers from Excel are handled transparently.
+    `delimiter` defaults to tab for `.tsv` files and comma for `.csv` files.
     """
     import csv
 
+    delim = delimiter if delimiter is not None else ("\t" if path.lower().endswith(".tsv") else ",")
+    fmt = "TSV" if delim == "\t" else "CSV"
     rows_raw = []
     with open(path, encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
+        reader = csv.DictReader(f, delimiter=delim)
         if reader.fieldnames is None:
-            raise ValueError("%s is an empty CSV file" % (path,))
+            raise ValueError("%s is an empty %s file" % (path, fmt))
         if text_column not in reader.fieldnames:
-            raise ValueError("CSV file %s missing text column %r (available: %r)"
-                             % (path, text_column, reader.fieldnames))
+            raise ValueError("%s file %s missing text column %r (available: %r)"
+                             % (fmt, path, text_column, reader.fieldnames))
         if label_column not in reader.fieldnames:
-            raise ValueError("CSV file %s missing label column %r (available: %r)"
-                             % (path, label_column, reader.fieldnames))
+            raise ValueError("%s file %s missing label column %r (available: %r)"
+                             % (fmt, path, label_column, reader.fieldnames))
         for r in reader:
             rows_raw.append(r)
 
@@ -393,14 +398,14 @@ def rows_from_csv(path: str, text_column: str = "text", label_column: str = "lab
     labels = []
     seen = set()
     for r in rows_raw:
-        val = r.get(label_column, "").strip()
+        val = (r.get(label_column) or "").strip()
         if val and val not in seen:
             seen.add(val)
             labels.append(val)
 
     if len(labels) < 2:
-        raise ValueError("CSV file %s must contain at least 2 distinct labels in %r, found %r"
-                         % (path, label_column, labels))
+        raise ValueError("%s file %s must contain at least 2 distinct labels in %r, found %r"
+                         % (fmt, path, label_column, labels))
 
     instr = instructions or "Classify the input into the correct category."
     questions = {
@@ -413,8 +418,8 @@ def rows_from_csv(path: str, text_column: str = "text", label_column: str = "lab
 
     output_rows = []
     for r in rows_raw:
-        text = r.get(text_column, "")
-        lbl = r.get(label_column, "").strip()
+        text = r.get(text_column) or ""
+        lbl = (r.get(label_column) or "").strip()
         output_rows.append({
             "state": text,
             "questions": questions,
@@ -425,11 +430,13 @@ def rows_from_csv(path: str, text_column: str = "text", label_column: str = "lab
 
 def read_data(path: str, text_column: str = "text", label_column: str = "label",
               question_id: str = "label",
-              instructions: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Read training/eval rows from either a JSONL file or a CSV file."""
-    if path.lower().endswith(".csv"):
+              instructions: Optional[str] = None,
+              delimiter: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Read training/eval rows from either a JSONL, CSV, or TSV file."""
+    if path.lower().endswith((".csv", ".tsv")) or delimiter is not None:
         return rows_from_csv(path, text_column=text_column, label_column=label_column,
-                             question_id=question_id, instructions=instructions)
+                             question_id=question_id, instructions=instructions,
+                             delimiter=delimiter)
     return read_jsonl(path)
 
 
@@ -1009,7 +1016,8 @@ def finetune(data: str, model_dir: str, output_dir: str, config: Optional[TrainC
     parallel = uses_parallel_layout(cfg)
 
     rows = read_data(data, text_column=config.text_column, label_column=config.label_column,
-                     question_id=config.question_id, instructions=config.instructions)
+                     question_id=config.question_id, instructions=config.instructions,
+                     delimiter=config.delimiter)
     items, skipped = items_from_rows(tok, rows, max_len, head_max_len,
                                      label_smoothing=config.label_smoothing)
     if not items:
@@ -1026,7 +1034,8 @@ def finetune(data: str, model_dir: str, output_dir: str, config: Optional[TrainC
     if config.eval_data:
         eval_source = config.eval_data
         eval_rows = read_data(config.eval_data, text_column=config.text_column, label_column=config.label_column,
-                              question_id=config.question_id, instructions=config.instructions)
+                              question_id=config.question_id, instructions=config.instructions,
+                              delimiter=config.delimiter)
         eval_items, eval_skipped = items_from_rows(tok, eval_rows, max_len, head_max_len, label_smoothing=0.0)
 
         if not eval_items:
@@ -1295,7 +1304,8 @@ def dry_run(data: str, model_dir: str, config: Optional[TrainConfig] = None) -> 
     head_max_len = config.head_max_len or cfg.get("head_max_len", 192)
 
     rows = read_data(data, text_column=config.text_column, label_column=config.label_column,
-                     question_id=config.question_id, instructions=config.instructions)
+                     question_id=config.question_id, instructions=config.instructions,
+                     delimiter=config.delimiter)
     items, skipped = items_from_rows(tok, rows, max_len, head_max_len,
                                      label_smoothing=config.label_smoothing)
     # The training budget is set by the post-calibration item count, so split the same way
@@ -1316,7 +1326,8 @@ def dry_run(data: str, model_dir: str, config: Optional[TrainConfig] = None) -> 
     }
     if config.eval_data:
         eval_rows = read_data(config.eval_data, text_column=config.text_column, label_column=config.label_column,
-                              question_id=config.question_id, instructions=config.instructions)
+                              question_id=config.question_id, instructions=config.instructions,
+                              delimiter=config.delimiter)
         eval_items, eval_skipped = items_from_rows(tok, eval_rows, max_len, head_max_len, label_smoothing=0.0)
         summary["eval_data"] = config.eval_data
         summary["eval_rows_read"] = len(eval_rows)

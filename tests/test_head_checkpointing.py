@@ -46,7 +46,8 @@ def inputs():
 
 
 def training_step(model, *, detach_encoder=False):
-    batch = inputs()
+    device = next(model.parameters()).device
+    batch = tuple(t.to(device) for t in inputs())
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     optimizer.zero_grad(set_to_none=True)
     torch.manual_seed(123)
@@ -102,6 +103,19 @@ class HeadCheckpointingTests(unittest.TestCase):
 
     def test_training_outputs_gradients_and_updates_match_with_dropout(self):
         self.assert_same_step(tiny_model())
+
+    @unittest.skipUnless(torch.backends.mps.is_available(), "needs MPS")
+    def test_mps_training_outputs_gradients_and_updates_match_with_dropout(self):
+        model = tiny_model().to("mps")
+        states = []
+        for checkpointing in (False, True):
+            step_model = copy.deepcopy(model).train()
+            step_model.head_checkpointing = checkpointing
+            torch.mps.manual_seed(7)
+            training_step(step_model)
+            states.append(torch.mps.get_rng_state())
+        self.assertTrue(torch.equal(*states), "MPS dropout RNG state changed")
+        self.assert_same_step(model)
 
     def test_encoder_and_head_checkpointing_work_together(self):
         model = tiny_model()
